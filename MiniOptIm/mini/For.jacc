@@ -1,0 +1,21 @@
+%token  FOR BREAK CONTINUE DO
+
+%type   <Expr>    optExpr
+%type   <ForInit> init
+
+%%
+
+stmt    : FOR '(' init ';' optExpr ';' optExpr ')' stmt
+                                        { $$ = new For($3, $5, $7, $9); }
+        | BREAK ';'                     { $$ = new Break(); }
+        | CONTINUE ';'                  { $$ = new Continue(); }
+	| DO stmt WHILE test ';'	{ $$ = new DoWhile($2, $4); }
+        ;
+optExpr : expr                          { $$ = $1; }
+        | /* empty */                   { $$ = null; }
+        ;
+init    : varDecl                       { $$ = new VarDeclInit($1); }
+        | expr                          { $$ = new ExprInit($1); }
+        | /* empty */                   { $$ = new NoInit(); }
+	;
+

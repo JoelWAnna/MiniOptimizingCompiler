@@ -1,0 +1,11 @@
+void mini_main() {
+  print plus(times(plus(3,4), plus(times(2,2),1)), plus(3,4));
+}
+
+int plus(int x, int y) {
+   return x + y;
+}
+
+int times(int x, int y) {
+   return x * y;
+}
