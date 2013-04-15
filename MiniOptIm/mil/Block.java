@@ -7,17 +7,20 @@ public class Block extends Defn {
      */
     public Block(Code code) {
         this.code = code;
+        specialized = "";
     }
     private static int count = 0;
     private final String id = "b" + count++;
     private Var[] formals;
+	private String specialized;
+	private Lattice lattice;
     public void setFormals(Var[] formals) {
         this.formals = formals;
     }
 
     /** Return the identifier that is associated with this definition.
      */
-    public String getId() { return id; }
+    public String getId() { return id + specialized ; }
 
     /** Find the list of Defns that this Defn depends on.
      */
@@ -340,8 +343,75 @@ public class Block extends Defn {
               }
             }
           }
+    public void buildLattice() {
+    	//TODO
+    	if (formals.length == 0) {
+    		System.out.println("Block " + id + " has no vars");
+        	
+    		return;
+    	}
+    	System.out.println("reached Block buildLattice of block " + id);
+   
+    	//lattice = new Lattice(formals);
+    	for(Defns xs= this.getCallers(); xs != null; xs = xs.next)
+    	{
+    		Block x = (Block) xs.head;
 
-    /** Test to determine whether there is a way to short out a Match
+    		BlockCalls x_calls = x.code.getBlockCall(id);
+    		if (x_calls != null)
+    		{
+    			BlockCalls current_call = x_calls;
+
+    			while (current_call != null) {
+    				// Check for calls from the current block
+    				if (x.getId().equalsIgnoreCase(id))
+    				{
+    					//x_calls.head.args;
+        				Var formals2[] = checkFormals();
+    					//x_calls.head.display();
+        				
+        				System.out.println("Block " + id + " called from itself");
+        			
+        			//Atom a[] modifies;
+        			
+        			}
+    				current_call = current_call.next;
+        		}
+    		}
+    		//x.displayDefn();
+    		//for (Vars v = x.getLiveVars(); v != null; v = v.next)
+        	//	System.out.println("Live + " + v.head.toString());
+		
+    	}
+    }
+    private  Var [] checkFormals() {
+    	 Var [] formals2 = new Var[formals.length];
+     	for (int i = 0; i < formals.length; ++i)
+    			formals2[i] = formals[i];
+     	formals2 = code.checkformals(formals2);
+    	for (int i = 0; i < formals.length; ++i)
+    	{
+    		if (formals2[i] != Var.TOPLATTICE) {
+    			if (formals2[i].sameAtom(formals[i])) {
+    				System.out.println(formals2[i].isConst());
+    			}
+    			else {
+    				//TODO
+    				System.out.println("Argument " + i + " is not a constant");
+    			}
+    		}
+    		else {
+    			// TODO
+    			System.out.println("Argument " + i + " is modified");
+    			
+    		}
+    	}
+    	return null;
+
+		
+	}
+
+	/** Test to determine whether there is a way to short out a Match
      *  from a call to this block with the specified arguments, and
      *  given the set of facts that have been computed.  We start by
      *  querying the code in the Block to determine if it starts with

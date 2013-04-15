@@ -7,7 +7,7 @@ package mil;
  */
 public class Bind extends Code {
 
-    /** The variable that will capture the result.
+	/** The variable that will capture the result.
      */
     private Var v;
 
@@ -319,4 +319,33 @@ public class Bind extends Code {
     void fixTrailingBlockCalls() {
         c.fixTrailingBlockCalls();
     }
+
+	@Override
+	public BlockCalls getBlockCall(String id) {
+		BlockCall thisCall = null;
+		BlockCall bc = t.isBlockCall();
+		if (bc instanceof BlockCall)
+		{
+			// TODO is this ever needed
+			if (bc.callsBlock(id)) {
+				thisCall = bc;
+			}
+		}
+		BlockCalls calls = c.getBlockCall(id);
+		if (thisCall != null)
+			calls = new BlockCalls(thisCall, calls);
+		
+		return calls;
+	}
+
+	@Override
+	public Var[] checkformals(Var[] vars) {
+		for(int i = 0; i < vars.length; ++i) {
+			if (v.sameAtom(vars[i])) {
+				vars[i] = Var.TOPLATTICE;
+			}				
+		}
+		return c.checkformals(vars);
+		
+	}
 }

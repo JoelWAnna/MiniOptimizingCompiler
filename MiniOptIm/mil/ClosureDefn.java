@@ -49,7 +49,10 @@ public class ClosureDefn extends Defn {
     public void flow() {
         // TODO: Do something here ... ?
       }
-
+    public void buildLattice() {
+    	//TODO
+    	System.out.println("reached ClosureDefn buildLattice of block" + id);
+    }
     /** Compute a Tail that gives the result of entering this closure given the
      *  arguments that are stored in the closure and the extra argument that
      *  prompted us to enter this closure in the first place.

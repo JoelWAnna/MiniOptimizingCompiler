@@ -72,7 +72,7 @@ public class TAlt {
         int num = c.getNum() - 1;  // flag use of this constructor
         if (num>=0 && num<used.length) {
           if (used[num]) {
-            debug.Internal.error("multiple alternatives for " + c);
+            System.out.println("multiple alternatives for " + c);
           }
           used[num] = true;
         } else {
@@ -149,5 +149,11 @@ public class TAlt {
      */
     void fixTrailingBlockCalls() {
         bc.fixTrailingBlockCalls();
+    }
+    
+    BlockCall getBlockCall(String id) {
+    	if (bc != null && bc.callsBlock(id))
+    		return bc;
+    	return null;    	
     }
 }

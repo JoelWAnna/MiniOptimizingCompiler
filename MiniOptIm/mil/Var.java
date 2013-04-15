@@ -2,6 +2,7 @@ package mil;
 
 public abstract class Var extends Atom {
     public static final Var[] noVars = new Var[0];
+	 static final Var TOPLATTICE = null;
 
     /** Test to determine if this item represents a constructor function.
      */

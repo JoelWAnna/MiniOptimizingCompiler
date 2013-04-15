@@ -62,6 +62,10 @@ public class TopLevel extends Defn {
     public void flow() {
         // TODO: Do something here ... ?
       }
+    public void buildLattice() {
+    	//TODO
+    	System.out.println("reached TopLevel buildLattice of block" + id);
+    }
     Atom shortTopLevel(Atom d) { return tail.shortTopLevel(d); }
     public Tail invokesTopLevel() {
         MILProgram.report("replacing invoke " + getId() + " with block call");

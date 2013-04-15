@@ -1,0 +1,13 @@
+Algorithm:
+Run static analysis on the block, at the invocation of a new block,
+compute the set difference of the block dependencies and the live variables, if this set
+is not empty, check the callees of the block to see if a suitable wrapper block exists, if not
+create a wrapper block that calls the original block, but only depends on the
+set difference, and uses the constant from before, otherwise use the previous wrapper block.
+Use a predetermined maximum value for wrappers to a particular block, to prevent code explosion.
+
+If the only callers to a block are wrapper blocks, and the number of wrapper blocks is less than the max
+inline the original block.
+
+check for an alternative block that the variable has been initialized
+Run through the block, if the value of a variable can be statically determined

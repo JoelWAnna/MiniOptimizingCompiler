@@ -170,6 +170,7 @@ public abstract class Defn {
     public abstract void inlining();
     boolean detectLoops(Blocks visited) { return false; }
     public abstract void flow();
+    public abstract void buildLattice();
     protected int numberCalls;
     protected int numberThunks;
     public int getNumberCalls() {

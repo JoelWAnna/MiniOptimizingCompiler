@@ -308,4 +308,26 @@ public class Match extends Code {
           alts[i].fixTrailingBlockCalls();
         }
     }
+
+	@Override
+	public BlockCalls getBlockCall(String id) {
+		BlockCalls block_calls = null;
+		if (def!=null) {
+			if (def.callsBlock(id)) {
+				block_calls = new BlockCalls(def, block_calls);
+            //	Atom args[] = def.args;
+            //	for(Atom a : args)
+    		//		System.out.println(a.toString());
+			}
+		}
+
+        for (int i=0; i<alts.length; i++) {
+            BlockCall alt_blockCall = alts[i].getBlockCall(id);
+            if (alt_blockCall != null && alt_blockCall.callsBlock(id))
+            {
+				block_calls = new BlockCalls(alt_blockCall, block_calls);
+            }
+          }
+		return block_calls;
+	}
 }

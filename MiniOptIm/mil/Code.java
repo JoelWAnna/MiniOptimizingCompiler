@@ -214,6 +214,8 @@ public abstract class Code {
     public BlockCall makeBlockCall() {
         return new BlockCall(new Block(this));
     }
+    
+	public BlockCalls getBlockCall(String id){return null;}
 
     /** Compute the set of live variables in this code sequence.
      */
@@ -224,4 +226,8 @@ public abstract class Code {
      *  computed by the live variables analysis.
      */
     abstract void fixTrailingBlockCalls();
+
+	public Var[] checkformals(Var[] vars) {
+		return vars;		
+	}
 }

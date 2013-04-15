@@ -85,7 +85,7 @@ public class MILProgram {
     }
     public static int count = 0;
     public static void report(String msg) {
-        debug.Log.println(msg);
+        System.out.println(msg);
         count++;
       }
     public void optimize() {
@@ -109,6 +109,8 @@ public class MILProgram {
           debug.Log.println("Flow pass finished, running shake.");
           shake();
           debug.Log.println("Steps performed = " + count);
+          SpecializeFuncts();
+          shake();
         }
       }
     void cfunSimplify() {
@@ -199,6 +201,22 @@ public class MILProgram {
         System.out.println();
       }
 
+    /** TODO comment
+     */
+    public void SpecializeFuncts() {
+        for (DefnSCCs dsccs = sccs; dsccs!=null; dsccs=dsccs.next) {
+    //      for (Defns ds=dsccs.head.getBindings(); ds!=null; ds=ds.next) {
+    //        ds.head.cleanup();
+    //      }
+//          for (Defns ds=dsccs.head.getBindings(); ds!=null; ds=ds.next) {
+ //           ds.head.detectLoops(null);
+ //         }
+          for (Defns ds=dsccs.head.getBindings(); ds!=null; ds=ds.next) {
+    //!System.out.println("inlining loop at: " + ds.head.getId());
+            ds.head.buildLattice();
+          }
+        }
+      }
     /** Perform a live variable analysis on this program to determine the
      *  correct formal and actual parameter lists for each block.  In this
      *  analysis, we are relying on the fact that the only trailing/tail
