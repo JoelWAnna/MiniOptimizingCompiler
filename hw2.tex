@@ -1,0 +1,24 @@
+\documentclass[10pt]{article}
+\author{Joel Anna<annajoel@pdx.edu>}
+\usepackage{fancyhdr}
+\usepackage{lastpage}
+\pagestyle{fancy}
+\lhead{\footnotesize \parbox{11cm}{Joel Anna} }
+%\lfoot{\footnotesize \parbox{11cm}{\textit{2}}}
+\cfoot{}
+\rhead{\footnotesize Week 2 Report:  }
+%\rfoot{\footnotesize Page \thepage\ of \pageref{LastPage}}
+\renewcommand{\headheight}{24pt}
+\begin{document}
+\paragraph{CS401 Optimization Week 2 report} 
+.\\
+I spent this week implementing most of the framework for implementing the removal of constant parameters looking specifically at arrs.mini.
+I added a function called SpecializeFuncts to the MilProgram class, which iterates through each of the Defn objects in the list calling a new function
+'buildLattice' that I added to the Defn base class.
+The Block class is the child class that I started work on, when the buildLattice method is called, the number of formals is first checked to ensure that it is nonzero. It then takes the list of callers to this block and builds a list of BlockCall objects that are the specific calls to this block. For the special case of a block calling itself, the block is inspected to see if the input formals are unmodified and passed to itself. 
+Each caller is given the id of the block that we are searching for calls to and recursively searches the code in the block for BlockCall objects which call this id.
+\paragraph{}
+Last week we had discussed a potential bug in the current optimizer, where a goto block was not removed, the code to reproduce this is included in arrs.mini. The minimal case that I was able to construct was a call from mini\_main to another function (the original main routine), which calls a third function to set N.
+
+I will be attempting to complete the removal of constant parameters before the end of the day, and upon success I will send an updated version of the java source files.
+\end{document}
