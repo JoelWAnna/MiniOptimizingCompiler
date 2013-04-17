@@ -261,7 +261,7 @@ public class Done extends Code {
 
 
 	@Override
-	void replaceCalls(String id, int j, Atom replaced, Block b) {
+	boolean replaceCalls(String id, int j, Atom replaced, Block b) {
 		BlockCall thisCall = null;
 		BlockCall bc = t.isBlockCall();
 		if (bc != null)
@@ -282,9 +282,10 @@ public class Done extends Code {
 				    		temp.args[i] = bc.args[i];
 				    }
 				    t = temp;
+				    return true;
 				}
 			}
-			
 		}
+		return false;
 	}
 }

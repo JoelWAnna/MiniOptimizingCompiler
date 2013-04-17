@@ -231,8 +231,7 @@ public abstract class Code {
 		return vars;		
 	}
 
-	 void replaceCalls(String id, int j, Atom atom, Block b) {
-		// TODO Auto-generated method stub
-		
+	 boolean replaceCalls(String id, int j, Atom atom, Block b) {
+		return false;
 	}
 }

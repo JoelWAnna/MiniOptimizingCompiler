@@ -331,7 +331,8 @@ public class Match extends Code {
 		return block_calls;
 	}
 	@Override
-	public void replaceCalls(String id, int j, Atom replaced, Block b) {
+	public boolean replaceCalls(String id, int j, Atom replaced, Block b) {
+		boolean success = false;
 		BlockCalls block_calls = null;
 		if (def!=null) {
 			if (def.callsBlock(id)) {
@@ -355,6 +356,7 @@ public class Match extends Code {
 				    		temp.args[i] = def.args[i];
 				    }
 				    def = temp;
+				    success = true;
 				}
 			}
 
@@ -383,8 +385,10 @@ public class Match extends Code {
 				    		temp.args[i1] = alt_blockCall.args[i1];
 				    }
 				    def = temp;
+				    success = true;
 				}
 			}
           }
+        return success;
 	}
 }

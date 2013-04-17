@@ -9,6 +9,9 @@ public class Block extends Defn {
         this.code = code;
         specialized = "";
     }
+    private Block parent = null;
+    private Blocks children = null;
+    private Atom replacedVar = null;
     private static int count = 0;
     private final String id = "b" + count++;
     private Var[] formals;
@@ -354,6 +357,7 @@ public class Block extends Defn {
    
     	//lattice = new Lattice(formals);
     	int MAX = 1;
+    	boolean unrollLoop = false;
     	Atom lattice[][] = new Atom[formals.length][MAX];
     	for(Defns xs= this.getCallers(); xs != null; xs = xs.next)
     	{
@@ -373,21 +377,28 @@ public class Block extends Defn {
         				Atom formals2[] = checkFormals();
         				for (int j = 0; j < formals.length; ++j )
         				{
-        					if (lattice[j][0] != Var.toomany.TOPLATTICE && (formals2[j].isConst() != null))
+        					if (lattice[j][0] != Var.toomany.TOPLATTICE)
+        						
         					{
-        						int k;
-        						for (k = 0; k < MAX; ++k)
-        						{
-        							if (lattice[j][k] == null) {
-        								lattice[j][k] = formals2[j];
-        								break;
-        							}
-        							if (formals2[j].sameAtom(lattice[j][k])) {
-        								break;
-        							}
-        						}
-        						if (k == MAX) {
+        						if (!unrollLoop && formals2[j] == Var.toomany.TOPLATTICE)
         							lattice[j][0] = Var.toomany.TOPLATTICE;
+        						if ((formals2[j].isConst() != null))
+        						{
+        							int k;
+        						
+	        						for (k = 0; k < MAX; ++k)
+	        						{
+	        							if (lattice[j][k] == null) {
+	        								lattice[j][k] = formals2[j];
+	        								break;
+	        							}
+	        							if (formals2[j].sameAtom(lattice[j][k])) {
+	        								break;
+	        							}
+	        						}
+	        						if (k == MAX) {
+	        							lattice[j][0] = Var.toomany.TOPLATTICE;
+	        						}
         						}
         					}
         				}
@@ -432,23 +443,40 @@ public class Block extends Defn {
 		{
 			for ( int k = 0; k < MAX; ++k) {
 				if (lattice[j][k] != null) {
-					Block b = new Block();
-				    derived   = new Blocks(b, derived);
-				    int l = formals.length -1;
-				    Var[] nfs = new Var[l];
-				    for (int i = 0; i < l; ++i) {
-				    	if (i >= j)
-				    	{
-				    		nfs[i] = formals[i+1];
-				    	}
-				    	else
-				    		nfs[i] = formals[i];
-				    		
-				    }
-				    Code bind = new Bind(formals[j], new Return(lattice[j][k]), code);
-				    b.code = bind;
-				    b.formals = nfs;
-					System.out.println("Created Block " + b.id);
+					Block b = null;
+					Blocks currentChild = this.children;
+					while (currentChild != null) {
+						if (currentChild.head.replacedVar.sameAtom(lattice[j][k]))
+						{
+							b = currentChild.head;
+							break;
+						}
+						currentChild = currentChild.next;
+					}
+					if (b == null) {
+						b = new Block();
+					    derived   = new Blocks(b, derived);
+					    int l = formals.length -1;
+					    Var[] nfs = new Var[l];
+					    for (int i = 0; i < l; ++i) {
+					    	if (i >= j)
+					    	{
+					    		nfs[i] = formals[i+1];
+					    	}
+					    	else
+					    		nfs[i] = formals[i];
+					    		
+					    }
+					    Code bind = new Bind(formals[j], new Return(lattice[j][k]), code);
+					    b.code = bind;
+					    b.formals = nfs;
+					    b.parent = this;
+					    b.replacedVar = lattice[j][k];				    
+					    
+					    children = new Blocks(b, children);
+						//defns.
+						System.out.println("Created Block " + b.id);
+					}
 				    b.display();
 				    //new BlockCall(b);
 				    //BlockCalls foo = 
@@ -456,7 +484,11 @@ public class Block extends Defn {
 		        	for(Defns xs1= this.getCallers(); xs1 != null; xs1 = xs1.next)
 		        	{
 		        		Block x1 = (Block) xs1.head;
-		        		x1.code.replaceCalls(id, j, lattice[j][k], b);
+		        		if (x1.code.replaceCalls(id, j, lattice[j][k], b))
+		        		{
+		        			//TODO is it necessary to update call(er/ee)s
+		        			//b.
+		        		}
 		        		//BlockCalls x_calls = x.code.getBlockCall(id);
 		        		//if (x_calls.)
 		        	}

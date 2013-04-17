@@ -92,8 +92,10 @@ public class MILProgram {
         shake();
         cfunSimplify();
     
+        //count = 1;
+        for (int j=0; j<20; j++) {
         count = 1;
-        for (int i=0; i<20 && count>0; i++) {
+        for (int i=0; i<20 /*&& count>0*/; i++) {
           debug.Log.println("-------------------------");
     //!System.out.println("==================================================");
     //!System.out.println("Step " + i);
@@ -109,8 +111,10 @@ public class MILProgram {
           debug.Log.println("Flow pass finished, running shake.");
           shake();
           debug.Log.println("Steps performed = " + count);
-          SpecializeFuncts();
-          shake();
+        }
+       // count = 0;
+        SpecializeFuncts();
+        shake();
         }
       }
     void cfunSimplify() {

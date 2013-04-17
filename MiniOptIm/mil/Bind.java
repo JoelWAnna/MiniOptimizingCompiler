@@ -350,7 +350,8 @@ public class Bind extends Code {
 	}
 
 	@Override
-	void replaceCalls(String id, int j, Atom replaced, Block b) {
+	boolean replaceCalls(String id, int j, Atom replaced, Block b) {
+		Boolean success = false;
 		BlockCall thisCall = null;
 		BlockCall bc = t.isBlockCall();
 		if (bc != null)
@@ -372,10 +373,12 @@ public class Bind extends Code {
 				    		temp.args[i] = bc.args[i];
 				    }
 				    t = temp;
+				    success = true;
 				}
 			}
 			
 		}
-		c.replaceCalls(id, j, replaced, b);
+		
+		return c.replaceCalls(id, j, replaced, b) || success;
 	}
 }
