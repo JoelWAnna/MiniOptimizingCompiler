@@ -20,7 +20,7 @@ public class Block extends Defn {
 
     /** Return the identifier that is associated with this definition.
      */
-    public String getId() { return id + specialized ; }
+    public String getId() { return id /*+ specialized*/; }
 
     /** Find the list of Defns that this Defn depends on.
      */
@@ -353,6 +353,8 @@ public class Block extends Defn {
     	System.out.println("reached Block buildLattice of block " + id);
    
     	//lattice = new Lattice(formals);
+    	int MAX = 1;
+    	Atom lattice[][] = new Atom[formals.length][MAX];
     	for(Defns xs= this.getCallers(); xs != null; xs = xs.next)
     	{
     		Block x = (Block) xs.head;
@@ -361,13 +363,35 @@ public class Block extends Defn {
     		if (x_calls != null)
     		{
     			BlockCalls current_call = x_calls;
-
+    			
     			while (current_call != null) {
+    				
     				// Check for calls from the current block
     				if (x.getId().equalsIgnoreCase(id))
     				{
     					//x_calls.head.args;
-        				Var formals2[] = checkFormals();
+        				Atom formals2[] = checkFormals();
+        				for (int j = 0; j < formals.length; ++j )
+        				{
+        					if (lattice[j][0] != Var.toomany.TOPLATTICE && (formals2[j].isConst() != null))
+        					{
+        						int k;
+        						for (k = 0; k < MAX; ++k)
+        						{
+        							if (lattice[j][k] == null) {
+        								lattice[j][k] = formals2[j];
+        								break;
+        							}
+        							if (formals2[j].sameAtom(lattice[j][k])) {
+        								break;
+        							}
+        						}
+        						if (k == MAX) {
+        							lattice[j][0] = Var.toomany.TOPLATTICE;
+        						}
+        					}
+        				}
+        			
     					//x_calls.head.display();
         				
         				System.out.println("Block " + id + " called from itself");
@@ -375,14 +399,79 @@ public class Block extends Defn {
         			//Atom a[] modifies;
         			
         			}
+    				else {
+    					Atom formals2[] =  current_call.head.args;
+    					for (int j = 0; j < formals.length; ++j )
+        				{
+        					if (lattice[j][0] != Var.toomany.TOPLATTICE && (formals2[j].isConst() != null))
+        					{
+        						int k;
+        						for (k = 0; k < MAX; ++k)
+        						{
+        							if (lattice[j][k] == null) {
+        								lattice[j][k] =  formals2[j];
+        								break;
+        							}
+        							if (formals2[j].sameAtom(lattice[j][k])) {
+        								break;
+        							}
+        						}
+        						if (k == MAX) {
+        							lattice[j][0] = Var.toomany.TOPLATTICE;
+        						}
+        					}
+        				}
+    				}
     				current_call = current_call.next;
         		}
     		}
-    		//x.displayDefn();
-    		//for (Vars v = x.getLiveVars(); v != null; v = v.next)
-        	//	System.out.println("Live + " + v.head.toString());
-		
     	}
+    		
+		System.out.println(id + "Found constants");
+		for (int j = 0; j < formals.length; ++j )
+		{
+			for ( int k = 0; k < MAX; ++k) {
+				if (lattice[j][k] != null) {
+					Block b = new Block();
+				    derived   = new Blocks(b, derived);
+				    int l = formals.length -1;
+				    Var[] nfs = new Var[l];
+				    for (int i = 0; i < l; ++i) {
+				    	if (i >= j)
+				    	{
+				    		nfs[i] = formals[i+1];
+				    	}
+				    	else
+				    		nfs[i] = formals[i];
+				    		
+				    }
+				    Code bind = new Bind(formals[j], new Return(lattice[j][k]), code);
+				    b.code = bind;
+				    b.formals = nfs;
+					System.out.println("Created Block " + b.id);
+				    b.display();
+				    //new BlockCall(b);
+				    //BlockCalls foo = 
+	
+		        	for(Defns xs1= this.getCallers(); xs1 != null; xs1 = xs1.next)
+		        	{
+		        		Block x1 = (Block) xs1.head;
+		        		x1.code.replaceCalls(id, j, lattice[j][k], b);
+		        		//BlockCalls x_calls = x.code.getBlockCall(id);
+		        		//if (x_calls.)
+		        	}
+	
+		    		
+					//System.out.println(lattice[j][k].toString());
+				}
+				//else
+			}
+		}
+		//x.displayDefn();
+		//for (Vars v = x.getLiveVars(); v != null; v = v.next)
+		//	System.out.println("Live + " + v.head.toString());
+	
+
     }
     private  Var [] checkFormals() {
     	 Var [] formals2 = new Var[formals.length];
@@ -391,14 +480,19 @@ public class Block extends Defn {
      	formals2 = code.checkformals(formals2);
     	for (int i = 0; i < formals.length; ++i)
     	{
-    		if (formals2[i] != Var.TOPLATTICE) {
-    			if (formals2[i].sameAtom(formals[i])) {
-    				System.out.println(formals2[i].isConst());
+    		if (formals2[i] == null) break;
+    		if (formals2[i] != Var.toomany.TOPLATTICE) {
+    			if (formals2[i].isConst() != null &&  !formals2[i].sameAtom(formals[i])) {
+    				formals2[i] = Var.toomany.TOPLATTICE;
     			}
-    			else {
-    				//TODO
-    				System.out.println("Argument " + i + " is not a constant");
-    			}
+    			//if (formals2[i].isVar) {
+    			//	System.out.println(formals2[i].isConst());
+    			//}
+    			//else {
+    				
+    			//	formals2[i] = Var.empty.EMPTY;
+    			//	System.out.println("Argument " + i + " is not a constant, ignoring");
+    			//}
     		}
     		else {
     			// TODO
@@ -406,7 +500,7 @@ public class Block extends Defn {
     			
     		}
     	}
-    	return null;
+    	return formals2;
 
 		
 	}

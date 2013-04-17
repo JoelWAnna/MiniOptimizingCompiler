@@ -330,4 +330,61 @@ public class Match extends Code {
           }
 		return block_calls;
 	}
+	@Override
+	public void replaceCalls(String id, int j, Atom replaced, Block b) {
+		BlockCalls block_calls = null;
+		if (def!=null) {
+			if (def.callsBlock(id)) {
+				//block_calls = new BlockCalls(def, block_calls);
+	            //	Atom args[] = def.args;
+	            //	for(Atom a : args)
+	    		//		System.out.println(a.toString());
+			//	}
+				//thisCall = bc;
+				if (def.args[j].sameAtom(replaced)) {
+					
+					BlockCall temp = new BlockCall(b);
+					int l = def.args.length-1;
+					temp.args = new Atom[l];
+				    for (int i = 0; i < l; ++i) {
+				    	if (i >= j)
+				    	{
+				    		temp.args[i] = def.args[i+1];
+				    	}
+				    	else
+				    		temp.args[i] = def.args[i];
+				    }
+				    def = temp;
+				}
+			}
+
+		}
+
+        for (int i=0; i<alts.length; i++) {
+            BlockCall alt_blockCall = alts[i].getBlockCall(id);
+            if (alt_blockCall != null && alt_blockCall.callsBlock(id)){
+				//block_calls = new BlockCalls(def, block_calls);
+	            //	Atom args[] = def.args;
+	            //	for(Atom a : args)
+	    		//		System.out.println(a.toString());
+			//	}
+				//thisCall = bc;
+				if (alt_blockCall.args[j].sameAtom(replaced)) {
+					
+					BlockCall temp = new BlockCall(b);
+					int l = alt_blockCall.args.length-1;
+					temp.args = new Atom[l];
+				    for (int i1 = 0; i1 < l; ++i1) {
+				    	if (i1 >= j)
+				    	{
+				    		temp.args[i1] = alt_blockCall.args[i1+1];
+				    	}
+				    	else
+				    		temp.args[i1] = alt_blockCall.args[i1];
+				    }
+				    def = temp;
+				}
+			}
+          }
+	}
 }

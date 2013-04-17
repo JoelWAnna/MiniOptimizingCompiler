@@ -230,4 +230,9 @@ public abstract class Code {
 	public Var[] checkformals(Var[] vars) {
 		return vars;		
 	}
+
+	 void replaceCalls(String id, int j, Atom atom, Block b) {
+		// TODO Auto-generated method stub
+		
+	}
 }

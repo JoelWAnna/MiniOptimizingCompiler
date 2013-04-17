@@ -2,8 +2,26 @@ package mil;
 
 public abstract class Var extends Atom {
     public static final Var[] noVars = new Var[0];
-	 static final Var TOPLATTICE = null;
+	public static class toomany extends Var {
+			public static final Var TOPLATTICE = new toomany();
+			private toomany(){}
 
+			@Override
+			public String toString() {
+				// TODO Auto-generated method stub
+				return "TOOMANY";
+			}
+		}
+	public static class empty extends Var {
+		public static final Var EMPTY = new empty();
+		private empty(){}
+
+		@Override
+		public String toString() {
+			// TODO Auto-generated method stub
+			return "EMPTY";
+		}
+	}
     /** Test to determine if this item represents a constructor function.
      */
     public Cfun isCfun() { return null; }

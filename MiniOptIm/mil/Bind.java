@@ -342,10 +342,40 @@ public class Bind extends Code {
 	public Var[] checkformals(Var[] vars) {
 		for(int i = 0; i < vars.length; ++i) {
 			if (v.sameAtom(vars[i])) {
-				vars[i] = Var.TOPLATTICE;
+				vars[i] = Var.toomany.TOPLATTICE;
 			}				
 		}
 		return c.checkformals(vars);
 		
+	}
+
+	@Override
+	void replaceCalls(String id, int j, Atom replaced, Block b) {
+		BlockCall thisCall = null;
+		BlockCall bc = t.isBlockCall();
+		if (bc != null)
+		{
+//			// TODO is this ever needed
+			if (bc.callsBlock(id)) {
+				thisCall = bc;
+				if (thisCall.args[j].sameAtom(replaced)) {
+					
+					BlockCall temp = new BlockCall(b);
+					int l = bc.args.length-1;
+					temp.args = new Atom[l];
+				    for (int i = 0; i < l; ++i) {
+				    	if (i >= j)
+				    	{
+				    		temp.args[i] = bc.args[i+1];
+				    	}
+				    	else
+				    		temp.args[i] = bc.args[i];
+				    }
+				    t = temp;
+				}
+			}
+			
+		}
+		c.replaceCalls(id, j, replaced, b);
 	}
 }

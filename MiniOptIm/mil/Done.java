@@ -239,4 +239,52 @@ public class Done extends Code {
     void fixTrailingBlockCalls() {
         t.fixTrailingBlockCalls();
     }
+
+	@Override
+	public BlockCalls getBlockCall(String id) {
+		BlockCall thisCall = null;
+		BlockCall bc = t.isBlockCall();
+		if (bc != null)
+		{
+			// TODO is this ever needed
+			if (bc.callsBlock(id)) {
+				thisCall = bc;
+			}
+		}
+		BlockCalls calls = null;
+		if (thisCall != null)
+			calls = new BlockCalls(thisCall, calls);
+		
+		return calls;
+	}
+
+
+
+	@Override
+	void replaceCalls(String id, int j, Atom replaced, Block b) {
+		BlockCall thisCall = null;
+		BlockCall bc = t.isBlockCall();
+		if (bc != null)
+		{
+			if (bc.callsBlock(id)) {
+				thisCall = bc;
+				if (thisCall.args[j].sameAtom(replaced)) {
+					
+					BlockCall temp = new BlockCall(b);
+					int l = bc.args.length-1;
+					temp.args = new Atom[l];
+				    for (int i = 0; i < l; ++i) {
+				    	if (i >= j)
+				    	{
+				    		temp.args[i] = bc.args[i+1];
+				    	}
+				    	else
+				    		temp.args[i] = bc.args[i];
+				    }
+				    t = temp;
+				}
+			}
+			
+		}
+	}
 }
