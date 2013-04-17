@@ -62,8 +62,9 @@ public class TopLevel extends Defn {
     public void flow() {
         // TODO: Do something here ... ?
       }
-    public void buildLattice() {
-    	//TODO
+    @Override
+    public void buildLattice(int maxArgReplacement, boolean unrollLoops) {
+		// TODO: Implement this, only sibling class that it is implemented is Block.java
     	System.out.println("reached TopLevel buildLattice of block" + id);
     }
     Atom shortTopLevel(Atom d) { return tail.shortTopLevel(d); }

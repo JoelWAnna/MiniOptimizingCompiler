@@ -217,7 +217,10 @@ public class MILProgram {
  //         }
           for (Defns ds=dsccs.head.getBindings(); ds!=null; ds=ds.next) {
     //!System.out.println("inlining loop at: " + ds.head.getId());
-            ds.head.buildLattice();
+        	  
+        	// Args: 3 for max number of different known specializations for a particular arg
+        	//		true to enable unrolling loops which seems to have inverted logic
+            ds.head.buildLattice(3, true);
           }
         }
       }

@@ -49,10 +49,13 @@ public class ClosureDefn extends Defn {
     public void flow() {
         // TODO: Do something here ... ?
       }
-    public void buildLattice() {
-    	//TODO
+    
+    @Override
+    public void buildLattice(int maxArgReplacement, boolean unrollLoops) {
+		// TODO: Implement this, only sibling class that it is implemented is Block.java
     	System.out.println("reached ClosureDefn buildLattice of block" + id);
     }
+   
     /** Compute a Tail that gives the result of entering this closure given the
      *  arguments that are stored in the closure and the extra argument that
      *  prompted us to enter this closure in the first place.

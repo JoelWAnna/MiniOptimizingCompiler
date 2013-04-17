@@ -346,19 +346,18 @@ public class Block extends Defn {
               }
             }
           }
-    public void buildLattice() {
+    
+    @Override
+    public void buildLattice(int maxArgReplacement, boolean unrollLoops) {
     	//TODO
     	if (formals.length == 0) {
     		System.out.println("Block " + id + " has no vars");
-        	
     		return;
     	}
     	System.out.println("reached Block buildLattice of block " + id);
    
     	//lattice = new Lattice(formals);
-    	int MAX = 1;
-    	boolean unrollLoop = false;
-    	Atom lattice[][] = new Atom[formals.length][MAX];
+    	Atom lattice[][] = new Atom[formals.length][maxArgReplacement];
     	for(Defns xs= this.getCallers(); xs != null; xs = xs.next)
     	{
     		Block x = (Block) xs.head;
@@ -380,13 +379,13 @@ public class Block extends Defn {
         					if (lattice[j][0] != Var.toomany.TOPLATTICE)
         						
         					{
-        						if (!unrollLoop && formals2[j] == Var.toomany.TOPLATTICE)
+        						if (!unrollLoops && formals2[j] == Var.toomany.TOPLATTICE)
         							lattice[j][0] = Var.toomany.TOPLATTICE;
         						if ((formals2[j].isConst() != null))
         						{
         							int k;
         						
-	        						for (k = 0; k < MAX; ++k)
+	        						for (k = 0; k < maxArgReplacement; ++k)
 	        						{
 	        							if (lattice[j][k] == null) {
 	        								lattice[j][k] = formals2[j];
@@ -396,7 +395,7 @@ public class Block extends Defn {
 	        								break;
 	        							}
 	        						}
-	        						if (k == MAX) {
+	        						if (k == maxArgReplacement) {
 	        							lattice[j][0] = Var.toomany.TOPLATTICE;
 	        						}
         						}
@@ -417,7 +416,7 @@ public class Block extends Defn {
         					if (lattice[j][0] != Var.toomany.TOPLATTICE && (formals2[j].isConst() != null))
         					{
         						int k;
-        						for (k = 0; k < MAX; ++k)
+        						for (k = 0; k < maxArgReplacement; ++k)
         						{
         							if (lattice[j][k] == null) {
         								lattice[j][k] =  formals2[j];
@@ -427,7 +426,7 @@ public class Block extends Defn {
         								break;
         							}
         						}
-        						if (k == MAX) {
+        						if (k == maxArgReplacement) {
         							lattice[j][0] = Var.toomany.TOPLATTICE;
         						}
         					}
@@ -441,7 +440,7 @@ public class Block extends Defn {
 		System.out.println(id + "Found constants");
 		for (int j = 0; j < formals.length; ++j )
 		{
-			for ( int k = 0; k < MAX; ++k) {
+			for ( int k = 0; k < maxArgReplacement; ++k) {
 				if (lattice[j][k] != null) {
 					Block b = null;
 					Blocks currentChild = this.children;
