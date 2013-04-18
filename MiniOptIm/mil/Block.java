@@ -7,7 +7,6 @@ public class Block extends Defn {
      */
     public Block(Code code) {
         this.code = code;
-        specialized = "";
     }
     private Block parent = null;
     private Blocks children = null;
@@ -15,15 +14,14 @@ public class Block extends Defn {
     private static int count = 0;
     private final String id = "b" + count++;
     private Var[] formals;
-	private String specialized;
-	private Lattice lattice;
+	
     public void setFormals(Var[] formals) {
         this.formals = formals;
     }
 
     /** Return the identifier that is associated with this definition.
      */
-    public String getId() { return id /*+ specialized*/; }
+    public String getId() { return id; }
 
     /** Find the list of Defns that this Defn depends on.
      */
@@ -356,8 +354,9 @@ public class Block extends Defn {
     	}
     	System.out.println("reached Block buildLattice of block " + id);
    
-    	//lattice = new Lattice(formals);
-    	Atom lattice[][] = new Atom[formals.length][maxArgReplacement];
+    	Atom knownArgs[][] = new Atom[formals.length][maxArgReplacement];
+    	
+    	
     	for(Defns xs= this.getCallers(); xs != null; xs = xs.next)
     	{
     		Block x = (Block) xs.head;
@@ -373,30 +372,31 @@ public class Block extends Defn {
     				if (x.getId().equalsIgnoreCase(id))
     				{
     					//x_calls.head.args;
-        				Atom formals2[] = checkFormals();
+        				Atom reEntryFormals[] = checkArguments();
         				for (int j = 0; j < formals.length; ++j )
         				{
-        					if (lattice[j][0] != Var.toomany.TOPLATTICE)
+        					if (knownArgs[j][0] != Atom.CAtom.NAC)
         						
         					{
-        						if (!unrollLoops && formals2[j] == Var.toomany.TOPLATTICE)
-        							lattice[j][0] = Var.toomany.TOPLATTICE;
-        						if ((formals2[j].isConst() != null))
+        						// TODO: is it ever valid to not replace it with NAC?
+        						if (!unrollLoops && reEntryFormals[j] ==  Atom.CAtom.NAC)
+        							knownArgs[j][0] =  Atom.CAtom.NAC;
+        						if ((reEntryFormals[j].isConst() != null))
         						{
         							int k;
         						
 	        						for (k = 0; k < maxArgReplacement; ++k)
 	        						{
-	        							if (lattice[j][k] == null) {
-	        								lattice[j][k] = formals2[j];
+	        							if (knownArgs[j][k] == null) {
+	        								knownArgs[j][k] = reEntryFormals[j];
 	        								break;
 	        							}
-	        							if (formals2[j].sameAtom(lattice[j][k])) {
+	        							if (reEntryFormals[j].sameAtom(knownArgs[j][k])) {
 	        								break;
 	        							}
 	        						}
 	        						if (k == maxArgReplacement) {
-	        							lattice[j][0] = Var.toomany.TOPLATTICE;
+	        							knownArgs[j][0] = Atom.CAtom.NAC;
 	        						}
         						}
         					}
@@ -413,21 +413,21 @@ public class Block extends Defn {
     					Atom formals2[] =  current_call.head.args;
     					for (int j = 0; j < formals.length; ++j )
         				{
-        					if (lattice[j][0] != Var.toomany.TOPLATTICE && (formals2[j].isConst() != null))
+        					if (knownArgs[j][0] !=  Atom.CAtom.NAC && (formals2[j].isConst() != null))
         					{
         						int k;
         						for (k = 0; k < maxArgReplacement; ++k)
         						{
-        							if (lattice[j][k] == null) {
-        								lattice[j][k] =  formals2[j];
+        							if (knownArgs[j][k] == null) {
+        								knownArgs[j][k] =  formals2[j];
         								break;
         							}
-        							if (formals2[j].sameAtom(lattice[j][k])) {
+        							if (formals2[j].sameAtom(knownArgs[j][k])) {
         								break;
         							}
         						}
         						if (k == maxArgReplacement) {
-        							lattice[j][0] = Var.toomany.TOPLATTICE;
+        							knownArgs[j][0] =  Atom.CAtom.NAC;
         						}
         					}
         				}
@@ -440,12 +440,16 @@ public class Block extends Defn {
 		System.out.println(id + "Found constants");
 		for (int j = 0; j < formals.length; ++j )
 		{
+			if (knownArgs[j][0] == Atom.CAtom.NAC || knownArgs[j][0] == Atom.CAtom.UNDEF) {
+				System.out.println("Arg " + j + " is " + knownArgs[j][0].toString());
+				continue;
+			}
 			for ( int k = 0; k < maxArgReplacement; ++k) {
-				if (lattice[j][k] != null) {
+				if (knownArgs[j][k] != null) {
 					Block b = null;
 					Blocks currentChild = this.children;
 					while (currentChild != null) {
-						if (currentChild.head.replacedVar.sameAtom(lattice[j][k]))
+						if (currentChild.head.replacedVar.sameAtom(knownArgs[j][k]))
 						{
 							b = currentChild.head;
 							break;
@@ -466,11 +470,11 @@ public class Block extends Defn {
 					    		nfs[i] = formals[i];
 					    		
 					    }
-					    Code bind = new Bind(formals[j], new Return(lattice[j][k]), code);
+					    Code bind = new Bind(formals[j], new Return(knownArgs[j][k]), code);
 					    b.code = bind;
 					    b.formals = nfs;
 					    b.parent = this;
-					    b.replacedVar = lattice[j][k];				    
+					    b.replacedVar = knownArgs[j][k];				    
 					    
 					    children = new Blocks(b, children);
 						//defns.
@@ -483,7 +487,7 @@ public class Block extends Defn {
 		        	for(Defns xs1= this.getCallers(); xs1 != null; xs1 = xs1.next)
 		        	{
 		        		Block x1 = (Block) xs1.head;
-		        		if (x1.code.replaceCalls(id, j, lattice[j][k], b))
+		        		if (x1.code.replaceCalls(id, j, knownArgs[j][k], b))
 		        		{
 		        			//TODO is it necessary to update call(er/ee)s
 		        			//b.
@@ -504,17 +508,17 @@ public class Block extends Defn {
 	
 
     }
-    private  Var [] checkFormals() {
-    	 Var [] formals2 = new Var[formals.length];
+    private  Atom [] checkArguments() {
+    	Atom [] arguments = new Atom[formals.length];
      	for (int i = 0; i < formals.length; ++i)
-    			formals2[i] = formals[i];
-     	formals2 = code.checkformals(formals2);
+     		arguments[i] = formals[i];
+     	arguments = code.checkformals(arguments);
     	for (int i = 0; i < formals.length; ++i)
     	{
-    		if (formals2[i] == null) break;
-    		if (formals2[i] != Var.toomany.TOPLATTICE) {
-    			if (formals2[i].isConst() != null &&  !formals2[i].sameAtom(formals[i])) {
-    				formals2[i] = Var.toomany.TOPLATTICE;
+    		if (arguments[i] == null) break;
+    		if (arguments[i] != Atom.CAtom.NAC) {
+    			if (arguments[i].isConst() != null &&  !arguments[i].sameAtom(formals[i])) {
+    				arguments[i] = Atom.CAtom.NAC;
     			}
     			//if (formals2[i].isVar) {
     			//	System.out.println(formals2[i].isConst());
@@ -531,7 +535,7 @@ public class Block extends Defn {
     			
     		}
     	}
-    	return formals2;
+    	return arguments;
 
 		
 	}

@@ -227,8 +227,8 @@ public abstract class Code {
      */
     abstract void fixTrailingBlockCalls();
 
-	public Var[] checkformals(Var[] vars) {
-		return vars;		
+	public Atom[] checkformals(Atom[] atoms) {
+		return atoms;		
 	}
 
 	 boolean replaceCalls(String id, int j, Atom atom, Block b) {

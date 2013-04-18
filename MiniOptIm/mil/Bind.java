@@ -339,13 +339,13 @@ public class Bind extends Code {
 	}
 
 	@Override
-	public Var[] checkformals(Var[] vars) {
-		for(int i = 0; i < vars.length; ++i) {
-			if (v.sameAtom(vars[i])) {
-				vars[i] = Var.toomany.TOPLATTICE;
+	public Atom[] checkformals(Atom[] atoms) {
+		for(int i = 0; i < atoms.length; ++i) {
+			if (v.sameAtom(atoms[i])) {
+				atoms[i] = Atom.CAtom.NAC;
 			}				
 		}
-		return c.checkformals(vars);
+		return c.checkformals(atoms);
 		
 	}
 

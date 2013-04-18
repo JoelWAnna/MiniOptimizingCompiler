@@ -2,6 +2,23 @@ package mil;
 
 public abstract class Atom {
     public abstract String toString();
+    
+	public static class CAtom extends Atom {
+			public static final CAtom NAC = new CAtom("Not a constant");
+			public static final CAtom UNDEF = new CAtom("undefined");
+			private final String identifier; 
+			private CAtom(String identifier){ this.identifier = identifier;}
+
+			@Override
+			public String toString() {
+				return identifier;
+			}
+
+			@Override
+			public Val lookup(ValEnv env) throws Fail {
+				throw new Fail("lookup called on " + identifier);
+			}
+		}
 
     /** Test to see if two atoms are the same.  For a pair of Const objects,
      *  this means that the two objects have the same val.  For any other
