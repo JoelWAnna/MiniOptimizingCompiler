@@ -384,7 +384,7 @@ public class Match extends Code {
 				    	else
 				    		temp.args[i1] = alt_blockCall.args[i1];
 				    }
-				    def = temp;
+				    alts[i].replaceBc(temp);
 				    success = true;
 				}
 			}

@@ -475,10 +475,11 @@ public class Block extends Defn {
 					    b.formals = nfs;
 					    b.parent = this;
 					    b.replacedVar = knownArgs[j][k];				    
-					    
+					    b.code.replaceCalls(id, j, formals[j], b);
 					    children = new Blocks(b, children);
+					    
 						//defns.
-						System.out.println("Created Block " + b.id);
+						System.out.println("Created Block " + b.id + "from block " + id);
 					}
 				    b.display();
 				    //new BlockCall(b);

@@ -1,4 +1,4 @@
-package mil;
+package mil;;
 
 
 /** Represents an alternative in a monadic Match.
@@ -16,6 +16,9 @@ public class TAlt {
         this.bc = bc;
     }
 
+    public void replaceBc(BlockCall bc) {
+    	this.bc = bc;
+    }
     /** Test for a free occurrence of a particular variable.
      */
     public boolean contains(Var w) {

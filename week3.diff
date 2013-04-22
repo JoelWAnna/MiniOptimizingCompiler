@@ -1,0 +1,1503 @@
+diff --git a/MiniOptIm/mil/Atom.java b/MiniOptIm/mil/Atom.java
+index 2289c22..5e53d12 100644
+--- a/MiniOptIm/mil/Atom.java
++++ b/MiniOptIm/mil/Atom.java
+@@ -2,6 +2,23 @@ package mil;
+ 
+ public abstract class Atom {
+     public abstract String toString();
++    
++	public static class CAtom extends Atom {
++			public static final CAtom NAC = new CAtom("Not a constant");
++			public static final CAtom UNDEF = new CAtom("undefined");
++			private final String identifier; 
++			private CAtom(String identifier){ this.identifier = identifier;}
++
++			@Override
++			public String toString() {
++				return identifier;
++			}
++
++			@Override
++			public Val lookup(ValEnv env) throws Fail {
++				throw new Fail("lookup called on " + identifier);
++			}
++		}
+ 
+     /** Test to see if two atoms are the same.  For a pair of Const objects,
+      *  this means that the two objects have the same val.  For any other
+diff --git a/MiniOptIm/mil/Bind.java b/MiniOptIm/mil/Bind.java
+index c0d4f17..6b92a46 100644
+--- a/MiniOptIm/mil/Bind.java
++++ b/MiniOptIm/mil/Bind.java
+@@ -339,13 +339,46 @@ public class Bind extends Code {
+ 	}
+ 
+ 	@Override
+-	public Var[] checkformals(Var[] vars) {
+-		for(int i = 0; i < vars.length; ++i) {
+-			if (v.sameAtom(vars[i])) {
+-				vars[i] = Var.TOPLATTICE;
++	public Atom[] checkformals(Atom[] atoms) {
++		for(int i = 0; i < atoms.length; ++i) {
++			if (v.sameAtom(atoms[i])) {
++				atoms[i] = Atom.CAtom.NAC;
+ 			}				
+ 		}
+-		return c.checkformals(vars);
++		return c.checkformals(atoms);
+ 		
+ 	}
++
++	@Override
++	boolean replaceCalls(String id, int j, Atom replaced, Block b) {
++		Boolean success = false;
++		BlockCall thisCall = null;
++		BlockCall bc = t.isBlockCall();
++		if (bc != null)
++		{
++//			// TODO is this ever needed
++			if (bc.callsBlock(id)) {
++				thisCall = bc;
++				if (thisCall.args[j].sameAtom(replaced)) {
++					
++					BlockCall temp = new BlockCall(b);
++					int l = bc.args.length-1;
++					temp.args = new Atom[l];
++				    for (int i = 0; i < l; ++i) {
++				    	if (i >= j)
++				    	{
++				    		temp.args[i] = bc.args[i+1];
++				    	}
++				    	else
++				    		temp.args[i] = bc.args[i];
++				    }
++				    t = temp;
++				    success = true;
++				}
++			}
++			
++		}
++		
++		return c.replaceCalls(id, j, replaced, b) || success;
++	}
+ }
+diff --git a/MiniOptIm/mil/Block.java b/MiniOptIm/mil/Block.java
+index e536a43..0e9b89a 100644
+--- a/MiniOptIm/mil/Block.java
++++ b/MiniOptIm/mil/Block.java
+@@ -7,20 +7,21 @@ public class Block extends Defn {
+      */
+     public Block(Code code) {
+         this.code = code;
+-        specialized = "";
+     }
++    private Block parent = null;
++    private Blocks children = null;
++    private Atom replacedVar = null;
+     private static int count = 0;
+     private final String id = "b" + count++;
+     private Var[] formals;
+-	private String specialized;
+-	private Lattice lattice;
++	
+     public void setFormals(Var[] formals) {
+         this.formals = formals;
+     }
+ 
+     /** Return the identifier that is associated with this definition.
+      */
+-    public String getId() { return id + specialized ; }
++    public String getId() { return id; }
+ 
+     /** Find the list of Defns that this Defn depends on.
+      */
+@@ -343,16 +344,19 @@ public class Block extends Defn {
+               }
+             }
+           }
+-    public void buildLattice() {
++    
++    @Override
++    public void buildLattice(int maxArgReplacement, boolean unrollLoops) {
+     	//TODO
+     	if (formals.length == 0) {
+     		System.out.println("Block " + id + " has no vars");
+-        	
+     		return;
+     	}
+     	System.out.println("reached Block buildLattice of block " + id);
+    
+-    	//lattice = new Lattice(formals);
++    	Atom knownArgs[][] = new Atom[formals.length][maxArgReplacement];
++    	
++    	
+     	for(Defns xs= this.getCallers(); xs != null; xs = xs.next)
+     	{
+     		Block x = (Block) xs.head;
+@@ -361,13 +365,43 @@ public class Block extends Defn {
+     		if (x_calls != null)
+     		{
+     			BlockCalls current_call = x_calls;
+-
++    			
+     			while (current_call != null) {
++    				
+     				// Check for calls from the current block
+     				if (x.getId().equalsIgnoreCase(id))
+     				{
+     					//x_calls.head.args;
+-        				Var formals2[] = checkFormals();
++        				Atom reEntryFormals[] = checkArguments();
++        				for (int j = 0; j < formals.length; ++j )
++        				{
++        					if (knownArgs[j][0] != Atom.CAtom.NAC)
++        						
++        					{
++        						// TODO: is it ever valid to not replace it with NAC?
++        						if (!unrollLoops && reEntryFormals[j] ==  Atom.CAtom.NAC)
++        							knownArgs[j][0] =  Atom.CAtom.NAC;
++        						if ((reEntryFormals[j].isConst() != null))
++        						{
++        							int k;
++        						
++	        						for (k = 0; k < maxArgReplacement; ++k)
++	        						{
++	        							if (knownArgs[j][k] == null) {
++	        								knownArgs[j][k] = reEntryFormals[j];
++	        								break;
++	        							}
++	        							if (reEntryFormals[j].sameAtom(knownArgs[j][k])) {
++	        								break;
++	        							}
++	        						}
++	        						if (k == maxArgReplacement) {
++	        							knownArgs[j][0] = Atom.CAtom.NAC;
++	        						}
++        						}
++        					}
++        				}
++        			
+     					//x_calls.head.display();
+         				
+         				System.out.println("Block " + id + " called from itself");
+@@ -375,30 +409,125 @@ public class Block extends Defn {
+         			//Atom a[] modifies;
+         			
+         			}
++    				else {
++    					Atom formals2[] =  current_call.head.args;
++    					for (int j = 0; j < formals.length; ++j )
++        				{
++        					if (knownArgs[j][0] !=  Atom.CAtom.NAC && (formals2[j].isConst() != null))
++        					{
++        						int k;
++        						for (k = 0; k < maxArgReplacement; ++k)
++        						{
++        							if (knownArgs[j][k] == null) {
++        								knownArgs[j][k] =  formals2[j];
++        								break;
++        							}
++        							if (formals2[j].sameAtom(knownArgs[j][k])) {
++        								break;
++        							}
++        						}
++        						if (k == maxArgReplacement) {
++        							knownArgs[j][0] =  Atom.CAtom.NAC;
++        						}
++        					}
++        				}
++    				}
+     				current_call = current_call.next;
+         		}
+     		}
+-    		//x.displayDefn();
+-    		//for (Vars v = x.getLiveVars(); v != null; v = v.next)
+-        	//	System.out.println("Live + " + v.head.toString());
+-		
+     	}
++    		
++		System.out.println(id + "Found constants");
++		for (int j = 0; j < formals.length; ++j )
++		{
++			if (knownArgs[j][0] == Atom.CAtom.NAC || knownArgs[j][0] == Atom.CAtom.UNDEF) {
++				System.out.println("Arg " + j + " is " + knownArgs[j][0].toString());
++				continue;
++			}
++			for ( int k = 0; k < maxArgReplacement; ++k) {
++				if (knownArgs[j][k] != null) {
++					Block b = null;
++					Blocks currentChild = this.children;
++					while (currentChild != null) {
++						if (currentChild.head.replacedVar.sameAtom(knownArgs[j][k]))
++						{
++							b = currentChild.head;
++							break;
++						}
++						currentChild = currentChild.next;
++					}
++					if (b == null) {
++						b = new Block();
++					    derived   = new Blocks(b, derived);
++					    int l = formals.length -1;
++					    Var[] nfs = new Var[l];
++					    for (int i = 0; i < l; ++i) {
++					    	if (i >= j)
++					    	{
++					    		nfs[i] = formals[i+1];
++					    	}
++					    	else
++					    		nfs[i] = formals[i];
++					    		
++					    }
++					    Code bind = new Bind(formals[j], new Return(knownArgs[j][k]), code);
++					    b.code = bind;
++					    b.formals = nfs;
++					    b.parent = this;
++					    b.replacedVar = knownArgs[j][k];				    
++					    
++					    children = new Blocks(b, children);
++						//defns.
++						System.out.println("Created Block " + b.id);
++					}
++				    b.display();
++				    //new BlockCall(b);
++				    //BlockCalls foo = 
++	
++		        	for(Defns xs1= this.getCallers(); xs1 != null; xs1 = xs1.next)
++		        	{
++		        		Block x1 = (Block) xs1.head;
++		        		if (x1.code.replaceCalls(id, j, knownArgs[j][k], b))
++		        		{
++		        			//TODO is it necessary to update call(er/ee)s
++		        			//b.
++		        		}
++		        		//BlockCalls x_calls = x.code.getBlockCall(id);
++		        		//if (x_calls.)
++		        	}
++	
++		    		
++					//System.out.println(lattice[j][k].toString());
++				}
++				//else
++			}
++		}
++		//x.displayDefn();
++		//for (Vars v = x.getLiveVars(); v != null; v = v.next)
++		//	System.out.println("Live + " + v.head.toString());
++	
++
+     }
+-    private  Var [] checkFormals() {
+-    	 Var [] formals2 = new Var[formals.length];
++    private  Atom [] checkArguments() {
++    	Atom [] arguments = new Atom[formals.length];
+      	for (int i = 0; i < formals.length; ++i)
+-    			formals2[i] = formals[i];
+-     	formals2 = code.checkformals(formals2);
++     		arguments[i] = formals[i];
++     	arguments = code.checkformals(arguments);
+     	for (int i = 0; i < formals.length; ++i)
+     	{
+-    		if (formals2[i] != Var.TOPLATTICE) {
+-    			if (formals2[i].sameAtom(formals[i])) {
+-    				System.out.println(formals2[i].isConst());
+-    			}
+-    			else {
+-    				//TODO
+-    				System.out.println("Argument " + i + " is not a constant");
++    		if (arguments[i] == null) break;
++    		if (arguments[i] != Atom.CAtom.NAC) {
++    			if (arguments[i].isConst() != null &&  !arguments[i].sameAtom(formals[i])) {
++    				arguments[i] = Atom.CAtom.NAC;
+     			}
++    			//if (formals2[i].isVar) {
++    			//	System.out.println(formals2[i].isConst());
++    			//}
++    			//else {
++    				
++    			//	formals2[i] = Var.empty.EMPTY;
++    			//	System.out.println("Argument " + i + " is not a constant, ignoring");
++    			//}
+     		}
+     		else {
+     			// TODO
+@@ -406,7 +535,7 @@ public class Block extends Defn {
+     			
+     		}
+     	}
+-    	return null;
++    	return arguments;
+ 
+ 		
+ 	}
+diff --git a/MiniOptIm/mil/ClosureDefn.java b/MiniOptIm/mil/ClosureDefn.java
+index b27f213..6661577 100644
+--- a/MiniOptIm/mil/ClosureDefn.java
++++ b/MiniOptIm/mil/ClosureDefn.java
+@@ -49,10 +49,13 @@ public class ClosureDefn extends Defn {
+     public void flow() {
+         // TODO: Do something here ... ?
+       }
+-    public void buildLattice() {
+-    	//TODO
++    
++    @Override
++    public void buildLattice(int maxArgReplacement, boolean unrollLoops) {
++		// TODO: Implement this, only sibling class that it is implemented is Block.java
+     	System.out.println("reached ClosureDefn buildLattice of block" + id);
+     }
++   
+     /** Compute a Tail that gives the result of entering this closure given the
+      *  arguments that are stored in the closure and the extra argument that
+      *  prompted us to enter this closure in the first place.
+diff --git a/MiniOptIm/mil/Code.java b/MiniOptIm/mil/Code.java
+index 9530b3e..7264ff5 100644
+--- a/MiniOptIm/mil/Code.java
++++ b/MiniOptIm/mil/Code.java
+@@ -227,7 +227,11 @@ public abstract class Code {
+      */
+     abstract void fixTrailingBlockCalls();
+ 
+-	public Var[] checkformals(Var[] vars) {
+-		return vars;		
++	public Atom[] checkformals(Atom[] atoms) {
++		return atoms;		
++	}
++
++	 boolean replaceCalls(String id, int j, Atom atom, Block b) {
++		return false;
+ 	}
+ }
+diff --git a/MiniOptIm/mil/Defn.java b/MiniOptIm/mil/Defn.java
+index ec88ff7..30f0bcf 100644
+--- a/MiniOptIm/mil/Defn.java
++++ b/MiniOptIm/mil/Defn.java
+@@ -170,7 +170,6 @@ public abstract class Defn {
+     public abstract void inlining();
+     boolean detectLoops(Blocks visited) { return false; }
+     public abstract void flow();
+-    public abstract void buildLattice();
+     protected int numberCalls;
+     protected int numberThunks;
+     public int getNumberCalls() {
+@@ -206,4 +205,6 @@ public abstract class Defn {
+     void fixTrailingBlockCalls() {
+         /* do nothing */
+     }
++
++	public abstract void buildLattice(int maxArgReplacement, boolean unrollLoops);
+ }
+diff --git a/MiniOptIm/mil/Done.java b/MiniOptIm/mil/Done.java
+index bb3e6ca..1bb6211 100644
+--- a/MiniOptIm/mil/Done.java
++++ b/MiniOptIm/mil/Done.java
+@@ -239,4 +239,53 @@ public class Done extends Code {
+     void fixTrailingBlockCalls() {
+         t.fixTrailingBlockCalls();
+     }
++
++	@Override
++	public BlockCalls getBlockCall(String id) {
++		BlockCall thisCall = null;
++		BlockCall bc = t.isBlockCall();
++		if (bc != null)
++		{
++			// TODO is this ever needed
++			if (bc.callsBlock(id)) {
++				thisCall = bc;
++			}
++		}
++		BlockCalls calls = null;
++		if (thisCall != null)
++			calls = new BlockCalls(thisCall, calls);
++		
++		return calls;
++	}
++
++
++
++	@Override
++	boolean replaceCalls(String id, int j, Atom replaced, Block b) {
++		BlockCall thisCall = null;
++		BlockCall bc = t.isBlockCall();
++		if (bc != null)
++		{
++			if (bc.callsBlock(id)) {
++				thisCall = bc;
++				if (thisCall.args[j].sameAtom(replaced)) {
++					
++					BlockCall temp = new BlockCall(b);
++					int l = bc.args.length-1;
++					temp.args = new Atom[l];
++				    for (int i = 0; i < l; ++i) {
++				    	if (i >= j)
++				    	{
++				    		temp.args[i] = bc.args[i+1];
++				    	}
++				    	else
++				    		temp.args[i] = bc.args[i];
++				    }
++				    t = temp;
++				    return true;
++				}
++			}
++		}
++		return false;
++	}
+ }
+diff --git a/MiniOptIm/mil/MILProgram.java b/MiniOptIm/mil/MILProgram.java
+index 841cb3d..8da1db6 100644
+--- a/MiniOptIm/mil/MILProgram.java
++++ b/MiniOptIm/mil/MILProgram.java
+@@ -92,8 +92,10 @@ public class MILProgram {
+         shake();
+         cfunSimplify();
+     
++        //count = 1;
++        for (int j=0; j<20; j++) {
+         count = 1;
+-        for (int i=0; i<20 && count>0; i++) {
++        for (int i=0; i<20 /*&& count>0*/; i++) {
+           debug.Log.println("-------------------------");
+     //!System.out.println("==================================================");
+     //!System.out.println("Step " + i);
+@@ -109,8 +111,11 @@ public class MILProgram {
+           debug.Log.println("Flow pass finished, running shake.");
+           shake();
+           debug.Log.println("Steps performed = " + count);
+-          SpecializeFuncts();
+-          shake();
++        }
++       // break;
++        count = 0;
++        SpecializeFuncts();
++        shake();
+         }
+       }
+     void cfunSimplify() {
+@@ -213,7 +218,13 @@ public class MILProgram {
+  //         }
+           for (Defns ds=dsccs.head.getBindings(); ds!=null; ds=ds.next) {
+     //!System.out.println("inlining loop at: " + ds.head.getId());
+-            ds.head.buildLattice();
++        	  
++          	// TODO
++        	// Args: 3 for max number of different known specializations for a particular arg
++        	//			for the case of arrs.mini, it does not seem to make a difference
++        	//		false because if this parameter is true it introduces a bug
++       	
++            ds.head.buildLattice(3, false);
+           }
+         }
+       }
+diff --git a/MiniOptIm/mil/Match.java b/MiniOptIm/mil/Match.java
+index bed9da1..2c44bf1 100644
+--- a/MiniOptIm/mil/Match.java
++++ b/MiniOptIm/mil/Match.java
+@@ -330,4 +330,65 @@ public class Match extends Code {
+           }
+ 		return block_calls;
+ 	}
++	@Override
++	public boolean replaceCalls(String id, int j, Atom replaced, Block b) {
++		boolean success = false;
++		BlockCalls block_calls = null;
++		if (def!=null) {
++			if (def.callsBlock(id)) {
++				//block_calls = new BlockCalls(def, block_calls);
++	            //	Atom args[] = def.args;
++	            //	for(Atom a : args)
++	    		//		System.out.println(a.toString());
++			//	}
++				//thisCall = bc;
++				if (def.args[j].sameAtom(replaced)) {
++					
++					BlockCall temp = new BlockCall(b);
++					int l = def.args.length-1;
++					temp.args = new Atom[l];
++				    for (int i = 0; i < l; ++i) {
++				    	if (i >= j)
++				    	{
++				    		temp.args[i] = def.args[i+1];
++				    	}
++				    	else
++				    		temp.args[i] = def.args[i];
++				    }
++				    def = temp;
++				    success = true;
++				}
++			}
++
++		}
++
++        for (int i=0; i<alts.length; i++) {
++            BlockCall alt_blockCall = alts[i].getBlockCall(id);
++            if (alt_blockCall != null && alt_blockCall.callsBlock(id)){
++				//block_calls = new BlockCalls(def, block_calls);
++	            //	Atom args[] = def.args;
++	            //	for(Atom a : args)
++	    		//		System.out.println(a.toString());
++			//	}
++				//thisCall = bc;
++				if (alt_blockCall.args[j].sameAtom(replaced)) {
++					
++					BlockCall temp = new BlockCall(b);
++					int l = alt_blockCall.args.length-1;
++					temp.args = new Atom[l];
++				    for (int i1 = 0; i1 < l; ++i1) {
++				    	if (i1 >= j)
++				    	{
++				    		temp.args[i1] = alt_blockCall.args[i1+1];
++				    	}
++				    	else
++				    		temp.args[i1] = alt_blockCall.args[i1];
++				    }
++				    def = temp;
++				    success = true;
++				}
++			}
++          }
++        return success;
++	}
+ }
+diff --git a/MiniOptIm/mil/TopLevel.java b/MiniOptIm/mil/TopLevel.java
+index 29b82b9..1557864 100644
+--- a/MiniOptIm/mil/TopLevel.java
++++ b/MiniOptIm/mil/TopLevel.java
+@@ -62,8 +62,9 @@ public class TopLevel extends Defn {
+     public void flow() {
+         // TODO: Do something here ... ?
+       }
+-    public void buildLattice() {
+-    	//TODO
++    @Override
++    public void buildLattice(int maxArgReplacement, boolean unrollLoops) {
++		// TODO: Implement this, only sibling class that it is implemented is Block.java
+     	System.out.println("reached TopLevel buildLattice of block" + id);
+     }
+     Atom shortTopLevel(Atom d) { return tail.shortTopLevel(d); }
+diff --git a/MiniOptIm/mil/Var.java b/MiniOptIm/mil/Var.java
+index 7d92586..bb1868c 100644
+--- a/MiniOptIm/mil/Var.java
++++ b/MiniOptIm/mil/Var.java
+@@ -2,7 +2,6 @@ package mil;
+ 
+ public abstract class Var extends Atom {
+     public static final Var[] noVars = new Var[0];
+-	 static final Var TOPLATTICE = null;
+ 
+     /** Test to determine if this item represents a constructor function.
+      */
+diff --git a/week2.patch b/week2.patch
+new file mode 100644
+index 0000000..5246630
+--- /dev/null
++++ b/week2.patch
+@@ -0,0 +1,450 @@
++From 700fae8c2afea758ae6dff3a17447d8c5dd8188e Mon Sep 17 00:00:00 2001
++From: Joel Anna <annajoel@cecs.pdx.edu>
++
++---
++ MiniOptIm/mil/Bind.java        |   31 ++++++++++++++++-
++ MiniOptIm/mil/Block.java       |   74 ++++++++++++++++++++++++++++++++++++++--
++ MiniOptIm/mil/BlockCall.java   |    6 ++++
++ MiniOptIm/mil/BlockCalls.java  |   34 ++++++++++++++++++
++ MiniOptIm/mil/ClosureDefn.java |    5 ++-
++ MiniOptIm/mil/Code.java        |    6 ++++
++ MiniOptIm/mil/Defn.java        |    1 +
++ MiniOptIm/mil/Lattice.java     |   36 +++++++++++++++++++
++ MiniOptIm/mil/MILProgram.java  |   20 ++++++++++-
++ MiniOptIm/mil/Match.java       |   22 ++++++++++++
++ MiniOptIm/mil/TAlt.java        |    8 ++++-
++ MiniOptIm/mil/TopLevel.java    |    4 +++
++ MiniOptIm/mil/Var.java         |    1 +
++ 14 files changed, 330 insertions(+), 6 deletions(-)
++ create mode 100644 MiniOptIm/mil/BlockCalls.java
++ create mode 100644 MiniOptIm/mil/Lattice.java
++
++diff --git a/MiniOptIm/mil/Bind.java b/MiniOptIm/mil/Bind.java
++index 19b0b7a..c0d4f17 100644
++--- a/MiniOptIm/mil/Bind.java
+++++ b/MiniOptIm/mil/Bind.java
++@@ -7,7 +7,7 @@ package mil;
++  */
++ public class Bind extends Code {
++ 
++-    /** The variable that will capture the result.
+++	/** The variable that will capture the result.
++      */
++     private Var v;
++ 
++@@ -319,4 +319,33 @@ public class Bind extends Code {
++     void fixTrailingBlockCalls() {
++         c.fixTrailingBlockCalls();
++     }
+++
+++	@Override
+++	public BlockCalls getBlockCall(String id) {
+++		BlockCall thisCall = null;
+++		BlockCall bc = t.isBlockCall();
+++		if (bc instanceof BlockCall)
+++		{
+++			// TODO is this ever needed
+++			if (bc.callsBlock(id)) {
+++				thisCall = bc;
+++			}
+++		}
+++		BlockCalls calls = c.getBlockCall(id);
+++		if (thisCall != null)
+++			calls = new BlockCalls(thisCall, calls);
+++		
+++		return calls;
+++	}
+++
+++	@Override
+++	public Var[] checkformals(Var[] vars) {
+++		for(int i = 0; i < vars.length; ++i) {
+++			if (v.sameAtom(vars[i])) {
+++				vars[i] = Var.TOPLATTICE;
+++			}				
+++		}
+++		return c.checkformals(vars);
+++		
+++	}
++ }
++diff --git a/MiniOptIm/mil/Block.java b/MiniOptIm/mil/Block.java
++index 12fbf87..e536a43 100644
++--- a/MiniOptIm/mil/Block.java
+++++ b/MiniOptIm/mil/Block.java
++@@ -7,17 +7,20 @@ public class Block extends Defn {
++      */
++     public Block(Code code) {
++         this.code = code;
+++        specialized = "";
++     }
++     private static int count = 0;
++     private final String id = "b" + count++;
++     private Var[] formals;
+++	private String specialized;
+++	private Lattice lattice;
++     public void setFormals(Var[] formals) {
++         this.formals = formals;
++     }
++ 
++     /** Return the identifier that is associated with this definition.
++      */
++-    public String getId() { return id; }
+++    public String getId() { return id + specialized ; }
++ 
++     /** Find the list of Defns that this Defn depends on.
++      */
++@@ -340,8 +343,75 @@ public class Block extends Defn {
++               }
++             }
++           }
+++    public void buildLattice() {
+++    	//TODO
+++    	if (formals.length == 0) {
+++    		System.out.println("Block " + id + " has no vars");
+++        	
+++    		return;
+++    	}
+++    	System.out.println("reached Block buildLattice of block " + id);
+++   
+++    	//lattice = new Lattice(formals);
+++    	for(Defns xs= this.getCallers(); xs != null; xs = xs.next)
+++    	{
+++    		Block x = (Block) xs.head;
++ 
++-    /** Test to determine whether there is a way to short out a Match
+++    		BlockCalls x_calls = x.code.getBlockCall(id);
+++    		if (x_calls != null)
+++    		{
+++    			BlockCalls current_call = x_calls;
+++
+++    			while (current_call != null) {
+++    				// Check for calls from the current block
+++    				if (x.getId().equalsIgnoreCase(id))
+++    				{
+++    					//x_calls.head.args;
+++        				Var formals2[] = checkFormals();
+++    					//x_calls.head.display();
+++        				
+++        				System.out.println("Block " + id + " called from itself");
+++        			
+++        			//Atom a[] modifies;
+++        			
+++        			}
+++    				current_call = current_call.next;
+++        		}
+++    		}
+++    		//x.displayDefn();
+++    		//for (Vars v = x.getLiveVars(); v != null; v = v.next)
+++        	//	System.out.println("Live + " + v.head.toString());
+++		
+++    	}
+++    }
+++    private  Var [] checkFormals() {
+++    	 Var [] formals2 = new Var[formals.length];
+++     	for (int i = 0; i < formals.length; ++i)
+++    			formals2[i] = formals[i];
+++     	formals2 = code.checkformals(formals2);
+++    	for (int i = 0; i < formals.length; ++i)
+++    	{
+++    		if (formals2[i] != Var.TOPLATTICE) {
+++    			if (formals2[i].sameAtom(formals[i])) {
+++    				System.out.println(formals2[i].isConst());
+++    			}
+++    			else {
+++    				//TODO
+++    				System.out.println("Argument " + i + " is not a constant");
+++    			}
+++    		}
+++    		else {
+++    			// TODO
+++    			System.out.println("Argument " + i + " is modified");
+++    			
+++    		}
+++    	}
+++    	return null;
+++
+++		
+++	}
+++
+++	/** Test to determine whether there is a way to short out a Match
++      *  from a call to this block with the specified arguments, and
++      *  given the set of facts that have been computed.  We start by
++      *  querying the code in the Block to determine if it starts with
++diff --git a/MiniOptIm/mil/BlockCall.java b/MiniOptIm/mil/BlockCall.java
++index 35a43dd..92f4074 100644
++--- a/MiniOptIm/mil/BlockCall.java
+++++ b/MiniOptIm/mil/BlockCall.java
++@@ -237,4 +237,10 @@ public class BlockCall extends Call {
++         }
++         withArgs(b.formalsToArgs());
++     }
+++    
+++    boolean callsBlock(String id)
+++    {
+++    	if (b == null) return false;
+++    	return b.getId().equalsIgnoreCase(id);
+++    }
++ }
++diff --git a/MiniOptIm/mil/BlockCalls.java b/MiniOptIm/mil/BlockCalls.java
++new file mode 100644
++index 0000000..157eb84
++--- /dev/null
+++++ b/MiniOptIm/mil/BlockCalls.java
++@@ -0,0 +1,34 @@
+++package mil;
+++
+++public class BlockCalls {
+++    public BlockCall head;
+++    public BlockCalls next;
+++
+++    /** Default constructor.
+++     */
+++    public BlockCalls(BlockCall head, BlockCalls next) {
+++        this.head = head;
+++        this.next = next;
+++    }
+++
+++    /** Test for membership in a list.
+++     */
+++    public static boolean isIn(BlockCall val, BlockCalls list) {
+++        for (; list!=null; list=list.next) {
+++            if (list.head==val) {
+++                return true;
+++            }
+++        }
+++        return false;
+++    }
+++
+++    /** Return the length of a linked list of elements.
+++     */
+++    public static int length(BlockCalls list) {
+++        int len = 0;
+++        for (; list!=null; list=list.next) {
+++            len++;
+++        }
+++        return len;
+++    }
+++}
++diff --git a/MiniOptIm/mil/ClosureDefn.java b/MiniOptIm/mil/ClosureDefn.java
++index 1998fe3..b27f213 100644
++--- a/MiniOptIm/mil/ClosureDefn.java
+++++ b/MiniOptIm/mil/ClosureDefn.java
++@@ -49,7 +49,10 @@ public class ClosureDefn extends Defn {
++     public void flow() {
++         // TODO: Do something here ... ?
++       }
++-
+++    public void buildLattice() {
+++    	//TODO
+++    	System.out.println("reached ClosureDefn buildLattice of block" + id);
+++    }
++     /** Compute a Tail that gives the result of entering this closure given the
++      *  arguments that are stored in the closure and the extra argument that
++      *  prompted us to enter this closure in the first place.
++diff --git a/MiniOptIm/mil/Code.java b/MiniOptIm/mil/Code.java
++index 5c681f8..9530b3e 100644
++--- a/MiniOptIm/mil/Code.java
+++++ b/MiniOptIm/mil/Code.java
++@@ -214,6 +214,8 @@ public abstract class Code {
++     public BlockCall makeBlockCall() {
++         return new BlockCall(new Block(this));
++     }
+++    
+++	public BlockCalls getBlockCall(String id){return null;}
++ 
++     /** Compute the set of live variables in this code sequence.
++      */
++@@ -224,4 +226,8 @@ public abstract class Code {
++      *  computed by the live variables analysis.
++      */
++     abstract void fixTrailingBlockCalls();
+++
+++	public Var[] checkformals(Var[] vars) {
+++		return vars;		
+++	}
++ }
++diff --git a/MiniOptIm/mil/Defn.java b/MiniOptIm/mil/Defn.java
++index 0ce4ca7..ec88ff7 100644
++--- a/MiniOptIm/mil/Defn.java
+++++ b/MiniOptIm/mil/Defn.java
++@@ -170,6 +170,7 @@ public abstract class Defn {
++     public abstract void inlining();
++     boolean detectLoops(Blocks visited) { return false; }
++     public abstract void flow();
+++    public abstract void buildLattice();
++     protected int numberCalls;
++     protected int numberThunks;
++     public int getNumberCalls() {
++diff --git a/MiniOptIm/mil/Lattice.java b/MiniOptIm/mil/Lattice.java
++new file mode 100644
++index 0000000..b53875d
++--- /dev/null
+++++ b/MiniOptIm/mil/Lattice.java
++@@ -0,0 +1,36 @@
+++package mil;
+++
+++public class Lattice {
+++	private latticeNode head;
+++	public Lattice(Var[] formals) {
+++		if (formals == null || formals.length == 0)
+++			return;
+++		head = new latticeNode(formals[0]);
+++		System.out.println(formals[0].toString());
+++		latticeNode current = head;
+++		for (int i = 1; i < formals.length; ++i) {
+++			current = current.Next(new latticeNode(formals[i]));
+++
+++			System.out.println(formals[i].toString());
+++		}
+++	}
+++
+++}
+++
+++class latticeNode {
+++	private latticeNode next;
+++	private Var formal;
+++	public latticeNode (Var formal)
+++	{
+++		this.formal = formal;
+++	}
+++
+++	public latticeNode Next() {
+++		return this.next;
+++	}
+++	public latticeNode Next(latticeNode next) {
+++		if (next != null)
+++			this.next = next;
+++		return this.next;
+++	}
+++}
++\ No newline at end of file
++diff --git a/MiniOptIm/mil/MILProgram.java b/MiniOptIm/mil/MILProgram.java
++index 85c618c..841cb3d 100644
++--- a/MiniOptIm/mil/MILProgram.java
+++++ b/MiniOptIm/mil/MILProgram.java
++@@ -85,7 +85,7 @@ public class MILProgram {
++     }
++     public static int count = 0;
++     public static void report(String msg) {
++-        debug.Log.println(msg);
+++        System.out.println(msg);
++         count++;
++       }
++     public void optimize() {
++@@ -109,6 +109,8 @@ public class MILProgram {
++           debug.Log.println("Flow pass finished, running shake.");
++           shake();
++           debug.Log.println("Steps performed = " + count);
+++          SpecializeFuncts();
+++          shake();
++         }
++       }
++     void cfunSimplify() {
++@@ -199,6 +201,22 @@ public class MILProgram {
++         System.out.println();
++       }
++ 
+++    /** TODO comment
+++     */
+++    public void SpecializeFuncts() {
+++        for (DefnSCCs dsccs = sccs; dsccs!=null; dsccs=dsccs.next) {
+++    //      for (Defns ds=dsccs.head.getBindings(); ds!=null; ds=ds.next) {
+++    //        ds.head.cleanup();
+++    //      }
+++//          for (Defns ds=dsccs.head.getBindings(); ds!=null; ds=ds.next) {
+++ //           ds.head.detectLoops(null);
+++ //         }
+++          for (Defns ds=dsccs.head.getBindings(); ds!=null; ds=ds.next) {
+++    //!System.out.println("inlining loop at: " + ds.head.getId());
+++            ds.head.buildLattice();
+++          }
+++        }
+++      }
++     /** Perform a live variable analysis on this program to determine the
++      *  correct formal and actual parameter lists for each block.  In this
++      *  analysis, we are relying on the fact that the only trailing/tail
++diff --git a/MiniOptIm/mil/Match.java b/MiniOptIm/mil/Match.java
++index 6cab8f9..bed9da1 100644
++--- a/MiniOptIm/mil/Match.java
+++++ b/MiniOptIm/mil/Match.java
++@@ -308,4 +308,26 @@ public class Match extends Code {
++           alts[i].fixTrailingBlockCalls();
++         }
++     }
+++
+++	@Override
+++	public BlockCalls getBlockCall(String id) {
+++		BlockCalls block_calls = null;
+++		if (def!=null) {
+++			if (def.callsBlock(id)) {
+++				block_calls = new BlockCalls(def, block_calls);
+++            //	Atom args[] = def.args;
+++            //	for(Atom a : args)
+++    		//		System.out.println(a.toString());
+++			}
+++		}
+++
+++        for (int i=0; i<alts.length; i++) {
+++            BlockCall alt_blockCall = alts[i].getBlockCall(id);
+++            if (alt_blockCall != null && alt_blockCall.callsBlock(id))
+++            {
+++				block_calls = new BlockCalls(alt_blockCall, block_calls);
+++            }
+++          }
+++		return block_calls;
+++	}
++ }
++diff --git a/MiniOptIm/mil/TAlt.java b/MiniOptIm/mil/TAlt.java
++index bc2ea42..8d2e251 100644
++--- a/MiniOptIm/mil/TAlt.java
+++++ b/MiniOptIm/mil/TAlt.java
++@@ -72,7 +72,7 @@ public class TAlt {
++         int num = c.getNum() - 1;  // flag use of this constructor
++         if (num>=0 && num<used.length) {
++           if (used[num]) {
++-            debug.Internal.error("multiple alternatives for " + c);
+++            System.out.println("multiple alternatives for " + c);
++           }
++           used[num] = true;
++         } else {
++@@ -150,4 +150,10 @@ public class TAlt {
++     void fixTrailingBlockCalls() {
++         bc.fixTrailingBlockCalls();
++     }
+++    
+++    BlockCall getBlockCall(String id) {
+++    	if (bc != null && bc.callsBlock(id))
+++    		return bc;
+++    	return null;    	
+++    }
++ }
++diff --git a/MiniOptIm/mil/TopLevel.java b/MiniOptIm/mil/TopLevel.java
++index 92ad3e2..29b82b9 100644
++--- a/MiniOptIm/mil/TopLevel.java
+++++ b/MiniOptIm/mil/TopLevel.java
++@@ -62,6 +62,10 @@ public class TopLevel extends Defn {
++     public void flow() {
++         // TODO: Do something here ... ?
++       }
+++    public void buildLattice() {
+++    	//TODO
+++    	System.out.println("reached TopLevel buildLattice of block" + id);
+++    }
++     Atom shortTopLevel(Atom d) { return tail.shortTopLevel(d); }
++     public Tail invokesTopLevel() {
++         MILProgram.report("replacing invoke " + getId() + " with block call");
++diff --git a/MiniOptIm/mil/Var.java b/MiniOptIm/mil/Var.java
++index bb1868c..7d92586 100644
++--- a/MiniOptIm/mil/Var.java
+++++ b/MiniOptIm/mil/Var.java
++@@ -2,6 +2,7 @@ package mil;
++ 
++ public abstract class Var extends Atom {
++     public static final Var[] noVars = new Var[0];
+++	 static final Var TOPLATTICE = null;
++ 
++     /** Test to determine if this item represents a constructor function.
++      */
++
++-- 
++1.7.10.4
++
+diff --git a/week2.txt b/week2.txt
+deleted file mode 100644
+index 5246630..0000000
+--- a/week2.txt
++++ /dev/null
+@@ -1,450 +0,0 @@
+-From 700fae8c2afea758ae6dff3a17447d8c5dd8188e Mon Sep 17 00:00:00 2001
+-From: Joel Anna <annajoel@cecs.pdx.edu>
+-
+----
+- MiniOptIm/mil/Bind.java        |   31 ++++++++++++++++-
+- MiniOptIm/mil/Block.java       |   74 ++++++++++++++++++++++++++++++++++++++--
+- MiniOptIm/mil/BlockCall.java   |    6 ++++
+- MiniOptIm/mil/BlockCalls.java  |   34 ++++++++++++++++++
+- MiniOptIm/mil/ClosureDefn.java |    5 ++-
+- MiniOptIm/mil/Code.java        |    6 ++++
+- MiniOptIm/mil/Defn.java        |    1 +
+- MiniOptIm/mil/Lattice.java     |   36 +++++++++++++++++++
+- MiniOptIm/mil/MILProgram.java  |   20 ++++++++++-
+- MiniOptIm/mil/Match.java       |   22 ++++++++++++
+- MiniOptIm/mil/TAlt.java        |    8 ++++-
+- MiniOptIm/mil/TopLevel.java    |    4 +++
+- MiniOptIm/mil/Var.java         |    1 +
+- 14 files changed, 330 insertions(+), 6 deletions(-)
+- create mode 100644 MiniOptIm/mil/BlockCalls.java
+- create mode 100644 MiniOptIm/mil/Lattice.java
+-
+-diff --git a/MiniOptIm/mil/Bind.java b/MiniOptIm/mil/Bind.java
+-index 19b0b7a..c0d4f17 100644
+---- a/MiniOptIm/mil/Bind.java
+-+++ b/MiniOptIm/mil/Bind.java
+-@@ -7,7 +7,7 @@ package mil;
+-  */
+- public class Bind extends Code {
+- 
+--    /** The variable that will capture the result.
+-+	/** The variable that will capture the result.
+-      */
+-     private Var v;
+- 
+-@@ -319,4 +319,33 @@ public class Bind extends Code {
+-     void fixTrailingBlockCalls() {
+-         c.fixTrailingBlockCalls();
+-     }
+-+
+-+	@Override
+-+	public BlockCalls getBlockCall(String id) {
+-+		BlockCall thisCall = null;
+-+		BlockCall bc = t.isBlockCall();
+-+		if (bc instanceof BlockCall)
+-+		{
+-+			// TODO is this ever needed
+-+			if (bc.callsBlock(id)) {
+-+				thisCall = bc;
+-+			}
+-+		}
+-+		BlockCalls calls = c.getBlockCall(id);
+-+		if (thisCall != null)
+-+			calls = new BlockCalls(thisCall, calls);
+-+		
+-+		return calls;
+-+	}
+-+
+-+	@Override
+-+	public Var[] checkformals(Var[] vars) {
+-+		for(int i = 0; i < vars.length; ++i) {
+-+			if (v.sameAtom(vars[i])) {
+-+				vars[i] = Var.TOPLATTICE;
+-+			}				
+-+		}
+-+		return c.checkformals(vars);
+-+		
+-+	}
+- }
+-diff --git a/MiniOptIm/mil/Block.java b/MiniOptIm/mil/Block.java
+-index 12fbf87..e536a43 100644
+---- a/MiniOptIm/mil/Block.java
+-+++ b/MiniOptIm/mil/Block.java
+-@@ -7,17 +7,20 @@ public class Block extends Defn {
+-      */
+-     public Block(Code code) {
+-         this.code = code;
+-+        specialized = "";
+-     }
+-     private static int count = 0;
+-     private final String id = "b" + count++;
+-     private Var[] formals;
+-+	private String specialized;
+-+	private Lattice lattice;
+-     public void setFormals(Var[] formals) {
+-         this.formals = formals;
+-     }
+- 
+-     /** Return the identifier that is associated with this definition.
+-      */
+--    public String getId() { return id; }
+-+    public String getId() { return id + specialized ; }
+- 
+-     /** Find the list of Defns that this Defn depends on.
+-      */
+-@@ -340,8 +343,75 @@ public class Block extends Defn {
+-               }
+-             }
+-           }
+-+    public void buildLattice() {
+-+    	//TODO
+-+    	if (formals.length == 0) {
+-+    		System.out.println("Block " + id + " has no vars");
+-+        	
+-+    		return;
+-+    	}
+-+    	System.out.println("reached Block buildLattice of block " + id);
+-+   
+-+    	//lattice = new Lattice(formals);
+-+    	for(Defns xs= this.getCallers(); xs != null; xs = xs.next)
+-+    	{
+-+    		Block x = (Block) xs.head;
+- 
+--    /** Test to determine whether there is a way to short out a Match
+-+    		BlockCalls x_calls = x.code.getBlockCall(id);
+-+    		if (x_calls != null)
+-+    		{
+-+    			BlockCalls current_call = x_calls;
+-+
+-+    			while (current_call != null) {
+-+    				// Check for calls from the current block
+-+    				if (x.getId().equalsIgnoreCase(id))
+-+    				{
+-+    					//x_calls.head.args;
+-+        				Var formals2[] = checkFormals();
+-+    					//x_calls.head.display();
+-+        				
+-+        				System.out.println("Block " + id + " called from itself");
+-+        			
+-+        			//Atom a[] modifies;
+-+        			
+-+        			}
+-+    				current_call = current_call.next;
+-+        		}
+-+    		}
+-+    		//x.displayDefn();
+-+    		//for (Vars v = x.getLiveVars(); v != null; v = v.next)
+-+        	//	System.out.println("Live + " + v.head.toString());
+-+		
+-+    	}
+-+    }
+-+    private  Var [] checkFormals() {
+-+    	 Var [] formals2 = new Var[formals.length];
+-+     	for (int i = 0; i < formals.length; ++i)
+-+    			formals2[i] = formals[i];
+-+     	formals2 = code.checkformals(formals2);
+-+    	for (int i = 0; i < formals.length; ++i)
+-+    	{
+-+    		if (formals2[i] != Var.TOPLATTICE) {
+-+    			if (formals2[i].sameAtom(formals[i])) {
+-+    				System.out.println(formals2[i].isConst());
+-+    			}
+-+    			else {
+-+    				//TODO
+-+    				System.out.println("Argument " + i + " is not a constant");
+-+    			}
+-+    		}
+-+    		else {
+-+    			// TODO
+-+    			System.out.println("Argument " + i + " is modified");
+-+    			
+-+    		}
+-+    	}
+-+    	return null;
+-+
+-+		
+-+	}
+-+
+-+	/** Test to determine whether there is a way to short out a Match
+-      *  from a call to this block with the specified arguments, and
+-      *  given the set of facts that have been computed.  We start by
+-      *  querying the code in the Block to determine if it starts with
+-diff --git a/MiniOptIm/mil/BlockCall.java b/MiniOptIm/mil/BlockCall.java
+-index 35a43dd..92f4074 100644
+---- a/MiniOptIm/mil/BlockCall.java
+-+++ b/MiniOptIm/mil/BlockCall.java
+-@@ -237,4 +237,10 @@ public class BlockCall extends Call {
+-         }
+-         withArgs(b.formalsToArgs());
+-     }
+-+    
+-+    boolean callsBlock(String id)
+-+    {
+-+    	if (b == null) return false;
+-+    	return b.getId().equalsIgnoreCase(id);
+-+    }
+- }
+-diff --git a/MiniOptIm/mil/BlockCalls.java b/MiniOptIm/mil/BlockCalls.java
+-new file mode 100644
+-index 0000000..157eb84
+---- /dev/null
+-+++ b/MiniOptIm/mil/BlockCalls.java
+-@@ -0,0 +1,34 @@
+-+package mil;
+-+
+-+public class BlockCalls {
+-+    public BlockCall head;
+-+    public BlockCalls next;
+-+
+-+    /** Default constructor.
+-+     */
+-+    public BlockCalls(BlockCall head, BlockCalls next) {
+-+        this.head = head;
+-+        this.next = next;
+-+    }
+-+
+-+    /** Test for membership in a list.
+-+     */
+-+    public static boolean isIn(BlockCall val, BlockCalls list) {
+-+        for (; list!=null; list=list.next) {
+-+            if (list.head==val) {
+-+                return true;
+-+            }
+-+        }
+-+        return false;
+-+    }
+-+
+-+    /** Return the length of a linked list of elements.
+-+     */
+-+    public static int length(BlockCalls list) {
+-+        int len = 0;
+-+        for (; list!=null; list=list.next) {
+-+            len++;
+-+        }
+-+        return len;
+-+    }
+-+}
+-diff --git a/MiniOptIm/mil/ClosureDefn.java b/MiniOptIm/mil/ClosureDefn.java
+-index 1998fe3..b27f213 100644
+---- a/MiniOptIm/mil/ClosureDefn.java
+-+++ b/MiniOptIm/mil/ClosureDefn.java
+-@@ -49,7 +49,10 @@ public class ClosureDefn extends Defn {
+-     public void flow() {
+-         // TODO: Do something here ... ?
+-       }
+--
+-+    public void buildLattice() {
+-+    	//TODO
+-+    	System.out.println("reached ClosureDefn buildLattice of block" + id);
+-+    }
+-     /** Compute a Tail that gives the result of entering this closure given the
+-      *  arguments that are stored in the closure and the extra argument that
+-      *  prompted us to enter this closure in the first place.
+-diff --git a/MiniOptIm/mil/Code.java b/MiniOptIm/mil/Code.java
+-index 5c681f8..9530b3e 100644
+---- a/MiniOptIm/mil/Code.java
+-+++ b/MiniOptIm/mil/Code.java
+-@@ -214,6 +214,8 @@ public abstract class Code {
+-     public BlockCall makeBlockCall() {
+-         return new BlockCall(new Block(this));
+-     }
+-+    
+-+	public BlockCalls getBlockCall(String id){return null;}
+- 
+-     /** Compute the set of live variables in this code sequence.
+-      */
+-@@ -224,4 +226,8 @@ public abstract class Code {
+-      *  computed by the live variables analysis.
+-      */
+-     abstract void fixTrailingBlockCalls();
+-+
+-+	public Var[] checkformals(Var[] vars) {
+-+		return vars;		
+-+	}
+- }
+-diff --git a/MiniOptIm/mil/Defn.java b/MiniOptIm/mil/Defn.java
+-index 0ce4ca7..ec88ff7 100644
+---- a/MiniOptIm/mil/Defn.java
+-+++ b/MiniOptIm/mil/Defn.java
+-@@ -170,6 +170,7 @@ public abstract class Defn {
+-     public abstract void inlining();
+-     boolean detectLoops(Blocks visited) { return false; }
+-     public abstract void flow();
+-+    public abstract void buildLattice();
+-     protected int numberCalls;
+-     protected int numberThunks;
+-     public int getNumberCalls() {
+-diff --git a/MiniOptIm/mil/Lattice.java b/MiniOptIm/mil/Lattice.java
+-new file mode 100644
+-index 0000000..b53875d
+---- /dev/null
+-+++ b/MiniOptIm/mil/Lattice.java
+-@@ -0,0 +1,36 @@
+-+package mil;
+-+
+-+public class Lattice {
+-+	private latticeNode head;
+-+	public Lattice(Var[] formals) {
+-+		if (formals == null || formals.length == 0)
+-+			return;
+-+		head = new latticeNode(formals[0]);
+-+		System.out.println(formals[0].toString());
+-+		latticeNode current = head;
+-+		for (int i = 1; i < formals.length; ++i) {
+-+			current = current.Next(new latticeNode(formals[i]));
+-+
+-+			System.out.println(formals[i].toString());
+-+		}
+-+	}
+-+
+-+}
+-+
+-+class latticeNode {
+-+	private latticeNode next;
+-+	private Var formal;
+-+	public latticeNode (Var formal)
+-+	{
+-+		this.formal = formal;
+-+	}
+-+
+-+	public latticeNode Next() {
+-+		return this.next;
+-+	}
+-+	public latticeNode Next(latticeNode next) {
+-+		if (next != null)
+-+			this.next = next;
+-+		return this.next;
+-+	}
+-+}
+-\ No newline at end of file
+-diff --git a/MiniOptIm/mil/MILProgram.java b/MiniOptIm/mil/MILProgram.java
+-index 85c618c..841cb3d 100644
+---- a/MiniOptIm/mil/MILProgram.java
+-+++ b/MiniOptIm/mil/MILProgram.java
+-@@ -85,7 +85,7 @@ public class MILProgram {
+-     }
+-     public static int count = 0;
+-     public static void report(String msg) {
+--        debug.Log.println(msg);
+-+        System.out.println(msg);
+-         count++;
+-       }
+-     public void optimize() {
+-@@ -109,6 +109,8 @@ public class MILProgram {
+-           debug.Log.println("Flow pass finished, running shake.");
+-           shake();
+-           debug.Log.println("Steps performed = " + count);
+-+          SpecializeFuncts();
+-+          shake();
+-         }
+-       }
+-     void cfunSimplify() {
+-@@ -199,6 +201,22 @@ public class MILProgram {
+-         System.out.println();
+-       }
+- 
+-+    /** TODO comment
+-+     */
+-+    public void SpecializeFuncts() {
+-+        for (DefnSCCs dsccs = sccs; dsccs!=null; dsccs=dsccs.next) {
+-+    //      for (Defns ds=dsccs.head.getBindings(); ds!=null; ds=ds.next) {
+-+    //        ds.head.cleanup();
+-+    //      }
+-+//          for (Defns ds=dsccs.head.getBindings(); ds!=null; ds=ds.next) {
+-+ //           ds.head.detectLoops(null);
+-+ //         }
+-+          for (Defns ds=dsccs.head.getBindings(); ds!=null; ds=ds.next) {
+-+    //!System.out.println("inlining loop at: " + ds.head.getId());
+-+            ds.head.buildLattice();
+-+          }
+-+        }
+-+      }
+-     /** Perform a live variable analysis on this program to determine the
+-      *  correct formal and actual parameter lists for each block.  In this
+-      *  analysis, we are relying on the fact that the only trailing/tail
+-diff --git a/MiniOptIm/mil/Match.java b/MiniOptIm/mil/Match.java
+-index 6cab8f9..bed9da1 100644
+---- a/MiniOptIm/mil/Match.java
+-+++ b/MiniOptIm/mil/Match.java
+-@@ -308,4 +308,26 @@ public class Match extends Code {
+-           alts[i].fixTrailingBlockCalls();
+-         }
+-     }
+-+
+-+	@Override
+-+	public BlockCalls getBlockCall(String id) {
+-+		BlockCalls block_calls = null;
+-+		if (def!=null) {
+-+			if (def.callsBlock(id)) {
+-+				block_calls = new BlockCalls(def, block_calls);
+-+            //	Atom args[] = def.args;
+-+            //	for(Atom a : args)
+-+    		//		System.out.println(a.toString());
+-+			}
+-+		}
+-+
+-+        for (int i=0; i<alts.length; i++) {
+-+            BlockCall alt_blockCall = alts[i].getBlockCall(id);
+-+            if (alt_blockCall != null && alt_blockCall.callsBlock(id))
+-+            {
+-+				block_calls = new BlockCalls(alt_blockCall, block_calls);
+-+            }
+-+          }
+-+		return block_calls;
+-+	}
+- }
+-diff --git a/MiniOptIm/mil/TAlt.java b/MiniOptIm/mil/TAlt.java
+-index bc2ea42..8d2e251 100644
+---- a/MiniOptIm/mil/TAlt.java
+-+++ b/MiniOptIm/mil/TAlt.java
+-@@ -72,7 +72,7 @@ public class TAlt {
+-         int num = c.getNum() - 1;  // flag use of this constructor
+-         if (num>=0 && num<used.length) {
+-           if (used[num]) {
+--            debug.Internal.error("multiple alternatives for " + c);
+-+            System.out.println("multiple alternatives for " + c);
+-           }
+-           used[num] = true;
+-         } else {
+-@@ -150,4 +150,10 @@ public class TAlt {
+-     void fixTrailingBlockCalls() {
+-         bc.fixTrailingBlockCalls();
+-     }
+-+    
+-+    BlockCall getBlockCall(String id) {
+-+    	if (bc != null && bc.callsBlock(id))
+-+    		return bc;
+-+    	return null;    	
+-+    }
+- }
+-diff --git a/MiniOptIm/mil/TopLevel.java b/MiniOptIm/mil/TopLevel.java
+-index 92ad3e2..29b82b9 100644
+---- a/MiniOptIm/mil/TopLevel.java
+-+++ b/MiniOptIm/mil/TopLevel.java
+-@@ -62,6 +62,10 @@ public class TopLevel extends Defn {
+-     public void flow() {
+-         // TODO: Do something here ... ?
+-       }
+-+    public void buildLattice() {
+-+    	//TODO
+-+    	System.out.println("reached TopLevel buildLattice of block" + id);
+-+    }
+-     Atom shortTopLevel(Atom d) { return tail.shortTopLevel(d); }
+-     public Tail invokesTopLevel() {
+-         MILProgram.report("replacing invoke " + getId() + " with block call");
+-diff --git a/MiniOptIm/mil/Var.java b/MiniOptIm/mil/Var.java
+-index bb1868c..7d92586 100644
+---- a/MiniOptIm/mil/Var.java
+-+++ b/MiniOptIm/mil/Var.java
+-@@ -2,6 +2,7 @@ package mil;
+- 
+- public abstract class Var extends Atom {
+-     public static final Var[] noVars = new Var[0];
+-+	 static final Var TOPLATTICE = null;
+- 
+-     /** Test to determine if this item represents a constructor function.
+-      */
+-
+--- 
+-1.7.10.4
+-
