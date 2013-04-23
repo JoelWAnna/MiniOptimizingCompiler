@@ -330,18 +330,16 @@ public class Match extends Code {
           }
 		return block_calls;
 	}
+	
 	@Override
 	public boolean replaceCalls(String id, int j, Atom replaced, Block b) {
 		boolean success = false;
-		BlockCalls block_calls = null;
+
 		if (def!=null) {
+		// Determine if the default case is a call to block id
 			if (def.callsBlock(id)) {
-				//block_calls = new BlockCalls(def, block_calls);
-	            //	Atom args[] = def.args;
-	            //	for(Atom a : args)
-	    		//		System.out.println(a.toString());
-			//	}
-				//thisCall = bc;
+
+				// Compare to either see if the call to block id can be replaced with a call to block b
 				if (def.args[j].sameAtom(replaced)) {
 					
 					BlockCall temp = new BlockCall(b);
@@ -365,12 +363,6 @@ public class Match extends Code {
         for (int i=0; i<alts.length; i++) {
             BlockCall alt_blockCall = alts[i].getBlockCall(id);
             if (alt_blockCall != null && alt_blockCall.callsBlock(id)){
-				//block_calls = new BlockCalls(def, block_calls);
-	            //	Atom args[] = def.args;
-	            //	for(Atom a : args)
-	    		//		System.out.println(a.toString());
-			//	}
-				//thisCall = bc;
 				if (alt_blockCall.args[j].sameAtom(replaced)) {
 					
 					BlockCall temp = new BlockCall(b);

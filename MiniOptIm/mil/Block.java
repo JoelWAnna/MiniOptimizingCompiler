@@ -8,9 +8,10 @@ public class Block extends Defn {
     public Block(Code code) {
         this.code = code;
     }
-    private Block parent = null;
     private Blocks children = null;
     private Atom replacedVar = null;
+    private Blocks derived = null;
+	private int version;
     private static int count = 0;
     private final String id = "b" + count++;
     private Var[] formals;
@@ -168,7 +169,7 @@ public class Block extends Defn {
         }
         return bc;
       }
-    private Blocks derived = null;
+   
     public Block deriveWithInvoke() {
         // Look to see if we have already derived a suitable version of this block:
         for (Blocks bs = derived; bs!=null; bs=bs.next) {
@@ -352,6 +353,12 @@ public class Block extends Defn {
     		System.out.println("Block " + id + " has no vars");
     		return;
     	}
+    	if (version > 3) {
+    		System.out.println("Block " + id + " is version " + version);
+    		
+			return;
+	
+    	}
     	System.out.println("reached Block buildLattice of block " + id);
    
     	Atom knownArgs[][] = new Atom[formals.length][maxArgReplacement];
@@ -438,6 +445,7 @@ public class Block extends Defn {
     	}
     		
 		System.out.println(id + "Found constants");
+		int newVersion = version+1;
 		for (int j = 0; j < formals.length; ++j )
 		{
 			if (knownArgs[j][0] == Atom.CAtom.NAC || knownArgs[j][0] == Atom.CAtom.UNDEF) {
@@ -456,8 +464,9 @@ public class Block extends Defn {
 						}
 						currentChild = currentChild.next;
 					}
-					if (b == null) {
+					if (b == null ) {
 						b = new Block();
+						b.version = newVersion++;
 					    derived   = new Blocks(b, derived);
 					    int l = formals.length -1;
 					    Var[] nfs = new Var[l];
@@ -470,18 +479,19 @@ public class Block extends Defn {
 					    		nfs[i] = formals[i];
 					    		
 					    }
-					    Code bind = new Bind(formals[j], new Return(knownArgs[j][k]), code);
-					    b.code = bind;
+					   // Code bind = new Bind(formals[j], new Return(knownArgs[j][k]), code);
+					    //b.code = bind;
+						b.code = code.copy();
 					    b.formals = nfs;
-					    b.parent = this;
 					    b.replacedVar = knownArgs[j][k];				    
 					    b.code.replaceCalls(id, j, formals[j], b);
+					    b.code = b.code.apply(new AtomSubst(formals[j], knownArgs[j][k], null));
 					    children = new Blocks(b, children);
 					    
 						//defns.
 						System.out.println("Created Block " + b.id + "from block " + id);
+						b.display();
 					}
-				    b.display();
 				    //new BlockCall(b);
 				    //BlockCalls foo = 
 	
@@ -492,6 +502,7 @@ public class Block extends Defn {
 		        		{
 		        			//TODO is it necessary to update call(er/ee)s
 		        			//b.
+		        			count++;
 		        		}
 		        		//BlockCalls x_calls = x.code.getBlockCall(id);
 		        		//if (x_calls.)
@@ -513,6 +524,23 @@ public class Block extends Defn {
     	Atom [] arguments = new Atom[formals.length];
      	for (int i = 0; i < formals.length; ++i)
      		arguments[i] = formals[i];
+     	BlockCalls bc = code.getBlockCall(id);
+     	while (bc != null) {
+         	for (int i = 0; i < arguments.length; ++i)
+         	{
+         		Atom a = bc.head.args[i];
+         		if (!arguments[i].sameAtom(a)) {
+         			if (a.isConst() != null) {
+         				arguments[i] = a;
+         			}
+         			else {
+         				arguments[i] = Atom.CAtom.NAC;
+         			}
+	
+         		}
+         	}
+         	bc = bc.next;
+     	}
      	arguments = code.checkformals(arguments);
     	for (int i = 0; i < formals.length; ++i)
     	{

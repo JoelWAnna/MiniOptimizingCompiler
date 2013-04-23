@@ -92,10 +92,10 @@ public class MILProgram {
         shake();
         cfunSimplify();
     
-        //count = 1;
-        for (int j=0; j<20; j++) {
         count = 1;
-        for (int i=0; i<20 /*&& count>0*/; i++) {
+        for (int j=0; j<20; j++) {
+        //count = 1;
+        for (int i=0; i<20 && count>0; i++) {
           debug.Log.println("-------------------------");
     //!System.out.println("==================================================");
     //!System.out.println("Step " + i);
@@ -112,10 +112,15 @@ public class MILProgram {
           shake();
           debug.Log.println("Steps performed = " + count);
         }
-       // break;
-        count = 0;
-        SpecializeFuncts();
-        shake();
+        //break;
+        count = 1;
+        for (int k=0; k<20 && count>0; k++) {
+        	SpecializeFuncts();
+        	shake();
+            debug.Log.println("Steps performed = " + count);
+        	display();
+        }
+		//if (j > 3) System.exit(0);
         }
       }
     void cfunSimplify() {
@@ -224,7 +229,8 @@ public class MILProgram {
         	//			for the case of arrs.mini, it does not seem to make a difference
         	//		false because if this parameter is true it introduces a bug
        	
-            ds.head.buildLattice(3, false);
+            ds.head.buildLattice(1, false);
+
           }
         }
       }
