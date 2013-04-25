@@ -350,7 +350,7 @@ public class Block extends Defn {
     public void buildLattice(int maxArgReplacement, boolean unrollLoops) {
     	//TODO
     	if (formals.length == 0) {
-    		System.out.println("Block " + id + " has no vars");
+    	//	System.out.println("Block " + id + " has no vars");
     		return;
     	}
     	if (version > 3) {
@@ -359,7 +359,7 @@ public class Block extends Defn {
 			return;
 	
     	}
-    	System.out.println("reached Block buildLattice of block " + id);
+    	//System.out.println("reached Block buildLattice of block " + id);
    
     	Atom knownArgs[][] = new Atom[formals.length][maxArgReplacement];
     	
@@ -411,7 +411,7 @@ public class Block extends Defn {
         			
     					//x_calls.head.display();
         				
-        				System.out.println("Block " + id + " called from itself");
+        			//	System.out.println("Block " + id + " called from itself");
         			
         			//Atom a[] modifies;
         			
@@ -444,12 +444,12 @@ public class Block extends Defn {
     		}
     	}
     		
-		System.out.println(id + "Found constants");
+		//System.out.println(id + "Found constants");
 		int newVersion = version+1;
 		for (int j = 0; j < formals.length; ++j )
 		{
 			if (knownArgs[j][0] == Atom.CAtom.NAC || knownArgs[j][0] == Atom.CAtom.UNDEF) {
-				System.out.println("Arg " + j + " is " + knownArgs[j][0].toString());
+				//System.out.println("Arg " + j + " is " + knownArgs[j][0].toString());
 				continue;
 			}
 			for ( int k = 0; k < maxArgReplacement; ++k) {
@@ -490,7 +490,8 @@ public class Block extends Defn {
 					    
 						//defns.
 						System.out.println("Created Block " + b.id + "from block " + id);
-						b.display();
+						count++;
+						//b.display();
 					}
 				    //new BlockCall(b);
 				    //BlockCalls foo = 

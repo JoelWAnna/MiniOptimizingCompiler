@@ -93,36 +93,45 @@ public class MILProgram {
         cfunSimplify();
     
         count = 1;
-        for (int j=0; j<20; j++) {
-        //count = 1;
-        for (int i=0; i<20 && count>0; i++) {
-          debug.Log.println("-------------------------");
-    //!System.out.println("==================================================");
-    //!System.out.println("Step " + i);
-    //!System.out.println("==================================================");
-    //!display();
-    //!System.out.println("==================================================");
-          count = 0;
-          inlining();
-          debug.Log.println("Inlining pass finished, running shake.");
-          shake();
-          liftAllocators();  // TODO: Is this the right position for liftAllocators?
-          flow();
-          debug.Log.println("Flow pass finished, running shake.");
-          shake();
-          debug.Log.println("Steps performed = " + count);
+        int lastcount = 0;
+        int bothcounts = 1;
+        for (int j=0; j<20 && bothcounts > 0; j++) {
+	        //count = 1;
+	        for (int i=0; i<20 && count>0; i++) {
+	          debug.Log.println("-------------------------");
+	    //!System.out.println("==================================================");
+	    //!System.out.println("Step " + i);
+	    //!System.out.println("==================================================");
+	    //!display();
+	    //!System.out.println("==================================================");
+	          count = 0;
+	          inlining();
+	          debug.Log.println("Inlining pass finished, running shake.");
+	          shake();
+	          liftAllocators();  // TODO: Is this the right position for liftAllocators?
+	          flow();
+	          debug.Log.println("Flow pass finished, running shake.");
+	          shake();
+	          debug.Log.println("Steps performed = " + count);
+	          lastcount = count;
+	          }
+	        //break;
+	        bothcounts = lastcount;
+	        count = 1;
+	        for (int k=0; k<20 && count>0; k++) {
+	        	count = 0;
+	        	SpecializeFuncts();
+		        debug.Log.println("SpecializeFuncts pass finished, running shake.");
+	        	shake();
+	            debug.Log.println("Steps performed = " + count);
+	        	//display();
+	        	lastcount = count;
+	        }
+	        bothcounts += lastcount;
+	        count = lastcount;
         }
-        //break;
-        count = 1;
-        for (int k=0; k<20 && count>0; k++) {
-        	SpecializeFuncts();
-        	shake();
-            debug.Log.println("Steps performed = " + count);
-        	display();
-        }
-		//if (j > 3) System.exit(0);
-        }
-      }
+    }
+
     void cfunSimplify() {
         for (DefnSCCs dsccs = sccs; dsccs!=null; dsccs=dsccs.next) {
           for (Defns ds=dsccs.head.getBindings(); ds!=null; ds=ds.next) {
