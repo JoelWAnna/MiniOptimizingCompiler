@@ -95,7 +95,7 @@ public class MILProgram {
         count = 1;
         int lastcount = 0;
         int bothcounts = 1;
-        for (int j=0; j<20 && bothcounts > 0; j++) {
+        for (int j=0; j<20 /*&& bothcounts > 0*/; j++) {
 	        //count = 1;
 	        for (int i=0; i<20 && count>0; i++) {
 	          debug.Log.println("-------------------------");
@@ -118,9 +118,9 @@ public class MILProgram {
 	        //break;
 	        bothcounts = lastcount;
 	        count = 1;
-	        for (int k=0; k<20 && count>0; k++) {
+	        for (int k=0; k<20; /*&& count>0;*/ k++) {
 	        	count = 0;
-	        	SpecializeFuncts();
+	        	GlobalConstantPropagation();
 		        debug.Log.println("SpecializeFuncts pass finished, running shake.");
 	        	shake();
 	            debug.Log.println("Steps performed = " + count);
@@ -220,28 +220,28 @@ public class MILProgram {
         System.out.println();
       }
 
-    /** TODO comment
+    /** Run a Global Contant Propagation pass over this program.  Assumes a previous call
+     *  to shake() to compute call graph information.
+     *  For each Defn  
      */
-    public void SpecializeFuncts() {
-        for (DefnSCCs dsccs = sccs; dsccs!=null; dsccs=dsccs.next) {
-    //      for (Defns ds=dsccs.head.getBindings(); ds!=null; ds=ds.next) {
-    //        ds.head.cleanup();
-    //      }
-//          for (Defns ds=dsccs.head.getBindings(); ds!=null; ds=ds.next) {
- //           ds.head.detectLoops(null);
- //         }
-          for (Defns ds=dsccs.head.getBindings(); ds!=null; ds=ds.next) {
-    //!System.out.println("inlining loop at: " + ds.head.getId());
-        	  
-          	// TODO
-        	// Args: 3 for max number of different known specializations for a particular arg
-        	//			for the case of arrs.mini, it does not seem to make a difference
-        	//		false because if this parameter is true it introduces a bug
-       	
-            ds.head.buildLattice(1, false);
-
-          }
-        }
+    public void GlobalConstantPropagation() {
+    	for (DefnSCCs dsccs = sccs; dsccs!=null; dsccs=dsccs.next) {
+	    	for (Defns ds=dsccs.head.getBindings(); ds!=null; ds=ds.next) {        	  
+	          	// TODO
+	        	// Args: 3 for max number of different known specializations for a particular arg
+	        	//			for the case of arrs.mini, it does not seem to make a difference
+	        	//		false because if this parameter is true it introduces a bug
+	       	
+	            Defns addedDefns = ds.head.propagateConstants(1, false);
+	            
+	            for (;addedDefns != null; addedDefns = addedDefns.next)
+	            {
+	            	addEntry(addedDefns.head);
+	            	count++;
+	            }
+	
+	          }
+    	}
       }
     /** Perform a live variable analysis on this program to determine the
      *  correct formal and actual parameter lists for each block.  In this

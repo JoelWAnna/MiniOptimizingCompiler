@@ -63,9 +63,10 @@ public class TopLevel extends Defn {
         // TODO: Do something here ... ?
       }
     @Override
-    public void buildLattice(int maxArgReplacement, boolean unrollLoops) {
+    public Defns propagateConstants(int maxArgReplacement, boolean unrollLoops) {
 		// TODO: Implement this, only sibling class that it is implemented is Block.java
-    	System.out.println("reached TopLevel buildLattice of block" + id);
+    	System.out.println("reached TopLevel propagateConstants of block" + id);
+    	return null;
     }
     Atom shortTopLevel(Atom d) { return tail.shortTopLevel(d); }
     public Tail invokesTopLevel() {

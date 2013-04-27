@@ -1,30 +1,23 @@
-public void SpecializeFuncts() {
+    /** Run a Global Contant Propagation pass over this program.  Assumes a previous call
+     *  to shake() to compute call graph information.
+     *  For each Defn  
+     */
+public void GlobalConstantPropagation() {
 case MILProgram {
-	    /** TODO comment
-		*/
-
-        for (DefnSCCs dsccs = sccs; dsccs!=null; dsccs=dsccs.next) {
-    //      for (Defns ds=dsccs.head.getBindings(); ds!=null; ds=ds.next) {
-    //        ds.head.cleanup();
-    //      }
-//          for (Defns ds=dsccs.head.getBindings(); ds!=null; ds=ds.next) {
- //           ds.head.detectLoops(null);
- //         }
-          for (Defns ds=dsccs.head.getBindings(); ds!=null; ds=ds.next) {
-    //!System.out.println("inlining loop at: " + ds.head.getId());
-        	  
+          for (Defns ds=sccs.head.getBindings(); ds!=null; ds=ds.next) {
           	// TODO
         	// Args: 3 for max number of different known specializations for a particular arg
         	//			for the case of arrs.mini, it does not seem to make a difference
         	//		false because if this parameter is true it introduces a bug
        	
-            ds.head.buildLattice(1, false);
+            ds.head.propagateConstants(1, false);
 
           }
-        }
       }
 
-MILProgram {
+	  public void optimize()
+	  case MILProgram ! {
+		shake();
          cfunSimplify();
      
          count = 1;
@@ -56,8 +49,8 @@ MILProgram {
 	        count = 1;
 	        for (int k=0; k<20 && count>0; k++) {
 	        	count = 0;
-	        	SpecializeFuncts();
-		        debug.Log.println("SpecializeFuncts pass finished, running shake.");
+	        	GlobalConstantPropagation();
+		        debug.Log.println("GlobalConstantPropagation pass finished, running shake.");
 	        	shake();
 	            debug.Log.println("Steps performed = " + count);
 	        	//display();
@@ -80,15 +73,17 @@ MILProgram {
 			private int version;
 		}
 
-    public void buildLattice(int maxArgReplacement, boolean unrollLoops)
+    public Defns propagateConstants(int maxArgReplacement, boolean unrollLoops)
 	case Defn abstract;
 	case ClosureDefn {
 		// TODO: Implement this, only sibling class that it is implemented is Block.java
-    	System.out.println("reached ClosureDefn buildLattice of block" + id);
+    	System.out.println("reached ClosureDefn propagateConstants of block" + id);
+		return null;
     }
 	case TopLevel {
 		// TODO: Implement this, only sibling class that it is implemented is Block.java
-    	System.out.println("reached TopLevel buildLattice of block" + id);
+    	System.out.println("reached TopLevel propagateConstants of block" + id);
+		return null;
     }
 	
     case Block
@@ -103,7 +98,7 @@ MILProgram {
 			return;
 	
     	}
-    	//System.out.println("reached Block buildLattice of block " + id);
+    	//System.out.println("reached Block propagateConstants of block " + id);
    
     	Atom knownArgs[][] = new Atom[formals.length][maxArgReplacement];
     	

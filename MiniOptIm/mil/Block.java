@@ -347,19 +347,19 @@ public class Block extends Defn {
           }
     
     @Override
-    public void buildLattice(int maxArgReplacement, boolean unrollLoops) {
+    public Defns propagateConstants(int maxArgReplacement, boolean unrollLoops) {
     	//TODO
     	if (formals.length == 0) {
     	//	System.out.println("Block " + id + " has no vars");
-    		return;
+    		return null;
     	}
     	if (version > 3) {
     		System.out.println("Block " + id + " is version " + version);
     		
-			return;
+			return null;
 	
     	}
-    	//System.out.println("reached Block buildLattice of block " + id);
+    	//System.out.println("reached Block propagateConstants of block " + id);
    
     	Atom knownArgs[][] = new Atom[formals.length][maxArgReplacement];
     	
@@ -443,7 +443,7 @@ public class Block extends Defn {
         		}
     		}
     	}
-    		
+Defns Created = null;
 		//System.out.println(id + "Found constants");
 		int newVersion = version+1;
 		for (int j = 0; j < formals.length; ++j )
@@ -479,19 +479,20 @@ public class Block extends Defn {
 					    		nfs[i] = formals[i];
 					    		
 					    }
-					   // Code bind = new Bind(formals[j], new Return(knownArgs[j][k]), code);
-					    //b.code = bind;
+					//  Code bind = new Bind(formals[j], new Return(knownArgs[j][k]), code);
+					 //   b.code = bind;
 						b.code = code.copy();
 					    b.formals = nfs;
 					    b.replacedVar = knownArgs[j][k];				    
 					    b.code.replaceCalls(id, j, formals[j], b);
 					    b.code = b.code.apply(new AtomSubst(formals[j], knownArgs[j][k], null));
+					    b.display();
 					    children = new Blocks(b, children);
 					    
 						//defns.
 						System.out.println("Created Block " + b.id + "from block " + id);
-						count++;
 						//b.display();
+						 Created = new Defns(b, Created);
 					}
 				    //new BlockCall(b);
 				    //BlockCalls foo = 
@@ -503,7 +504,7 @@ public class Block extends Defn {
 		        		{
 		        			//TODO is it necessary to update call(er/ee)s
 		        			//b.
-		        			count++;
+		        			//count++;
 		        		}
 		        		//BlockCalls x_calls = x.code.getBlockCall(id);
 		        		//if (x_calls.)
@@ -519,8 +520,10 @@ public class Block extends Defn {
 		//for (Vars v = x.getLiveVars(); v != null; v = v.next)
 		//	System.out.println("Live + " + v.head.toString());
 	
-
+		return Created;
     }
+  
+   
     private  Atom [] checkArguments() {
     	Atom [] arguments = new Atom[formals.length];
      	for (int i = 0; i < formals.length; ++i)

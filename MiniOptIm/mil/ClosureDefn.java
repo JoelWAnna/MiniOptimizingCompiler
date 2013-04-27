@@ -51,9 +51,10 @@ public class ClosureDefn extends Defn {
       }
     
     @Override
-    public void buildLattice(int maxArgReplacement, boolean unrollLoops) {
+    public Defns propagateConstants(int maxArgReplacement, boolean unrollLoops) {
 		// TODO: Implement this, only sibling class that it is implemented is Block.java
-    	System.out.println("reached ClosureDefn buildLattice of block" + id);
+    	System.out.println("reached ClosureDefn propagateConstants of block" + id);
+    	return null;
     }
    
     /** Compute a Tail that gives the result of entering this closure given the
