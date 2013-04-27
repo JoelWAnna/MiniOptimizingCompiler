@@ -347,8 +347,10 @@ public class Block extends Defn {
           }
     
     @Override
-    public Defns propagateConstants(int maxArgReplacement, boolean unrollLoops) {
-    	//TODO
+    public Defns propagateConstants(int maxArgReplacement) {
+
+    	Defns Created = null;
+    	// TODO
     	if (formals.length == 0) {
     	//	System.out.println("Block " + id + " has no vars");
     		return null;
@@ -359,7 +361,7 @@ public class Block extends Defn {
 			return null;
 	
     	}
-    	//System.out.println("reached Block propagateConstants of block " + id);
+    	//debug.Log.println("reached Block propagateConstants of block " + id);
    
     	Atom knownArgs[][] = new Atom[formals.length][maxArgReplacement];
     	
@@ -386,7 +388,7 @@ public class Block extends Defn {
         						
         					{
         						// TODO: is it ever valid to not replace it with NAC?
-        						if (!unrollLoops && reEntryFormals[j] ==  Atom.CAtom.NAC)
+        						if (reEntryFormals[j] ==  Atom.CAtom.NAC)
         							knownArgs[j][0] =  Atom.CAtom.NAC;
         						if ((reEntryFormals[j].isConst() != null))
         						{
@@ -443,8 +445,7 @@ public class Block extends Defn {
         		}
     		}
     	}
-Defns Created = null;
-		//System.out.println(id + "Found constants");
+
 		int newVersion = version+1;
 		for (int j = 0; j < formals.length; ++j )
 		{
@@ -479,47 +480,42 @@ Defns Created = null;
 					    		nfs[i] = formals[i];
 					    		
 					    }
-					//  Code bind = new Bind(formals[j], new Return(knownArgs[j][k]), code);
-					 //   b.code = bind;
+					    //
+					    //	TODO: version 'A' create a new Bind for the arg
+					    //  Code bind = new Bind(formals[j], new Return(knownArgs[j][k]), code);
+					    //   b.code = bind;
+					    //
+					    // TODO: version 'B' 
+					    // Current method, copy the entire block, and apply AtomSubst
 						b.code = code.copy();
+						//
 					    b.formals = nfs;
 					    b.replacedVar = knownArgs[j][k];				    
 					    b.code.replaceCalls(id, j, formals[j], b);
+					    // The following line is part of version 'B'
+					    // which should? be removed if version 'A' can be fixed 
 					    b.code = b.code.apply(new AtomSubst(formals[j], knownArgs[j][k], null));
+					    
 					    b.display();
 					    children = new Blocks(b, children);
-					    
-						//defns.
-						System.out.println("Created Block " + b.id + "from block " + id);
+
+						debug.Log.println("Created Block " + b.id + " from block " + id);
 						//b.display();
 						 Created = new Defns(b, Created);
 					}
-				    //new BlockCall(b);
-				    //BlockCalls foo = 
 	
-		        	for(Defns xs1= this.getCallers(); xs1 != null; xs1 = xs1.next)
+		        	for(Defns callersIter= this.getCallers(); callersIter != null; callersIter = callersIter.next)
 		        	{
-		        		Block x1 = (Block) xs1.head;
-		        		if (x1.code.replaceCalls(id, j, knownArgs[j][k], b))
+		        		Block caller = (Block) callersIter.head;
+		        		if (caller.code.replaceCalls(id, j, knownArgs[j][k], b))
 		        		{
-		        			//TODO is it necessary to update call(er/ee)s
-		        			//b.
-		        			//count++;
+		        			// TODO: do anything here?
 		        		}
-		        		//BlockCalls x_calls = x.code.getBlockCall(id);
-		        		//if (x_calls.)
 		        	}
-	
-		    		
-					//System.out.println(lattice[j][k].toString());
 				}
-				//else
 			}
 		}
-		//x.displayDefn();
-		//for (Vars v = x.getLiveVars(); v != null; v = v.next)
-		//	System.out.println("Live + " + v.head.toString());
-	
+
 		return Created;
     }
   
@@ -528,6 +524,8 @@ Defns Created = null;
     	Atom [] arguments = new Atom[formals.length];
      	for (int i = 0; i < formals.length; ++i)
      		arguments[i] = formals[i];
+   
+     	// Check for recursive calls with the same args as formals
      	BlockCalls bc = code.getBlockCall(id);
      	while (bc != null) {
          	for (int i = 0; i < arguments.length; ++i)
@@ -545,32 +543,30 @@ Defns Created = null;
          	}
          	bc = bc.next;
      	}
+     	
      	arguments = code.checkformals(arguments);
-    	for (int i = 0; i < formals.length; ++i)
-    	{
-    		if (arguments[i] == null) break;
-    		if (arguments[i] != Atom.CAtom.NAC) {
-    			if (arguments[i].isConst() != null &&  !arguments[i].sameAtom(formals[i])) {
-    				arguments[i] = Atom.CAtom.NAC;
-    			}
-    			//if (formals2[i].isVar) {
-    			//	System.out.println(formals2[i].isConst());
-    			//}
-    			//else {
-    				
-    			//	formals2[i] = Var.empty.EMPTY;
-    			//	System.out.println("Argument " + i + " is not a constant, ignoring");
-    			//}
-    		}
-    		else {
-    			// TODO
-    			System.out.println("Argument " + i + " is modified");
-    			
-    		}
-    	}
-    	return arguments;
-
-		
+	    for (int i = 0; i < formals.length; ++i)
+	    {
+	    	if (arguments[i] == null) break;
+	    	if (arguments[i] != Atom.CAtom.NAC) {
+	    		if (arguments[i].isConst() != null &&  !arguments[i].sameAtom(formals[i])) {
+	    			arguments[i] = Atom.CAtom.NAC;
+	    		}
+	    		//if (formals2[i].isVar) {
+	    		//	System.out.println(formals2[i].isConst());
+	    		//}
+	    		//else {
+	    			
+	    		//	formals2[i] = Var.empty.EMPTY;
+	    		//	  debug.Log.println("Argument " + i + " is not a constant, ignoring");
+	    		//}
+	    	}
+	    else {
+	    		//  debug.Log.println("Argument " + i + " is modified");    			
+	    	}
+	    }
+     	
+    	return arguments;		
 	}
 
 	/** Test to determine whether there is a way to short out a Match

@@ -1,0 +1,28 @@
+void mini_main() {
+  int   N = 10;
+  fib(N);
+  fib(2*N);
+  fib(4*N);
+  fib(8*N);
+  fib(16*N);
+  }
+  
+ void fib(int N) {
+  int[] a = new int[N];
+
+  // Compute some fibonnacci numbers:
+  a[0] = 0;
+  a[1] = 1;
+  int   i = 2;
+  while (i<N) {
+    a[i] = a[i-1] + a[i-2];
+    i = i + 1;
+  }
+
+  // Print them out:
+  i = 0;
+  while (i<N) {
+    print a[i];
+    i = i + 1;
+  }
+}

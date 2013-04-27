@@ -63,7 +63,7 @@ public class TopLevel extends Defn {
         // TODO: Do something here ... ?
       }
     @Override
-    public Defns propagateConstants(int maxArgReplacement, boolean unrollLoops) {
+    public Defns propagateConstants(int maxArgReplacement) {
 		// TODO: Implement this, only sibling class that it is implemented is Block.java
     	System.out.println("reached TopLevel propagateConstants of block" + id);
     	return null;

@@ -84,6 +84,7 @@ public class MILProgram {
         }
     }
     public static int count = 0;
+    public static int count_g = 0;
     public static void report(String msg) {
         System.out.println(msg);
         count++;
@@ -92,18 +93,21 @@ public class MILProgram {
         shake();
         cfunSimplify();
     
-        count = 1;
-        int lastcount = 0;
-        int bothcounts = 1;
-        for (int j=0; j<20 /*&& bothcounts > 0*/; j++) {
-	        //count = 1;
-	        for (int i=0; i<20 && count>0; i++) {
+        int lastcount;
+        
+        int outerIterator = 1;        
+        do {
+            count = 0;
+            count_g = 0;
+	        int i=1;
+	        do {
 	          debug.Log.println("-------------------------");
 	    //!System.out.println("==================================================");
 	    //!System.out.println("Step " + i);
 	    //!System.out.println("==================================================");
 	    //!display();
 	    //!System.out.println("==================================================");
+		      lastcount = count;
 	          count = 0;
 	          inlining();
 	          debug.Log.println("Inlining pass finished, running shake.");
@@ -113,23 +117,27 @@ public class MILProgram {
 	          debug.Log.println("Flow pass finished, running shake.");
 	          shake();
 	          debug.Log.println("Steps performed = " + count);
-	          lastcount = count;
-	          }
+	          ++i;
+	        } while (i < 20 && count>0);
 	        //break;
-	        bothcounts = lastcount;
-	        count = 1;
-	        for (int k=0; k<20; /*&& count>0;*/ k++) {
-	        	count = 0;
-	        	GlobalConstantPropagation();
-		        debug.Log.println("SpecializeFuncts pass finished, running shake.");
-	        	shake();
-	            debug.Log.println("Steps performed = " + count);
-	        	//display();
-	        	lastcount = count;
-	        }
-	        bothcounts += lastcount;
 	        count = lastcount;
-        }
+	        int j=0;
+	        do {
+	        	lastcount = count_g;
+	        	count_g = 0;
+	        	GlobalConstantPropagation();
+		        debug.Log.println("GlobalConstantPropagation pass finished, running shake.");
+	        	shake();
+	            debug.Log.println("Steps performed = " + count_g);
+	        	//display();
+	            ++j;
+	        } while (j<20 && count_g>0);
+	        count_g = lastcount;
+	        ++outerIterator;
+        } while (outerIterator < 20 && count+count_g>0);
+
+        debug.Log.println("Loops performed = " + outerIterator);
+        
     }
 
     void cfunSimplify() {
@@ -230,9 +238,8 @@ public class MILProgram {
 	          	// TODO
 	        	// Args: 3 for max number of different known specializations for a particular arg
 	        	//			for the case of arrs.mini, it does not seem to make a difference
-	        	//		false because if this parameter is true it introduces a bug
 	       	
-	            Defns addedDefns = ds.head.propagateConstants(1, false);
+	            Defns addedDefns = ds.head.propagateConstants(20);
 	            
 	            for (;addedDefns != null; addedDefns = addedDefns.next)
 	            {

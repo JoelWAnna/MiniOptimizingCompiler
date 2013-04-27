@@ -206,5 +206,5 @@ public abstract class Defn {
         /* do nothing */
     }
 
-	public abstract Defns propagateConstants(int maxArgReplacement, boolean unrollLoops);
+	public abstract Defns propagateConstants(int maxArgReplacement);
 }
