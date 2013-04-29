@@ -1,517 +1,577 @@
-    /** Run a Global Contant Propagation pass over this program.  Assumes a previous call
-     *  to shake() to compute call graph information.
-     *  For each Defn  
-     */
+/**
+    The first step in the global constant propagation algorithm is to add a function to the MilProgram
+    class to call the function in each of the Defns. To do this, I modified the original optimize method
+    in MilProgram, first changing the local optimization loop into a do while loop, which keeps the
+    original intent, but allowed me to nest it inside another loop more easily. I created a global optimization
+    loop in the same fashion, and placed both of them inside an outer loop which runs at most 20 times, with
+    each pass running up to 20 times of the local and global optimization loops. This may be more than enough,
+    as the loop ends when both the local and global loops fail to perform any modifications.
+**/
+public class MILProgram ! {public static int count_g = 0;}
+
+    public void optimize()
+    case MILProgram !  {
+        shake();
+        cfunSimplify();
+    
+        int lastcount;
+        
+        int outerIterator = 1;        
+        do {
+            count = 0;
+            count_g = 0;
+            int i=1;
+            do {
+              debug.Log.println("-------------------------");
+        //!System.out.println("==================================================");
+        //!System.out.println("Step " + i);
+        //!System.out.println("==================================================");
+        //!display();
+        //!System.out.println("==================================================");
+              lastcount = count;
+              count = 0;
+              inlining();
+              debug.Log.println("Inlining pass finished, running shake.");
+              shake();
+              liftAllocators();  // TODO: Is this the right position for liftAllocators?
+              flow();
+              debug.Log.println("Flow pass finished, running shake.");
+              shake();
+              debug.Log.println("Steps performed = " + count);
+              ++i;
+            } while (i < 20 && count>0);
+            //break;
+            count = lastcount;
+            int j=0;
+            do {
+                lastcount = count_g;
+                count_g = 0;
+                GlobalConstantPropagation();
+                debug.Log.println("GlobalConstantPropagation pass finished, running shake.");
+                shake();
+                debug.Log.println("Steps performed = " + count_g);
+                //display();
+                ++j;
+            } while (j<20 && count_g>0);
+               count_g = lastcount;
+            ++outerIterator;
+        } while (outerIterator < 20 && count+count_g>0);
+
+        debug.Log.println("Loops performed = " + outerIterator);
+        
+    }
+/*****************************************************************************************************/
+/*****************************************************************************************************/
+/**
+    The method GlobalConstantPropagation is called by the global optimization loop, and calls propagate 
+    constants on each of the Defns in the programs. The method was created in a similar manner as liftAllocators
+    and the other local optimization loops.
+**/
+
+/** Run a Global Contant Propagation pass over this program.  Assumes a previous call
+ *  to shake() to compute call graph information.
+ *  For each Defn call propagateConstants with the argument 3 for max number of different known specializations
+
+    If a function is called with y different constants
+    and y is less than the max, then there will be y different
+    locks with each constant brought into the block 
+
+ */
 public void GlobalConstantPropagation() {
 case MILProgram {
-          for (Defns ds=sccs.head.getBindings(); ds!=null; ds=ds.next) {
-          	// TODO
-        	// Args: 3 for max number of different known specializations for a particular arg
-        	//			for the case of arrs.mini, it does not seem to make a difference
-        	//		false because if this parameter is true it introduces a bug
-       	
-            ds.head.propagateConstants(1, false);
+        for (DefnSCCs dsccs = sccs; dsccs!=null; dsccs=dsccs.next) {
+            for (Defns ds=dsccs.head.getBindings(); ds!=null; ds=ds.next) {
+                Defns addedDefns = ds.head.propagateConstants(3);
 
-          }
+                for (;addedDefns != null; addedDefns = addedDefns.next) {
+                    addEntry(addedDefns.head);
+                    count++;
+                }
+
+              }
+        }
       }
+/*****************************************************************************************************/
+/*****************************************************************************************************/
 
-	  public void optimize()
-	  case MILProgram ! {
-		shake();
-         cfunSimplify();
+/**
+    In order to look at all of the arguments used to call a block, it was necessary to add a method to
+    return a list of BlockCalls. To accomodate this I added a helper method to BlockCall to compare a 
+    passed in id with the Block field in the BlockCall object.
+**/
+    macro List(BlockCall) // Introduces class BlockCalls
+
+    boolean callsBlock(String id)
+    case BlockCall {
+        if (b == null) return false;
+        return b.getId().equalsIgnoreCase(id);
+    }
+
+    /** getBlockCall 
+     *  @param id The id of the Block which you want block calls to.
+     *    @return a list of BlockCall objects which call id
+     *
+     *  If the tail of this object is a Block call, compare if it calls the passed in id
+     *  calls getBlockCall on the following code c.
+        if the tail calls block id, cons the tail to the list returned from c.getBlockCall
      
-         count = 1;
-
-        int lastcount = 0;
-        int bothcounts = 1;
-        for (int j=0; j<20 && bothcounts > 0; j++) {
-	        //count = 1;
-	        for (int i=0; i<20 && count>0; i++) {
-	          debug.Log.println("-------------------------");
-	    //!System.out.println("==================================================");
-	    //!System.out.println("Step " + i);
-	    //!System.out.println("==================================================");
-	    //!display();
-	    //!System.out.println("==================================================");
-	          count = 0;
-	          inlining();
-	          debug.Log.println("Inlining pass finished, running shake.");
-	          shake();
-	          liftAllocators();  // TODO: Is this the right position for liftAllocators?
-	          flow();
-	          debug.Log.println("Flow pass finished, running shake.");
-	          shake();
-	          debug.Log.println("Steps performed = " + count);
-	          lastcount = count;
-	          }
-	        //break;
-	        bothcounts = lastcount;
-	        count = 1;
-	        for (int k=0; k<20 && count>0; k++) {
-	        	count = 0;
-	        	GlobalConstantPropagation();
-		        debug.Log.println("GlobalConstantPropagation pass finished, running shake.");
-	        	shake();
-	            debug.Log.println("Steps performed = " + count);
-	        	//display();
-	        	lastcount = count;
-	        }
-	        bothcounts += lastcount;
-	        count = lastcount;
-         }
+     */
+    public BlockCalls getBlockCall(String id) !
+    case Code {return null;}
+    case Bind {
+        BlockCall thisCall = null;
+        BlockCall bc = t.isBlockCall();
+        if (bc instanceof BlockCall)
+        {
+            if (bc.callsBlock(id)) {
+                thisCall = bc;
+            }
+        }
+        BlockCalls calls = c.getBlockCall(id);
+        if (thisCall != null)
+            calls = new BlockCalls(thisCall, calls);
+        
+        return calls;
     }
-	public abstract class Defn {
-		// A block: b(formals) = code ----------------------------------
-		public case Block(private Code code) {
-			/*private static int count = 0;
-			private final String id = "b" + count++;
-			private Var[] formals; // filled in after construction by analysis
-			setter formals;*/
-			private Blocks children;
-			private Atom replacedVar;
-			private Blocks derived;
-			private int version;
-		}
-
-    public Defns propagateConstants(int maxArgReplacement, boolean unrollLoops)
-	case Defn abstract;
-	case ClosureDefn {
-		// TODO: Implement this, only sibling class that it is implemented is Block.java
-    	System.out.println("reached ClosureDefn propagateConstants of block" + id);
-		return null;
+    case Done {
+        BlockCall thisCall = null;
+        BlockCall bc = t.isBlockCall();
+        if (bc != null)
+        {
+            if (bc.callsBlock(id)) {
+                thisCall = bc;
+            }
+        }
+        BlockCalls calls = null;
+        if (thisCall != null)
+            calls = new BlockCalls(thisCall, calls);
+        
+        return calls;
     }
-	case TopLevel {
-		// TODO: Implement this, only sibling class that it is implemented is Block.java
-    	System.out.println("reached TopLevel propagateConstants of block" + id);
-		return null;
+    case TAlt { 
+        if (bc != null && bc.callsBlock(id))
+            return bc;
+        return null;
     }
-	
-    case Block
-    	//TODO
-    	if (formals.length == 0) {
-    	//	System.out.println("Block " + id + " has no vars");
-    		return;
-    	}
-    	if (version > 3) {
-    		System.out.println("Block " + id + " is version " + version);
-    		
-			return;
-	
-    	}
-    	//System.out.println("reached Block propagateConstants of block " + id);
-   
-    	Atom knownArgs[][] = new Atom[formals.length][maxArgReplacement];
-    	
-    	
-    	for(Defns xs= this.getCallers(); xs != null; xs = xs.next)
-    	{
-    		Block x = (Block) xs.head;
-
-    		BlockCalls x_calls = x.code.getBlockCall(id);
-    		if (x_calls != null)
-    		{
-    			BlockCalls current_call = x_calls;
-    			
-    			while (current_call != null) {
-    				
-    				// Check for calls from the current block
-    				if (x.getId().equalsIgnoreCase(id))
-    				{
-    					//x_calls.head.args;
-        				Atom reEntryFormals[] = checkArguments();
-        				for (int j = 0; j < formals.length; ++j )
-        				{
-        					if (knownArgs[j][0] != Atom.CAtom.NAC)
-        						
-        					{
-        						// TODO: is it ever valid to not replace it with NAC?
-        						if (!unrollLoops && reEntryFormals[j] ==  Atom.CAtom.NAC)
-        							knownArgs[j][0] =  Atom.CAtom.NAC;
-        						if ((reEntryFormals[j].isConst() != null))
-        						{
-        							int k;
-        						
-	        						for (k = 0; k < maxArgReplacement; ++k)
-	        						{
-	        							if (knownArgs[j][k] == null) {
-	        								knownArgs[j][k] = reEntryFormals[j];
-	        								break;
-	        							}
-	        							if (reEntryFormals[j].sameAtom(knownArgs[j][k])) {
-	        								break;
-	        							}
-	        						}
-	        						if (k == maxArgReplacement) {
-	        							knownArgs[j][0] = Atom.CAtom.NAC;
-	        						}
-        						}
-        					}
-        				}
-        			
-    					//x_calls.head.display();
-        				
-        			//	System.out.println("Block " + id + " called from itself");
-        			
-        			//Atom a[] modifies;
-        			
-        			}
-    				else {
-    					Atom formals2[] =  current_call.head.args;
-    					for (int j = 0; j < formals.length; ++j )
-        				{
-        					if (knownArgs[j][0] !=  Atom.CAtom.NAC && (formals2[j].isConst() != null))
-        					{
-        						int k;
-        						for (k = 0; k < maxArgReplacement; ++k)
-        						{
-        							if (knownArgs[j][k] == null) {
-        								knownArgs[j][k] =  formals2[j];
-        								break;
-        							}
-        							if (formals2[j].sameAtom(knownArgs[j][k])) {
-        								break;
-        							}
-        						}
-        						if (k == maxArgReplacement) {
-        							knownArgs[j][0] =  Atom.CAtom.NAC;
-        						}
-        					}
-        				}
-    				}
-    				current_call = current_call.next;
-        		}
-    		}
-    	}
-    		
-		//System.out.println(id + "Found constants");
-		int newVersion = version+1;
-		for (int j = 0; j < formals.length; ++j )
-		{
-			if (knownArgs[j][0] == Atom.CAtom.NAC || knownArgs[j][0] == Atom.CAtom.UNDEF) {
-				//System.out.println("Arg " + j + " is " + knownArgs[j][0].toString());
-				continue;
-			}
-			for ( int k = 0; k < maxArgReplacement; ++k) {
-				if (knownArgs[j][k] != null) {
-					Block b = null;
-					Blocks currentChild = this.children;
-					while (currentChild != null) {
-						if (currentChild.head.replacedVar.sameAtom(knownArgs[j][k]))
-						{
-							b = currentChild.head;
-							break;
-						}
-						currentChild = currentChild.next;
-					}
-					if (b == null ) {
-						b = new Block();
-						b.version = newVersion++;
-					    derived   = new Blocks(b, derived);
-					    int l = formals.length -1;
-					    Var[] nfs = new Var[l];
-					    for (int i = 0; i < l; ++i) {
-					    	if (i >= j)
-					    	{
-					    		nfs[i] = formals[i+1];
-					    	}
-					    	else
-					    		nfs[i] = formals[i];
-					    		
-					    }
-					   // Code bind = new Bind(formals[j], new Return(knownArgs[j][k]), code);
-					    //b.code = bind;
-						b.code = code.copy();
-					    b.formals = nfs;
-					    b.replacedVar = knownArgs[j][k];				    
-					    b.code.replaceCalls(id, j, formals[j], b);
-					    b.code = b.code.apply(new AtomSubst(formals[j], knownArgs[j][k], null));
-					    children = new Blocks(b, children);
-					    
-						//defns.
-						System.out.println("Created Block " + b.id + "from block " + id);
-						count++;
-						//b.display();
-					}
-				    //new BlockCall(b);
-				    //BlockCalls foo = 
-	
-		        	for(Defns xs1= this.getCallers(); xs1 != null; xs1 = xs1.next)
-		        	{
-		        		Block x1 = (Block) xs1.head;
-		        		if (x1.code.replaceCalls(id, j, knownArgs[j][k], b))
-		        		{
-		        			//TODO is it necessary to update call(er/ee)s
-		        			//b.
-		        			count++;
-		        		}
-		        		//BlockCalls x_calls = x.code.getBlockCall(id);
-		        		//if (x_calls.)
-		        	}
-	
-		    		
-					//System.out.println(lattice[j][k].toString());
-				}
-				//else
-			}
-		}
-		//x.displayDefn();
-		//for (Vars v = x.getLiveVars(); v != null; v = v.next)
-		//	System.out.println("Live + " + v.head.toString());
-	
-
-    }
-    private  Atom [] checkArguments() {
-    	Atom [] arguments = new Atom[formals.length];
-     	for (int i = 0; i < formals.length; ++i)
-     		arguments[i] = formals[i];
-     	BlockCalls bc = code.getBlockCall(id);
-     	while (bc != null) {
-         	for (int i = 0; i < arguments.length; ++i)
-         	{
-         		Atom a = bc.head.args[i];
-         		if (!arguments[i].sameAtom(a)) {
-         			if (a.isConst() != null) {
-         				arguments[i] = a;
-         			}
-         			else {
-         				arguments[i] = Atom.CAtom.NAC;
-         			}
-	
-         		}
-         	}
-         	bc = bc.next;
-     	}
-     	arguments = code.checkformals(arguments);
-    	for (int i = 0; i < formals.length; ++i)
-    	{
-    		if (arguments[i] == null) break;
-    		if (arguments[i] != Atom.CAtom.NAC) {
-    			if (arguments[i].isConst() != null &&  !arguments[i].sameAtom(formals[i])) {
-    				arguments[i] = Atom.CAtom.NAC;
-    			}
-    			//if (formals2[i].isVar) {
-    			//	System.out.println(formals2[i].isConst());
-    			//}
-    			//else {
-    				
-    			//	formals2[i] = Var.empty.EMPTY;
-    			//	System.out.println("Argument " + i + " is not a constant, ignoring");
-    			//}
-    		}
-    		else {
-    			// TODO
-    			System.out.println("Argument " + i + " is modified");
-    			
-    		}
-    	}
-    	return arguments;
-
-		
-	}
-    public void replaceBc(BlockCall bc)
-	case TAlt { this.bc = bc; }
-
-boolean callsBlock(String id)
-case BlockCall
-    {
-    	if (b == null) return false;
-    	return b.getId().equalsIgnoreCase(id);
-    }
-
-	macro List(BlockCall) // Introduces class BlockCalls
-
-	public abstract class Atom
-	public case static class CAtom(private final String identifier) {
-			public static final CAtom NAC = new CAtom("Not a constant");
-			public static final CAtom UNDEF = new CAtom("undefined");
-	}
-//	@Override
-	public String toString() !
-	case CAtom	{ return identifier; }
-//	@Override
-	public Val lookup(ValEnv env) throws Fail !
-		case CAtom	{ throw new Fail("lookup called on " + identifier); }
-
-	@Override
-	public BlockCalls getBlockCall(String id) !
-	case Code {return null;}
-	case Bind {
-		BlockCall thisCall = null;
-		BlockCall bc = t.isBlockCall();
-		if (bc instanceof BlockCall)
-		{
-			// TODO is this ever needed
-			if (bc.callsBlock(id)) {
-				thisCall = bc;
-			}
-		}
-		BlockCalls calls = c.getBlockCall(id);
-		if (thisCall != null)
-			calls = new BlockCalls(thisCall, calls);
-		
-		return calls;
-	}
-	case Done {
-		BlockCall thisCall = null;
-		BlockCall bc = t.isBlockCall();
-		if (bc != null)
-		{
-			// TODO is this ever needed
-			if (bc.callsBlock(id)) {
-				thisCall = bc;
-			}
-		}
-		BlockCalls calls = null;
-		if (thisCall != null)
-			calls = new BlockCalls(thisCall, calls);
-		
-		return calls;
-	}
-	case TAlt { 
-		if (bc != null && bc.callsBlock(id))
-    		return bc;
-    	return null;
-    }
-
-
-	public Atom[] checkformals(Atom[] atoms)
-	case Code { return atoms; }
-	case Bind { for(int i = 0; i < atoms.length; ++i) {
-			if (v.sameAtom(atoms[i])) {
-				atoms[i] = Atom.CAtom.NAC;
-			}
-		}
-		return c.checkformals(atoms);
-		
-	}
-	case Match {
-		BlockCalls block_calls = null;
-		if (def!=null) {
-			if (def.callsBlock(id)) {
-				block_calls = new BlockCalls(def, block_calls);
-            //	Atom args[] = def.args;
-            //	for(Atom a : args)
-    		//		System.out.println(a.toString());
-			}
-		}
+    case Match {
+        BlockCalls block_calls = null;
+        if (def!=null) {
+            if (def.callsBlock(id)) {
+                block_calls = new BlockCalls(def, block_calls);
+            }
+        }
 
         for (int i=0; i<alts.length; i++) {
             BlockCall alt_blockCall = alts[i].getBlockCall(id);
             if (alt_blockCall != null && alt_blockCall.callsBlock(id))
             {
-				block_calls = new BlockCalls(alt_blockCall, block_calls);
+                block_calls = new BlockCalls(alt_blockCall, block_calls);
             }
           }
-		return block_calls;
-	}
+        return block_calls;
+    }
 
-	boolean replaceCalls(String id, int j, Atom replaced, Block b)
-	case Code { return false; }
-	case Bind {
-		Boolean success = false;
-		BlockCall thisCall = null;
-		BlockCall bc = t.isBlockCall();
-		if (bc != null)
-		{
-			// TODO is this ever needed
-			if (bc.callsBlock(id)) {
-				thisCall = bc;
-				if (thisCall.args[j].sameAtom(replaced)) {
-					
-					BlockCall temp = new BlockCall(b);
-					int l = bc.args.length-1;
-					temp.args = new Atom[l];
-				    for (int i = 0; i < l; ++i) {
-				    	if (i >= j)
-				    	{
-				    		temp.args[i] = bc.args[i+1];
-				    	}
-				    	else
-				    		temp.args[i] = bc.args[i];
-				    }
-				    t = temp;
-				    success = true;
-				}
-			}
-			
-		}
-		
-		return c.replaceCalls(id, j, replaced, b) || success;
-	}
-	case Done {
-		BlockCall thisCall = null;
-		BlockCall bc = t.isBlockCall();
-		if (bc != null)
-		{
-			if (bc.callsBlock(id)) {
-				thisCall = bc;
-				if (thisCall.args[j].sameAtom(replaced)) {
-					
-					BlockCall temp = new BlockCall(b);
-					int l = bc.args.length-1;
-					temp.args = new Atom[l];
-				    for (int i = 0; i < l; ++i) {
-				    	if (i >= j)
-				    	{
-				    		temp.args[i] = bc.args[i+1];
-				    	}
-				    	else
-				    		temp.args[i] = bc.args[i];
-				    }
-				    t = temp;
-				    return true;
-				}
-			}
-		}
-		return false;
-	}
-	case Match {
-		boolean success = false;
-		if (def!=null) {
-		// Determine if the default case is a call to block id
-			if (def.callsBlock(id)) {
+/*****************************************************************************************************/
+/*****************************************************************************************************/
+/**
+	When constructing the lattice for each argument to a block call, it is necessary to have two predefined
+	values, for the top and bottom of the lattice. New Atom children classes NAC & UNDEF were added to identify
+	if an argument is Not A Constant (NAC) or no information is known about the argument UNDEF.
+**/
+    public abstract class Atom
+    public case static class CAtom(private final String identifier) {
+            public static final CAtom NAC = new CAtom("Not a constant");
+            public static final CAtom UNDEF = new CAtom("undefined");
+    }
+//    @Override
+    public String toString() !
+    case CAtom    { return identifier; }
+//    @Override
+    public Val lookup(ValEnv env) throws Fail !
+        case CAtom    { throw new Fail("lookup called on " + identifier); }
 
-				// Compare to either see if the call to block id can be replaced with a call to block b
-				if (def.args[j].sameAtom(replaced)) {
-					
-					BlockCall temp = new BlockCall(b);
-					int l = def.args.length-1;
-					temp.args = new Atom[l];
-				    for (int i = 0; i < l; ++i) {
-				    	if (i >= j)
-				    	{
-				    		temp.args[i] = def.args[i+1];
-				    	}
-				    	else
-				    		temp.args[i] = def.args[i];
-				    }
-				    def = temp;
-				    success = true;
-				}
-			}
+/*****************************************************************************************************/
+/*****************************************************************************************************/
+/**
+	If a block calls itself, 
+**/   public Atom[] checkformals(Atom[] atoms)
+    case Code { return atoms; }
+    case Bind { for(int i = 0; i < atoms.length; ++i) {
+            if (v.sameAtom(atoms[i])) {
+                atoms[i] = Atom.CAtom.NAC;
+            }
+        }
+        return c.checkformals(atoms);
+        
+    }
+    public abstract class Defn {
+        // A block: b(formals) = code ----------------------------------
+        public case Block(private Code code) {
+            /*private static int count = 0;
+            private final String id = "b" + count++;
+            private Var[] formals; // filled in after construction by analysis
+            setter formals;*/
+            private Blocks children;
+            private Atom replacedVar;
+            private Blocks derived;
+            private int version;
+        }
 
-		}
+    public Defns propagateConstants(int maxArgReplacement, boolean unrollLoops)
+    case Defn abstract;
+    case ClosureDefn {
+        // TODO: Implement this, only sibling class that it is implemented is Block.java
+        System.out.println("reached ClosureDefn propagateConstants of block" + id);
+        return null;
+    }
+    case TopLevel {
+        // TODO: Implement this, only sibling class that it is implemented is Block.java
+        System.out.println("reached TopLevel propagateConstants of block" + id);
+        return null;
+    }
+    
+    case Block
+        //TODO
+        if (formals.length == 0) {
+        //    System.out.println("Block " + id + " has no vars");
+            return;
+        }
+        if (version > 3) {
+            System.out.println("Block " + id + " is version " + version);
+            
+            return;
+    
+        }
+        //System.out.println("reached Block propagateConstants of block " + id);
+   
+        Atom knownArgs[][] = new Atom[formals.length][maxArgReplacement];
+        
+        
+        for(Defns xs= this.getCallers(); xs != null; xs = xs.next)
+        {
+            Block x = (Block) xs.head;
+
+            BlockCalls x_calls = x.code.getBlockCall(id);
+            if (x_calls != null)
+            {
+                BlockCalls current_call = x_calls;
+                
+                while (current_call != null) {
+                    
+                    // Check for calls from the current block
+                    if (x.getId().equalsIgnoreCase(id))
+                    {
+                        //x_calls.head.args;
+                        Atom reEntryFormals[] = checkArguments();
+                        for (int j = 0; j < formals.length; ++j )
+                        {
+                            if (knownArgs[j][0] != Atom.CAtom.NAC)
+                                
+                            {
+                                // TODO: is it ever valid to not replace it with NAC?
+                                if (!unrollLoops && reEntryFormals[j] ==  Atom.CAtom.NAC)
+                                    knownArgs[j][0] =  Atom.CAtom.NAC;
+                                if ((reEntryFormals[j].isConst() != null))
+                                {
+                                    int k;
+                                
+                                    for (k = 0; k < maxArgReplacement; ++k)
+                                    {
+                                        if (knownArgs[j][k] == null) {
+                                            knownArgs[j][k] = reEntryFormals[j];
+                                            break;
+                                        }
+                                        if (reEntryFormals[j].sameAtom(knownArgs[j][k])) {
+                                            break;
+                                        }
+                                    }
+                                    if (k == maxArgReplacement) {
+                                        knownArgs[j][0] = Atom.CAtom.NAC;
+                                    }
+                                }
+                            }
+                        }
+                    
+                        //x_calls.head.display();
+                        
+                    //    System.out.println("Block " + id + " called from itself");
+                    
+                    //Atom a[] modifies;
+                    
+                    }
+                    else {
+                        Atom formals2[] =  current_call.head.args;
+                        for (int j = 0; j < formals.length; ++j )
+                        {
+                            if (knownArgs[j][0] !=  Atom.CAtom.NAC && (formals2[j].isConst() != null))
+                            {
+                                int k;
+                                for (k = 0; k < maxArgReplacement; ++k)
+                                {
+                                    if (knownArgs[j][k] == null) {
+                                        knownArgs[j][k] =  formals2[j];
+                                        break;
+                                    }
+                                    if (formals2[j].sameAtom(knownArgs[j][k])) {
+                                        break;
+                                    }
+                                }
+                                if (k == maxArgReplacement) {
+                                    knownArgs[j][0] =  Atom.CAtom.NAC;
+                                }
+                            }
+                        }
+                    }
+                    current_call = current_call.next;
+                }
+            }
+        }
+            
+        //System.out.println(id + "Found constants");
+        int newVersion = version+1;
+        for (int j = 0; j < formals.length; ++j )
+        {
+            if (knownArgs[j][0] == Atom.CAtom.NAC || knownArgs[j][0] == Atom.CAtom.UNDEF) {
+                //System.out.println("Arg " + j + " is " + knownArgs[j][0].toString());
+                continue;
+            }
+            for ( int k = 0; k < maxArgReplacement; ++k) {
+                if (knownArgs[j][k] != null) {
+                    Block b = null;
+                    Blocks currentChild = this.children;
+                    while (currentChild != null) {
+                        if (currentChild.head.replacedVar.sameAtom(knownArgs[j][k]))
+                        {
+                            b = currentChild.head;
+                            break;
+                        }
+                        currentChild = currentChild.next;
+                    }
+                    if (b == null ) {
+                        b = new Block();
+                        b.version = newVersion++;
+                        derived   = new Blocks(b, derived);
+                        int l = formals.length -1;
+                        Var[] nfs = new Var[l];
+                        for (int i = 0; i < l; ++i) {
+                            if (i >= j)
+                            {
+                                nfs[i] = formals[i+1];
+                            }
+                            else
+                                nfs[i] = formals[i];
+                                
+                        }
+                       // Code bind = new Bind(formals[j], new Return(knownArgs[j][k]), code);
+                        //b.code = bind;
+                        b.code = code.copy();
+                        b.formals = nfs;
+                        b.replacedVar = knownArgs[j][k];                    
+                        b.code.replaceCalls(id, j, formals[j], b);
+                        b.code = b.code.apply(new AtomSubst(formals[j], knownArgs[j][k], null));
+                        children = new Blocks(b, children);
+                        
+                        //defns.
+                        System.out.println("Created Block " + b.id + "from block " + id);
+                        count++;
+                        //b.display();
+                    }
+                    //new BlockCall(b);
+                    //BlockCalls foo = 
+    
+                    for(Defns xs1= this.getCallers(); xs1 != null; xs1 = xs1.next)
+                    {
+                        Block x1 = (Block) xs1.head;
+                        if (x1.code.replaceCalls(id, j, knownArgs[j][k], b))
+                        {
+                            //TODO is it necessary to update call(er/ee)s
+                            //b.
+                            count++;
+                        }
+                        //BlockCalls x_calls = x.code.getBlockCall(id);
+                        //if (x_calls.)
+                    }
+    
+                    
+                    //System.out.println(lattice[j][k].toString());
+                }
+                //else
+            }
+        }
+        //x.displayDefn();
+        //for (Vars v = x.getLiveVars(); v != null; v = v.next)
+        //    System.out.println("Live + " + v.head.toString());
+    
+
+    }
+    
+////////////////////////////////////////
+    private  Atom [] checkArguments() 
+    case Block {
+        Atom [] arguments = new Atom[formals.length];
+         for (int i = 0; i < formals.length; ++i)
+             arguments[i] = formals[i];
+         BlockCalls bc = code.getBlockCall(id);
+         while (bc != null) {
+             for (int i = 0; i < arguments.length; ++i)
+             {
+                 Atom a = bc.head.args[i];
+                 if (!arguments[i].sameAtom(a)) {
+                     if (a.isConst() != null) {
+                         arguments[i] = a;
+                     }
+                     else {
+                         arguments[i] = Atom.CAtom.NAC;
+                     }
+    
+                 }
+             }
+             bc = bc.next;
+         }
+         arguments = code.checkformals(arguments);
+        for (int i = 0; i < formals.length; ++i)
+        {
+            if (arguments[i] == null) break;
+            if (arguments[i] != Atom.CAtom.NAC) {
+                if (arguments[i].isConst() != null &&  !arguments[i].sameAtom(formals[i])) {
+                    arguments[i] = Atom.CAtom.NAC;
+                }
+                //if (formals2[i].isVar) {
+                //    System.out.println(formals2[i].isConst());
+                //}
+                //else {
+                    
+                //    formals2[i] = Var.empty.EMPTY;
+                //    System.out.println("Argument " + i + " is not a constant, ignoring");
+                //}
+            }
+            else {
+                // TODO
+                System.out.println("Argument " + i + " is modified");
+                
+            }
+        }
+        return arguments;
+
+        
+    }
+
+
+
+
+
+
+ 
+    public void replaceBc(BlockCall bc)
+    case TAlt { this.bc = bc; }
+
+    boolean replaceCalls(String id, int j, Atom replaced, Block b)
+    case Code { return false; }
+    case Bind {
+        Boolean success = false;
+        BlockCall thisCall = null;
+        BlockCall bc = t.isBlockCall();
+        if (bc != null)
+        {
+            // TODO is this ever needed
+            if (bc.callsBlock(id)) {
+                thisCall = bc;
+                if (thisCall.args[j].sameAtom(replaced)) {
+                    
+                    BlockCall temp = new BlockCall(b);
+                    int l = bc.args.length-1;
+                    temp.args = new Atom[l];
+                    for (int i = 0; i < l; ++i) {
+                        if (i >= j)
+                        {
+                            temp.args[i] = bc.args[i+1];
+                        }
+                        else
+                            temp.args[i] = bc.args[i];
+                    }
+                    t = temp;
+                    success = true;
+                }
+            }
+            
+        }
+        
+        return c.replaceCalls(id, j, replaced, b) || success;
+    }
+    case Done {
+        BlockCall thisCall = null;
+        BlockCall bc = t.isBlockCall();
+        if (bc != null)
+        {
+            if (bc.callsBlock(id)) {
+                thisCall = bc;
+                if (thisCall.args[j].sameAtom(replaced)) {
+                    
+                    BlockCall temp = new BlockCall(b);
+                    int l = bc.args.length-1;
+                    temp.args = new Atom[l];
+                    for (int i = 0; i < l; ++i) {
+                        if (i >= j)
+                        {
+                            temp.args[i] = bc.args[i+1];
+                        }
+                        else
+                            temp.args[i] = bc.args[i];
+                    }
+                    t = temp;
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+    case Match {
+        boolean success = false;
+        if (def!=null) {
+        // Determine if the default case is a call to block id
+            if (def.callsBlock(id)) {
+
+                // Compare to either see if the call to block id can be replaced with a call to block b
+                if (def.args[j].sameAtom(replaced)) {
+                    
+                    BlockCall temp = new BlockCall(b);
+                    int l = def.args.length-1;
+                    temp.args = new Atom[l];
+                    for (int i = 0; i < l; ++i) {
+                        if (i >= j)
+                        {
+                            temp.args[i] = def.args[i+1];
+                        }
+                        else
+                            temp.args[i] = def.args[i];
+                    }
+                    def = temp;
+                    success = true;
+                }
+            }
+
+        }
 
         for (int i=0; i<alts.length; i++) {
             BlockCall alt_blockCall = alts[i].getBlockCall(id);
             if (alt_blockCall != null && alt_blockCall.callsBlock(id)){
-				if (alt_blockCall.args[j].sameAtom(replaced)) {
-					
-					BlockCall temp = new BlockCall(b);
-					int l = alt_blockCall.args.length-1;
-					temp.args = new Atom[l];
-				    for (int i1 = 0; i1 < l; ++i1) {
-				    	if (i1 >= j)
-				    	{
-				    		temp.args[i1] = alt_blockCall.args[i1+1];
-				    	}
-				    	else
-				    		temp.args[i1] = alt_blockCall.args[i1];
-				    }
-				    alts[i].replaceBc(temp);
-				    success = true;
-				}
-			}
+                if (alt_blockCall.args[j].sameAtom(replaced)) {
+                    
+                    BlockCall temp = new BlockCall(b);
+                    int l = alt_blockCall.args.length-1;
+                    temp.args = new Atom[l];
+                    for (int i1 = 0; i1 < l; ++i1) {
+                        if (i1 >= j)
+                        {
+                            temp.args[i1] = alt_blockCall.args[i1+1];
+                        }
+                        else
+                            temp.args[i1] = alt_blockCall.args[i1];
+                    }
+                    alts[i].replaceBc(temp);
+                    success = true;
+                }
+            }
           }
         return success;
-	}
+    }
