@@ -324,9 +324,7 @@ public class Bind extends Code {
 	public BlockCalls getBlockCall(String id) {
 		BlockCall thisCall = null;
 		BlockCall bc = t.isBlockCall();
-		if (bc instanceof BlockCall)
-		{
-			// TODO is this ever needed
+		if (bc instanceof BlockCall) {
 			if (bc.callsBlock(id)) {
 				thisCall = bc;
 			}
@@ -343,7 +341,7 @@ public class Bind extends Code {
 		for(int i = 0; i < atoms.length; ++i) {
 			if (v.sameAtom(atoms[i])) {
 				atoms[i] = Atom.CAtom.NAC;
-			}				
+			}
 		}
 		return c.checkformals(atoms);
 		
@@ -356,7 +354,6 @@ public class Bind extends Code {
 		BlockCall bc = t.isBlockCall();
 		if (bc != null)
 		{
-//			// TODO is this ever needed
 			if (bc.callsBlock(id)) {
 				thisCall = bc;
 				if (thisCall.args[j].sameAtom(replaced)) {

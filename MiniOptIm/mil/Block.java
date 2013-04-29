@@ -348,7 +348,7 @@ public class Block extends Defn {
     
     @Override
     public Defns propagateConstants(int maxArgReplacement) {
-
+    	maxArgReplacement = 5;
     	Defns Created = null;
     	// TODO
     	if (formals.length == 0) {
@@ -364,6 +364,7 @@ public class Block extends Defn {
     	//debug.Log.println("reached Block propagateConstants of block " + id);
    
     	Atom knownArgs[][] = new Atom[formals.length][maxArgReplacement];
+		Atom reEntryFormals[] = checkArguments();
     	
     	
     	for(Defns xs= this.getCallers(); xs != null; xs = xs.next)
@@ -381,7 +382,6 @@ public class Block extends Defn {
     				if (x.getId().equalsIgnoreCase(id))
     				{
     					//x_calls.head.args;
-        				Atom reEntryFormals[] = checkArguments();
         				for (int j = 0; j < formals.length; ++j )
         				{
         					if (knownArgs[j][0] != Atom.CAtom.NAC)

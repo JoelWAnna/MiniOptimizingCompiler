@@ -238,8 +238,7 @@ public class BlockCall extends Call {
         withArgs(b.formalsToArgs());
     }
     
-    boolean callsBlock(String id)
-    {
+    boolean callsBlock(String id) {
     	if (b == null) return false;
     	return b.getId().equalsIgnoreCase(id);
     }

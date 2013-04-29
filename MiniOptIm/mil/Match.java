@@ -315,9 +315,6 @@ public class Match extends Code {
 		if (def!=null) {
 			if (def.callsBlock(id)) {
 				block_calls = new BlockCalls(def, block_calls);
-            //	Atom args[] = def.args;
-            //	for(Atom a : args)
-    		//		System.out.println(a.toString());
 			}
 		}
 
