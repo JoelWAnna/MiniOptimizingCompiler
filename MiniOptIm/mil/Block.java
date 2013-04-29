@@ -348,7 +348,6 @@ public class Block extends Defn {
     
     @Override
     public Defns propagateConstants(int maxArgReplacement) {
-    	maxArgReplacement = 5;
     	Defns Created = null;
     	// TODO
     	if (formals.length == 0) {
