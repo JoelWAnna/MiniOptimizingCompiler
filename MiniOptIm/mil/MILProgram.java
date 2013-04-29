@@ -243,8 +243,8 @@ public class MILProgram {
                 Defns addedDefns = ds.head.propagateConstants(1);
 
                 for (;addedDefns != null; addedDefns = addedDefns.next) {
-                    addEntry(addedDefns.head);
-                    count++;
+               //     addEntry(addedDefns.head);
+                    count_g++;
                 }
 
               }
