@@ -1,0 +1,242 @@
+package mini;
+
+/** Represents an output phase for producing textual output of
+ *  abstract syntax trees using indentation.
+ */
+public class IndentOutput(private java.io.PrintStream out) {
+    /** Print a given String message indented some number of
+     *  spaces (currently two times the given nesting level, n).
+     */
+    public void indent(int n, String msg) {
+        for (int i=0; i<n; i++) {
+            out.print("  ");
+        }
+        out.println(msg);
+    }
+}
+
+/** Print an indented description of this program.
+ */
+public static void indent(Fundefs defs)
+  case Fundefs {
+    IndentOutput out = new IndentOutput(System.out);
+    for (; defs!=null; defs=defs.next) {
+        defs.def.indent(out, 0);
+    }
+  }
+
+/** Print an indented description of this abstract syntax node,
+ *  including a name for the node itself at the specified level
+ *  of indentation, plus more deeply indented descriptions of
+ *  any child nodes.
+ */
+public void indent(IndentOutput out, int n)
+    case Fundef {
+        out.indent(n, "Fundef "
+                    + (type==null ? "void" : type.toString())
+                    + " " + fun + "(..)");
+        out.indent(n+1, "Formals");
+        for (Formals fs=formals; fs!=null; fs=fs.getNext()) {
+          fs.getFormal().indent(out, n+2);
+        }
+        out.indent(n+1, "Stmts");
+        body.indent(out, n+2);
+    }
+    case Formal {
+        out.indent(n, type + " " + name);
+    }
+
+    case Stmt abstract;
+    case Empty {
+        out.indent(n, "Empty");
+    }
+    case ExprStmt {
+        out.indent(n, "ExprStmt");
+        exp.indent(out, n+1);
+    }
+    case Break {
+        out.indent(n, "Break");
+    }
+    case Continue {
+        out.indent(n, "Continue");
+    }
+    case For {
+        out.indent(n, "For");
+        init.indent(out, n+1);
+        if (test==null) {
+            out.indent(n+1, "No test");
+        } else {
+            test.indent(out, n+1);
+        }
+        if (step==null) {
+            out.indent(n+1, "No step");
+        } else {
+            step.indent(out, n+1);
+        }
+        body.indent(out, n+1);
+    }
+    case DoWhile {
+        out.indent(n, "DoWhile");
+        body.indent(out, n+1);
+        test.indent(out, n+1);
+    }
+    case While {
+        out.indent(n, "While");
+        test.indent(out, n+1);
+        body.indent(out, n+1);
+    }
+    case If {
+        out.indent(n, "If");
+        test.indent(out, n+1);
+        ifTrue.indent(out, n+1);
+        ifFalse.indent(out, n+1);
+    }
+    case Print {
+        out.indent(n, "Print");
+        exp.indent(out, n+1);
+    }
+    case Block {
+        out.indent(n, "Block");
+        stmts.indent(out, n+1);
+    }
+    case Return {
+        out.indent(n, "Return");
+        if (expr!=null) {
+            expr.indent(out, n+1);
+        }
+    }
+
+    case VarDecl {
+        out.indent(n, "VarDecl");
+        out.indent(n+1, type.toString());
+        for (int i=0; i<intros.length; i++) {
+           intros[i].indent(out, n+1);
+        }
+    }
+    case VarIntro {
+        out.indent(n, "VarIntro");
+        id.indent(out, n+1);
+    }
+    case InitVarIntro {
+        out.indent(n, "InitVarIntro");
+        id.indent(out, n+1);
+        init.indent(out, n+1);
+    }
+
+    case ForInit abstract;
+    case NoInit { 
+        out.indent(n, "NoInit");
+    }
+    case ExprInit {
+        out.indent(n, "ExprInit");
+        expr.indent(out, n+1);
+    }
+    case VarDeclInit {
+        out.indent(n, "VarDeclInit");
+        decl.indent(out, n+1);
+    }
+
+    case Stmts {
+        for (int i=0; i<used; i++) {
+            stmts[i].indent(out, n);
+        }
+    }
+
+    case Expr abstract;
+    case Id {
+        out.indent(n, "Id, " + name);
+    }
+    case Call {
+        out.indent(n, "Call " + name + "(..)");
+        for (Args as=args; as!=null; as=as.getNext()) {
+           as.getArg().indent(out, n+1);
+        }
+    }
+    case Assign {
+        out.indent(n, "Assign");
+        lhs.indent(out, n+1);
+        rhs.indent(out, n+1);
+    }
+    case IntLit {
+        out.indent(n, "IntLit: " + num);
+    }
+    case UnExpr {
+        out.indent(n, label());
+        exp.indent(out, n+1);
+    }
+    case BinExpr {
+        out.indent(n, label());
+        left.indent(out, n+1);
+        right.indent(out, n+1);
+    }
+    case ArrayAccess {
+        out.indent(n, "ArrayAccess");
+        arr.indent(out, n+1);
+        idx.indent(out, n+1);
+    }
+    case ArrayAssign {
+        out.indent(n, "ArrayAssign");
+        arr.indent(out, n+1);
+        idx.indent(out, n+1);
+        rhs.indent(out, n+1);
+    }
+    case NewArray {
+        out.indent(n, "NewArray of " + type);
+        if (size!=null) {
+            size.indent(out, n+1);
+        }
+    }
+
+/** Return a string that provides a simple description of this
+ *  particular type of operator node.
+ */
+String label()
+    case UnExpr abstract;
+    case LNot   { return "Logical not, !"; }
+    case BNot   { return "Bitwise not, ~"; }
+    case UMinus { return "Unary minus"; }
+    case UPlus  { return "Unary plus"; }
+
+    case BinExpr abstract;
+    case Add    { return "Add, +"; }
+    case Sub    { return "Sub, -"; }
+    case Mul    { return "Mul, *"; }
+    case Div    { return "Div, /"; }
+    case Lt     { return "Lt, <"; }
+    case Lte    { return "Lte, <="; }
+    case Gt     { return "Gt, >"; }
+    case Gte    { return "Gte, >="; }
+    case Eql    { return "Eql, =="; }
+    case Neq    { return "Neq, !="; }
+    case LAnd   { return "LAnd, &&"; }
+    case LOr    { return "LOr, ||"; }
+    case BAnd   { return "BAnd, &"; }
+    case BOr    { return "BOr, |"; }
+    case BXor   { return "BXor, ^"; }
+
+/** A simple program for testing the Mini lexer, parser, and
+ *  IndentOutput phases.
+ */
+public class IndentTest {
+  import compiler.*;
+
+  public static void main(String[] args) {
+      if (args.length!=1) {
+          System.out.println("Program requires exactly one argument");
+      } else {
+          Handler handler = new SimpleHandler();
+          try {
+              MiniLexer lexer
+                = new MiniLexer(new java.io.FileReader(args[0]), handler);
+              MiniParser parser
+                = new MiniParser(handler, lexer);
+              Fundefs defs = parser.getProgram();
+              if (defs!=null) {
+                  Fundefs.indent(defs);
+              }
+          } catch (Exception e) {
+              handler.report(new Failure("Exception: " + e));
+          }
+      }
+  }
+}

@@ -1,0 +1,16 @@
+#!/bin/bash
+
+source mbuild
+mkdir -p tmp/regress
+
+for i in arrs arrs2 ax fold quick sample
+do
+
+   echo "Compiling " ${i}
+   cat tests/${i}.mini               > tmp/regress/${i}.txt
+   java mini.MilGen tests/${i}.mini >> tmp/regress/${i}.txt
+   diff -C 2 tests/regress/${i}.txt    tmp/regress/${i}.txt
+
+done
+
+echo "Done"

@@ -1,0 +1,581 @@
+// Abstract Syntax ----------------------------------------------
+
+package mini;
+
+/** Abstract syntax for statements.
+ */
+public abstract class Stmt {
+  /** Abstract syntax for empty statements.
+   */
+  case Empty
+  /** Abstract syntax for expressions used as statements.
+   */
+  case ExprStmt(/** The expression that will be executed as a statement.
+                 */
+                private Expr exp)
+
+  /** Abstract syntax for while statements.
+   */
+  case While(/** The test expression.
+              */
+             private Expr test, 
+
+             /** The body of this loop.
+              */
+             private Stmt body)
+
+  /** Abstract syntax for do while statements.
+   */
+  case DoWhile(/** The body of this loop.
+                */
+               private Stmt body, 
+               /** The test expression.
+                */
+               private Expr test)
+
+  /** Abstract syntax for if-then-else statements.
+   */
+  case If(/** The test expression.
+           */
+          private Expr test, 
+
+          /** The true branch.
+           */
+          private Stmt ifTrue, 
+
+          /** The false branch.
+           */
+          private Stmt ifFalse)
+
+  /** Abstract syntax for print statements.
+   */
+  case Print(/** The value that should be printed out.
+              */
+             private Expr exp)
+
+  /** Abstract syntax for block statements.
+   */
+  case Block(/** The list of statements in this block.
+              */
+             private Stmts stmts)
+
+  /** Abstract syntax for return statements.
+   */
+  case Return(
+             /** The value that will be returned (or null if there
+              *  is no return result in a void procedure).
+              */
+             private Expr expr) {
+
+    /** Special version of the constructor for Return to be used when
+     *  no return expression is specified.
+     */
+    Return() {
+        this(null);
+    }
+  }
+  /** Abstract syntax for "for" loops.
+   */
+  case For(  /** The initializer for the loop.
+              */
+             private ForInit init,
+           
+             /** The test expression for the loop (or null if there
+              *  is no test expression).
+              */
+             private Expr    test,
+           
+             /** The step expression for the loop (or null if there
+              *  is no step expression).
+              */
+             private Expr    step,
+           
+             /** The body of the loop.
+              */
+             private Stmt    body)
+
+  /** Abstract syntax for break statements.
+   */
+  case Break
+
+  /** Abstract syntax for continue statements.
+   */
+  case Continue
+
+}
+
+/** Abstract syntax for for-loop initializers.
+ */
+abstract class ForInit {
+    /** Abstract syntax for an empty for-loop initializer.
+     */
+    case NoInit
+
+    /** Abstract syntax for an expression for-loop initializer.
+     */
+    case ExprInit(
+             /** The expression that will be used as an initializer.
+              */
+             private Expr expr)
+
+    /** Abstract syntax for a variable declaration, for-loop initializer.
+     */
+    case VarDeclInit(
+             /** The variable declaration that will be used as an initializer.
+              */
+             private VarDecl decl)  
+}
+
+
+/** Abstract syntax for expressions.
+ */
+public abstract class Expr {
+  /** Abstract syntax for identifiers/variables.
+   */
+  case Id(/** The identifier name.
+           */
+          String name)
+
+  /** Abstract syntax for assignment expressions.
+   */
+  case Assign(
+             /** The variable where the result will be saved.
+              */
+             private Id lhs, 
+             /** The expression whose value will be saved.
+              */
+             private Expr rhs)
+
+  /** Abstract syntax for array accesses.
+   */
+  case ArrayAccess(
+             /** The array to read from.
+              */
+             private Expr arr, 
+             /** The index within the array.
+              */
+             private Expr idx)
+
+  /** Abstract syntax for assignments to array elements.
+   */
+  case ArrayAssign(
+             /** The array that is being modified.
+              */
+             private Expr arr, 
+             /** The index of the element in the array that is being modified.
+              */
+             private Expr idx, 
+             /** The expression whose value will be saved in the specified
+              *  array location.
+              */
+             private Expr rhs)
+
+  /** Abstract syntax for code to construct a new array.
+   */
+  case NewArray(
+             /** The type of the elements in the array that will be allocated.
+              */
+             private Type type, 
+             /** An expression whose value will determine how many elements the
+              *  new array should contain.
+              */
+             private Expr size)
+
+  /** Abstract syntax for integer literals.
+   */
+  case IntLit(/** The value of this integer literal.
+               */
+              private String num)
+
+  /** Abstract syntax for unary expressions.
+   */
+  abstract case UnExpr(/** The operand of a unary operator expression.
+                        */
+                       protected Expr exp) {
+    /** Abstract syntax for logical not expressions (!).
+     */
+    case LNot
+
+    /** Abstract syntax for bitwise not expressions (~).
+     */
+    case BNot
+
+    /** Abstract syntax for unary expressions that operate on
+     *  numeric arguments.
+     */
+    abstract case UnArithExpr {
+      /** Abstract syntax for unary minus expressions.
+       */
+      case UMinus
+
+      /** Abstract syntax for unary plus expressions.
+       */
+      case UPlus
+    }
+  }
+
+  /** Abstract syntax for binary expressions.
+   */
+  abstract case BinExpr(
+             /** The left subexpression.
+              */
+             protected Expr left, 
+             /** The right subexpression.
+              */
+             protected Expr right) {
+    /** Abstract syntax for binary arithmetic expressions.
+     */
+    abstract case BinArithExpr {
+      /** Abstract syntax for add expressions.
+       */
+      case Add
+
+      /** Abstract syntax for subtract expressions.
+       */
+      case Sub
+
+      /** Abstract syntax for multiply expressions.
+       */
+      case Mul
+
+      /** Abstract syntax for divide expressions.
+       */
+      case Div
+    }
+
+    /** Abstract syntax for binary comparison expressions.
+     */
+    abstract case BinCompExpr {
+      /** Abstract syntax for less than expressions.
+       */
+      case Lt
+
+      /** Abstract syntax for less than or equal expressions.
+       */
+      case Lte
+
+      /** Abstract syntax for greater than expressions.
+       */
+      case Gt
+
+      /** Abstract syntax for greater than or equal expressions.
+       */
+      case Gte
+    }
+
+    /** Abstract syntax for binary equality test expressions.
+     */
+    abstract case BinEqualityExpr {
+      /** Abstract syntax for equality test expressions (==).
+       */
+      case Eql
+
+      /** Abstract syntax for inequality test expressions (==).
+       */
+      case Neq
+    }
+
+    /** Abstract syntax for binary logical expressions.
+     */
+    abstract case BinLogicExpr {
+      /** Abstract syntax for logical and expressions (&&).
+       */
+      case LAnd
+
+      /** Abstract syntax for logical or expressions (||).
+       */
+      case LOr
+    }
+
+    /** Abstract syntax for binary bitwise operations.
+     */
+    abstract case BinBitwiseExpr {
+      /** Abstract syntax for bitwise and expressions (&).
+       */
+      case BAnd
+
+      /** Abstract syntax for bitwise or expressions (|).
+       */
+      case BOr
+
+      /** Abstract syntax for bitwise exclusive or expressions (^).
+       */
+      case BXor
+    }
+  }
+}
+
+/** Abstract syntax for lists of statements, either as part of
+ *  a block or as a top-level program.
+ */
+public class Stmts {
+  /** Holds a list of statements.  Only the first "used" elements
+   *  of the array hold valid statements; remaining slots are used
+   *  for expansion.   If we need to add more statements than the
+   *  array can contain, we expand the array by copying over its
+   *  elements into a new, larger array and then replacing the old
+   *  array with the new.
+   */
+  private Stmt[] stmts = new Stmt[2];
+
+  /** Records the number of slots in the stmts array that are
+   *  currently being used.
+   */
+  private int used  = 0;
+
+  /** Add a statement to a block, expanding the underlying array
+   *  as necessary to make space.
+   */
+  public Stmts addStmt(Stmt stmt) {
+        if (used>=stmts.length) {
+            Stmt[] newStmts = new Stmt[2*stmts.length];
+            for (int i=0; i<stmts.length; i++) {
+                newStmts[i] = stmts[i];
+            }
+            stmts = newStmts;
+        }
+        stmts[used++] = stmt;
+        return this;
+    }
+}
+
+// Static Analysis ----------------------------------------------
+
+package mini;
+
+/** A representation for types in the Mini language.
+ */
+public abstract class Type {
+  /** A representation for the int type.
+   */
+  public case IntType
+
+  /** A representation for the boolean type.
+   */
+  public case BooleanType
+
+  /** A representation for the double type.
+   */
+  public case DoubleType
+
+  /** A representation for array types.
+   */
+  public case ArrayType(
+             /**
+              */
+             private Type element)
+}
+
+/** Generate a printable description of this type.
+ */
+public String toString()
+  case Type abstract;
+  case BooleanType {
+      return "boolean";
+  }
+  case DoubleType {
+      return "double";
+  }
+  case IntType {
+      return "int";
+  }
+  case ArrayType {
+      return element.toString() + "[]";
+  }
+
+/** Generate a printable description of this identifier.
+ */
+public String toString()
+  case Id {
+      return name;
+  }
+
+//- Variable Introductions: --------------------------------------
+
+/** Represents a variable introduction with a single variable
+ *  name.
+ */
+public class VarIntro(/** The name of the variable that is introduced here.
+                       */
+                      protected Id id) {
+
+    /** Represents a variable introduction with a single variable
+     *  name and an initializer.
+     */
+     public case InitVarIntro(/** An initializer for the variable introduced here.
+                               */
+                              private Expr init)
+}
+
+//- Variable Declarations: ---------------------------------------
+
+/** A representation for variable declarations.
+ */
+public class VarDecl extends Stmt {
+    /** The type of all of the variables that are introduced in this
+     *  declaration.
+     */
+    private Type       type;
+    
+    /** A list of variable introductions, each of which names a variable,
+     *  together with a possible initializer.
+     */
+    private VarIntro[] intros;
+    
+    /** Records the number of slots in the intros array that are in use.
+     */
+    private int        used;
+
+    /** Construct a variable declaration with a given type and
+     *  a specific variable introduction.
+     */
+    public VarDecl(Type type, VarIntro intro) {
+        this.type   = type;
+        this.intros = new VarIntro[] { intro };
+        this.used   = 1;
+    }
+
+    /** Extend this variable declaration with an additional variable
+     *  introduction.
+     */
+    public VarDecl addIntro(VarIntro intro) {
+        if (used>=intros.length) {
+            VarIntro[] newIntros = new VarIntro[2*intros.length];
+            for (int i=0; i<intros.length; i++) {
+                newIntros[i] = intros[i];
+            }
+            intros = newIntros;
+        }
+        intros[used++] = intro;
+        return this;
+    }
+}
+
+//- Some type constants: -----------------------------------------
+
+class Type {
+  /** A constant that represents the int type.
+   */
+  public static final Type INT     = new IntType();
+
+  /** A constant that represents the boolean type.
+   */
+  public static final Type BOOLEAN = new BooleanType();
+
+  /** A constant that represents the double type.
+   */
+  public static final Type DOUBLE  = new DoubleType();
+}
+
+//- Abstract Syntax Trees for Functions: -------------------------
+
+/** Represents a list of function definitions.
+ */
+class Fundefs(/** The first function definition in this list.
+               */
+              private Fundef def, 
+              /** A pointer to the remaining function definitions in this list.
+               */
+              private Fundefs next)
+
+/** Represents a single function definition.
+ */
+class Fundef(/** The return type for this function definition.
+              *  (A null return type signals a void function).
+              */
+             private Type type, 
+
+             /** The name of the function that is defined here.
+              */
+             private Id fun,
+             
+             /** The list of formal parameters for this function definition.
+              */
+             private Formals formals, 
+
+             /** The list of statements that make up the body of this function.
+              */
+             private Stmts body) {
+    /** Return the name of this function definition.
+     */
+    getter fun;
+
+    /** Return the list of formal parameters associated with this
+     *  function definition.
+     */
+    getter formals;
+}
+
+/** Represents a list of formal parameters in a function definition.
+ */
+class Formals(/** Holds the first formal parameter in this list.
+               */
+              private Formal formal,
+
+              /** Holds the list containing the remaining formal parameters.
+               */
+              private Formals next) {
+
+    /** Return the formal argument at the front of this list.
+     */
+    public getter formal;
+
+    /** Return a list containing the rest of the formal parameters.
+     */
+    public getter next;
+}
+
+/** Represents a single formal parameter in a function definition,
+ *  pairing a type (or null, for a void function that does not
+ *  return an argument).
+ */
+class Formal(/** Holds the type of this formal parameter.
+              */
+             private Type type,
+
+             /** Holds the name of this formal parameter.
+              */
+             private Id name) {
+    /** Return the type of this formal parameter.
+     */
+    public getter type;
+
+    /** Return the name of this formal parameter.
+     */
+    public getter name;
+
+    /** Generate a printable description of this formal parameter.
+     */
+    public String toString() {
+        return name.toString();
+    }
+}
+
+/** Represents a function call.
+ */
+class Call(/** The name of the function to call.
+            */
+           private Id name,
+           /** The arguments for this call.
+            */
+            private Args args)
+  extends Expr
+
+/** Represents a list of expressions passed as the arguments to a
+ *  function call.
+ */
+class Args(/** Holds this argument expression.
+            */
+           private Expr arg,
+           /** Points to the list containing the rest of the arguments.
+            */
+           private Args next) {
+
+    /** Return the argument at the front of this list.
+     */
+    public getter arg;
+
+    /** Return a list containing the rest of the function's arguments.
+     */
+    public getter next;
+}

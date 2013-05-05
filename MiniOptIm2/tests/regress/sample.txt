@@ -1,0 +1,397 @@
+void mini_main() {
+  int three = 3;
+  int four  = 4;
+  print fib(three + four);
+  print redundant(three, four);
+//  print redundant(four, four);
+  int x = square(three);
+  print x+1+x;
+  print fact(three);
+  print tailfact(1, four);
+}
+
+int fib(int n) {
+  if (n<2) {
+    return n;
+  } else {
+    return fib(n-1) + fib(n-2);
+  }
+}
+
+int redundant(int x, int y) {   // argument y is not used
+  int i = 1;
+  while (i < 10) {
+    x = x + i;
+    i = i + 1;
+  }
+  return x;
+}
+
+int square(int x) {
+  return x*x;
+}
+
+int fact(int n) {
+  if (n==0)
+      return 1;
+  else
+      return n * fact(n-1);
+}
+
+int tailfact(int a, int n) {
+  if (n==0)
+      return a;
+  else
+      return tailfact(a*n, n-1);
+}
+Program appears to be valid!
+Function tailfact implemented by b5
+Function fact implemented by b4
+Function square implemented by b3
+Function redundant implemented by b2
+Function fib implemented by b1
+Function mini_main implemented by b0
+Compilation to MIL complete
+Resulting program is:
+--------------------------------------
+not recursive
+b17(n) =
+  return n
+--------------------------------------
+recursive
+b18(n) =
+  t19 <- return 1
+  t20 <- sub((n, t19))
+  t21 <- b1(t20)
+  t22 <- return 2
+  t23 <- sub((n, t22))
+  t24 <- b1(t23)
+  t25 <- add((t21, t24))
+  return t25
+b1(n) =
+  t17 <- return 2
+  t18 <- lt((n, t17))
+  case t18 of
+    True() -> b17(n)
+    _ -> b18(n)
+--------------------------------------
+not recursive
+b15(x) =
+  return x
+--------------------------------------
+recursive
+b14(i, x) =
+  x <- add((x, i))
+  _ <- return x
+  t16 <- return 1
+  i <- add((i, t16))
+  _ <- return i
+  b12(x, i)
+b12(x, i) =
+  t14 <- return 10
+  t15 <- lt((i, t14))
+  case t15 of
+    True() -> b14(i, x)
+    _ -> b15(x)
+--------------------------------------
+not recursive
+b2(x, y) =
+  i <- return 1
+  b12(x, i)
+--------------------------------------
+not recursive
+b3(x) =
+  t13 <- mul((x, x))
+  return t13
+--------------------------------------
+not recursive
+b10() =
+  t8 <- return 1
+  return t8
+--------------------------------------
+recursive
+b11(n) =
+  t9 <- return 1
+  t10 <- sub((n, t9))
+  t11 <- b4(t10)
+  t12 <- mul((n, t11))
+  return t12
+b4(n) =
+  t6 <- return 0
+  t7 <- eq((n, t6))
+  case t7 of
+    True() -> b10()
+    _ -> b11(n)
+--------------------------------------
+not recursive
+b7(a) =
+  return a
+--------------------------------------
+recursive
+b8(n, a) =
+  t2 <- mul((a, n))
+  t3 <- return 1
+  t4 <- sub((n, t3))
+  t5 <- b5(t2, t4)
+  return t5
+b5(a, n) =
+  t0 <- return 0
+  t1 <- eq((n, t0))
+  case t1 of
+    True() -> b7(a)
+    _ -> b8(n, a)
+--------------------------------------
+not recursive
+b0() =
+  three <- return 3
+  four <- return 4
+  t33 <- add((three, four))
+  t34 <- b1(t33)
+  _ <- print((t34))
+  t32 <- b2(three, four)
+  _ <- print((t32))
+  x <- b3(three)
+  t29 <- return 1
+  t30 <- add((x, t29))
+  t31 <- add((t30, x))
+  _ <- print((t31))
+  t28 <- b4(three)
+  _ <- print((t28))
+  t26 <- return 1
+  t27 <- b5(t26, four)
+  _ <- print((t27))
+  return _
+Running optimizer ...
+Replacing default branch with match on False
+Replacing default branch with match on False
+Replacing default branch with match on False
+Replacing default branch with match on False
+-------------------------
+applied right monad law in b18
+inlining eliminated a wildcard binding in b14
+inlining eliminated a wildcard binding in b14
+suffixInline succeeded for call to block b12 from block b2
+applied right monad law in b3
+applied right monad law in b10
+applied right monad law in b11
+applied right monad law in b8
+prefixInline succeeded for call to block b3 from block b0
+applied right monad law in b0
+Inlining pass finished, running shake.
+removing unused argument y from b2
+applied left monad law for t19 <- return 1
+applied left monad law for t22 <- return 2
+applied left monad law for t17 <- return 2
+applied left monad law for t14 <- return 10
+applied left monad law for t16 <- return 1
+applied left monad law for i <- return 1
+applied left monad law for t35 <- return 10
+constant folding for lt
+shorting out match on constructor True
+applied left monad law for t9 <- return 1
+applied left monad law for t6 <- return 0
+applied left monad law for t3 <- return 1
+applied left monad law for t0 <- return 0
+applied left monad law for three <- return 3
+applied left monad law for four <- return 4
+constant folding for add
+applied left monad law for t33 <- return 7
+constant folding for mul
+applied left monad law for x <- return 9
+applied left monad law for t29 <- return 1
+constant folding for add
+applied left monad law for t30 <- return 10
+constant folding for add
+applied left monad law for t31 <- return 19
+applied left monad law for t26 <- return 1
+Flow pass finished, running shake.
+Steps performed = 36
+-------------------------
+suffixInline succeeded for call to block b12 from block b14
+suffixInline succeeded for call to block b14 from block b2
+Inlining pass finished, running shake.
+constant folding for add
+applied left monad law for t39 <- return 2
+constant folding for lt
+cse: using previously computed value t36 for t40
+shorting out match on constructor True
+Flow pass finished, running shake.
+Steps performed = 7
+-------------------------
+suffixInline succeeded for call to block b14 from block b2
+Inlining pass finished, running shake.
+constant folding for add
+applied left monad law for t42 <- return 3
+constant folding for lt
+cse: using previously computed value t36 for t43
+shorting out match on constructor True
+liveness replaced t38 with a wildcard
+Flow pass finished, running shake.
+Steps performed = 7
+-------------------------
+inlining eliminated a wildcard binding in b2
+suffixInline succeeded for call to block b14 from block b2
+Inlining pass finished, running shake.
+constant folding for add
+applied left monad law for t45 <- return 4
+constant folding for lt
+cse: using previously computed value t36 for t46
+shorting out match on constructor True
+liveness replaced t41 with a wildcard
+Flow pass finished, running shake.
+Steps performed = 8
+-------------------------
+inlining eliminated a wildcard binding in b2
+suffixInline succeeded for call to block b14 from block b2
+Inlining pass finished, running shake.
+constant folding for add
+applied left monad law for t48 <- return 5
+constant folding for lt
+cse: using previously computed value t36 for t49
+shorting out match on constructor True
+liveness replaced t44 with a wildcard
+Flow pass finished, running shake.
+Steps performed = 8
+-------------------------
+inlining eliminated a wildcard binding in b2
+suffixInline succeeded for call to block b14 from block b2
+Inlining pass finished, running shake.
+constant folding for add
+applied left monad law for t51 <- return 6
+constant folding for lt
+cse: using previously computed value t36 for t52
+shorting out match on constructor True
+liveness replaced t47 with a wildcard
+Flow pass finished, running shake.
+Steps performed = 8
+-------------------------
+inlining eliminated a wildcard binding in b2
+suffixInline succeeded for call to block b14 from block b2
+Inlining pass finished, running shake.
+constant folding for add
+applied left monad law for t54 <- return 7
+constant folding for lt
+cse: using previously computed value t36 for t55
+shorting out match on constructor True
+liveness replaced t50 with a wildcard
+Flow pass finished, running shake.
+Steps performed = 8
+-------------------------
+inlining eliminated a wildcard binding in b2
+suffixInline succeeded for call to block b14 from block b2
+Inlining pass finished, running shake.
+constant folding for add
+applied left monad law for t57 <- return 8
+constant folding for lt
+cse: using previously computed value t36 for t58
+shorting out match on constructor True
+liveness replaced t53 with a wildcard
+Flow pass finished, running shake.
+Steps performed = 8
+-------------------------
+inlining eliminated a wildcard binding in b2
+suffixInline succeeded for call to block b14 from block b2
+Inlining pass finished, running shake.
+constant folding for add
+applied left monad law for t60 <- return 9
+constant folding for lt
+cse: using previously computed value t36 for t61
+shorting out match on constructor True
+liveness replaced t56 with a wildcard
+Flow pass finished, running shake.
+Steps performed = 8
+-------------------------
+inlining eliminated a wildcard binding in b2
+suffixInline succeeded for call to block b14 from block b2
+Inlining pass finished, running shake.
+constant folding for add
+applied left monad law for t63 <- return 10
+constant folding for lt
+shorting out match on constructor False
+liveness replaced t59 with a wildcard
+liveness replaced t36 with a wildcard
+Flow pass finished, running shake.
+Steps performed = 8
+-------------------------
+inlining eliminated a wildcard binding in b2
+inlining eliminated a wildcard binding in b2
+suffixInline succeeded for call to block b15 from block b2
+prefixInline succeeded for call to block b2 from block b0
+Inlining pass finished, running shake.
+lifted allocator for t66
+lifted allocator for t66
+lifted allocator for t66
+constant folding for add
+applied left monad law for t65 <- return 48
+applied left monad law for t32 <- return 48
+liveness replaced t66 with a wildcard
+Flow pass finished, running shake.
+Steps performed = 11
+-------------------------
+inlining eliminated a wildcard binding in b0
+Inlining pass finished, running shake.
+Flow pass finished, running shake.
+Steps performed = 1
+-------------------------
+Inlining pass finished, running shake.
+Flow pass finished, running shake.
+Steps performed = 0
+Replacing b7 with b17
+TOTAL steps performed = 119
+Results ...
+--------------------------------------
+not recursive
+b17(n) =
+  return n
+--------------------------------------
+recursive
+b18(n) =
+  t20 <- add((n, -1))
+  t21 <- b1(t20)
+  t23 <- add((n, -2))
+  t24 <- b1(t23)
+  add((t21, t24))
+b1(n) =
+  t18 <- lt((n, 2))
+  case t18 of
+    True() -> b17(n)
+    False() -> b18(n)
+--------------------------------------
+not recursive
+b10() =
+  return 1
+--------------------------------------
+recursive
+b11(n) =
+  t10 <- add((n, -1))
+  t11 <- b4(t10)
+  mul((n, t11))
+b4(n) =
+  t7 <- eq((n, 0))
+  case t7 of
+    True() -> b10()
+    False() -> b11(n)
+--------------------------------------
+recursive
+b8(n, a) =
+  t2 <- mul((a, n))
+  t4 <- add((n, -1))
+  b5(t2, t4)
+b5(a, n) =
+  t1 <- eq((n, 0))
+  case t1 of
+    True() -> b17(a)
+    False() -> b8(n, a)
+--------------------------------------
+not recursive
+b0() =
+  t34 <- b1(7)
+  _ <- print((t34))
+  _ <- print((48))
+  _ <- print((19))
+  t28 <- b4(3)
+  _ <- print((t28))
+  t27 <- b5(1, 4)
+  print((t27))
+Done ...
+Total failures found: 0

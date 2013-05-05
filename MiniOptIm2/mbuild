@@ -1,0 +1,24 @@
+# Use "source mbuild" to run the commands in this file
+
+rm mini/*.java~ mini/*.java
+
+jacc -dvh mini/Mini.jacc mini/For.jacc
+
+jflex mini/Mini.jflex 
+
+(cd src ;
+ java -jar sweet.jar \
+	   library.sweet \
+	   debug.sweet \
+	   MiniFun.sweet \
+	   Output.sweet \
+	   Dot.sweet \
+	   TypeChecking.sweet \
+	   ArrayChecking.sweet \
+ 	   mil.sweet \
+ 	   optimize.sweet \
+	   MilGen.sweet \
+	 -o.. )
+
+javac compiler/*.java mini/*.java mil/*.java
+

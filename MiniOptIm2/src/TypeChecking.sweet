@@ -1,0 +1,653 @@
+// Static analysis ----------------------------------------------
+
+package mil;
+
+/** Represents a local variable inside a function body or a block.
+ */
+public class LocalTemp() extends Temp(String id)
+
+/** Represents a parameter inside a function definition.
+ */
+public class ParamTemp() extends Temp(String id)
+
+package mini;
+
+//- Operations on types: -----------------------------------------
+
+/** Test to determine whether this type is an array type or not,
+ *  returning the element type of an array type or null for any
+ *  other type.
+ */
+public Type elementType()
+  case Type {
+      // Default implementation: not an array
+      return null;
+  }
+  case ArrayType {
+      // This is an array type, so return the element type.
+      return element;
+  }
+
+/** Test to determine whether this type is equal to another.
+ */
+public boolean equal(Type that)
+  case Type abstract;
+  case BooleanType {
+      return (that instanceof BooleanType);
+  }
+  case DoubleType {
+      return (that instanceof DoubleType);
+  }
+  case IntType {
+      return (that instanceof IntType);
+  }
+  case ArrayType {
+      Type te = that.elementType();
+      return te!=null && element.equal(te);
+  }
+
+//- Variable environments: ---------------------------------------
+
+/** Represents a variable environment, mapping identifiers
+ *  to corresponding types.
+ */
+public class VarEnv(/** The identifier that is described by this environment
+                     *  entry.
+                     */
+                    private Id id,
+
+                    /** The type for the identifier in this environment entry.
+                     */
+                    private Type type,
+
+                    /** The corresponding variable in the generated MIL code.
+                     */
+                    private Var var,
+
+                    /** A pointer to the remaining environment entries.
+                     */
+                    private VarEnv next) {
+
+    /** Return the type associated with this environment.
+     */
+    public getter type;
+
+    /** Return the variable associated with this environment.
+     */
+    public getter var;
+
+    /** Search an environment for a specified variable name, returning
+     *  null if no such entry is found, or else returning a pointer to
+     *  the first matching VarEnv object in the list.
+     */
+    public static VarEnv find(Id id, VarEnv env) {
+        while (env!=null && !env.id.equals(id)) {
+            env = env.next;
+        }
+        return env;
+    }
+}
+
+class Id {
+  /** Test to see if two identifiers have the same name.
+   */
+  public boolean equals(Id that) {
+      return this.name.equals(that.name);
+  }
+}
+
+//- Contexts: ----------------------------------------------------
+
+/** Represents a static analysis context; this is used to provide
+ *  access to the full list of functions defined in the current
+ *  program as well as a way to access error handling functionality.
+ */
+public class Context(
+    /** Holds the list of functions in this program.
+     */
+    private Fundefs defs) extends Phase(Handler handler) {
+    import compiler.Phase;
+    import compiler.Handler;
+
+   /** Search for the definition of a function with a paticular
+    *  name in the list that is stored in this context.
+    */
+   public Fundef find(Id name) {
+       return Fundefs.find(name, defs);
+   }
+
+}
+
+//- Type checking code: ------------------------------------------
+
+import compiler.Failure;
+
+class Id {
+    /** Record the environment for this variable so that
+     *  we can access its details during code generation.
+     */
+    private VarEnv ve = null;
+}
+
+class VarIntro {
+    /** Record the environment for this variable so that
+     *  we can access its details during code generation.
+     */
+    protected VarEnv ve = null;
+}
+
+class Call {
+    /** Record the function that is being invoked by this call.
+     */
+    private Fundef def = null;
+}
+
+/** Return the type of value that will be produced when this
+ *  expression is evaluated.
+ */
+public Type typeOf(Context ctxt, VarEnv env) throws Failure
+  case Expr abstract;
+  case Id {
+      ve = VarEnv.find(this, env);
+      if (ve==null) {
+          throw new Failure("The variable " + name + " is not in scope");
+      }
+      return ve.getType();
+  }
+  case Assign {
+      Type lt = lhs.typeOf(ctxt, env);
+      Type rt = rhs.typeOf(ctxt,env);
+      if (!lt.equal(rt)) {
+          ctxt.report(new Failure("Types in assignment do not match"));
+      }
+      return rt;
+  }
+  case IntLit {
+      return Type.INT;
+  }
+  case LNot {
+      if (!exp.typeOf(ctxt, env).equal(Type.BOOLEAN)) {
+          ctxt.report(new Failure("Logical not expects boolean argument"));
+      }
+      return Type.BOOLEAN;
+  }
+  case BNot {
+      Type t = exp.typeOf(ctxt, env);
+      if (!t.equal(Type.BOOLEAN) && !t.equal(Type.INT)) {
+          ctxt.report(new Failure("Bitwise not expects boolean or int argument"));
+      }
+      return t;
+  }
+  case UnArithExpr {
+      // Covers unary plus and unary minus:
+      Type t = exp.typeOf(ctxt, env);
+      if (!t.equal(Type.INT) && !t.equal(Type.DOUBLE)) {
+          throw new Failure("Unary operation expects numeric argument");
+      }
+      return t;
+  }
+  case BinArithExpr {
+      // Covers +, -, *, /
+      Type lt = left.typeOf(ctxt, env);
+      Type rt = right.typeOf(ctxt, env);
+      if (!lt.equal(rt)) {
+          throw new Failure("Arithmetic operands have different types");
+      }
+      if (!lt.equal(Type.INT) && !lt.equal(Type.DOUBLE)) {
+          throw new Failure("Invalid operand types for arithmetic operation");
+      }
+      return lt;
+  }
+  case BinCompExpr {
+      // Covers <, >, <=, >=
+      Type lt = left.typeOf(ctxt, env);
+      Type rt = right.typeOf(ctxt, env);
+      if (!lt.equal(rt)) {
+          throw new Failure("Comparison operands have different types");
+      }
+      if (!lt.equal(Type.INT) && !lt.equal(Type.DOUBLE)) {
+          throw new Failure("Cannot compare values of type " + lt);
+      }
+      return Type.BOOLEAN;
+  }
+  case BinEqualityExpr {
+      // Covers ==, !=
+      Type lt = left.typeOf(ctxt, env);
+      Type rt = right.typeOf(ctxt, env);
+      if (!lt.equal(rt)) {
+          throw new Failure("Operands being compared have different types");
+      }
+      return Type.BOOLEAN;
+  }
+  case BinLogicExpr {
+      // Covers &&, ||
+      if (!left.typeOf(ctxt, env).equal(Type.BOOLEAN) ||
+          !right.typeOf(ctxt, env).equal(Type.BOOLEAN)) {
+          ctxt.report(new Failure("Boolean operands required"));
+      }
+      return Type.BOOLEAN;
+  }
+  case BinBitwiseExpr {
+      // Covers &, |, ^
+      Type lt = left.typeOf(ctxt, env);
+      Type rt = right.typeOf(ctxt, env);
+      if (!lt.equal(Type.INT) && !lt.equal(Type.BOOLEAN)) {
+          throw new Failure("Invalid operand types for arithmetic operation");
+      }
+      if (!lt.equal(rt)) {
+          throw new Failure("Operands have different types");
+      }
+      return lt;
+  }
+  case NewArray {
+      if (!size.typeOf(ctxt, env).equal(Type.INT)) {
+          throw new Failure("Array size must be an integer");
+      }
+      return new ArrayType(type);
+  }
+  case ArrayAccess {
+      throw new Failure("Static analysis for ArrayAccess not implemented");
+  }
+  case ArrayAssign {
+      throw new Failure("Static analysis for ArrayAssign not implemented");
+  }
+
+//- Statement Checking Code: -------------------------------------
+
+/** Check that this statement is valid, taking the current environment
+ *  as an argument and returning a possibly modified environment as a
+ *  result.
+ */
+public VarEnv check(Fundef def, Context ctxt, boolean inLoop, VarEnv env) throws Failure
+  case Stmt abstract;
+  case Empty {
+      // Return the input environment unchanged.
+      def.returns = false;
+      return env;
+  }
+  case ExprStmt {
+      // type check the expression, but discard the result.
+      exp.checkExpr(ctxt, env);
+      def.returns = false;
+      return env;
+  }
+  case For {
+      // Find the environment that is produced by the initializer
+      VarEnv ienv = init.check(def, ctxt, env);
+
+      // Check that the test is a Boolean
+      try {
+          if (test!=null && !test.typeOf(ctxt, ienv).equal(Type.BOOLEAN)) {
+              ctxt.report(new Failure("Boolean test expected in while loop"));
+          }
+      } catch (Failure f) {
+          // report any error that occured while checking the expression.
+          ctxt.report(f);
+      }
+
+      // Check that the step is a valid expression
+      if (step!=null) {
+          step.typeOf(ctxt, ienv);
+      }
+
+      // check body, but discard any modified environment that it produces.
+      body.check(def, ctxt, true, ienv);
+
+      def.returns = false;
+      return env;
+  }
+  case Break {
+      if (!inLoop) {
+          ctxt.report(new Failure("break can only be used in a loop"));
+      }
+      def.returns = false;
+      return env; // Return the input environment unchanged.
+  }
+  case Continue  {
+      if (!inLoop) {
+          ctxt.report(new Failure("continue can only be used in a loop"));
+      }
+      def.returns = false;
+      return env; // Return the input environment unchanged.
+  }
+  case DoWhile {
+      try {
+          if (!test.typeOf(ctxt, env).equal(Type.BOOLEAN)) {
+              ctxt.report(new Failure("Boolean test expected in while loop"));
+          }
+      } catch (Failure f) {
+          // report any error that occured while checking the expression.
+          ctxt.report(f);
+      }
+      // check body, but discard any modified environment that it produces.
+      body.check(def, ctxt, true, env);
+      // if the body returns (and sets def.returns.true), then so does the do while
+      return env;
+  }
+  case While {
+      try {
+          if (!test.typeOf(ctxt, env).equal(Type.BOOLEAN)) {
+              ctxt.report(new Failure("Boolean test expected in while loop"));
+          }
+      } catch (Failure f) {
+          // report any error that occured while checking the expression.
+          ctxt.report(f);
+      }
+      // check body, but discard any modified environment that it produces.
+      body.check(def, ctxt, true, env);
+      def.returns = false;
+      return env;
+  }
+  case If {
+      try {
+          if (!test.typeOf(ctxt, env).equal(Type.BOOLEAN)) {
+              ctxt.report(new Failure("Boolean test expected in if statement"));
+          }
+      } catch (Failure f) {
+          // report any error that occured while checking the expression.
+          ctxt.report(f);
+      }
+      // check true and false branches, discarding resulting environments:
+      ifTrue.check(def, ctxt, inLoop, env);
+      boolean tr = def.returns;
+      ifFalse.check(def, ctxt, inLoop, env);
+      def.returns = tr && def.returns;
+      return env;
+  }
+  case Return {
+      return def.checkReturn(expr, ctxt, env);
+  }
+  case Print {
+      try {
+          if (!exp.typeOf(ctxt, env).equal(Type.INT)) {
+              ctxt.report(new Failure("print requires integer argument"));
+          }
+      } catch (Failure f) {
+          // report any error that occured while checking the expression.
+          ctxt.report(f);
+      }
+      def.returns = false;
+      return env;
+  }
+  case Block {
+      stmts.check(def, ctxt, inLoop, env);
+      return env;
+  }
+  case VarDecl {
+      for (int i=0; i<used; i++) {
+          env = intros[i].check(def, type, ctxt, env);
+      }
+      def.returns = false;
+      return env;
+  }
+  case Stmts {
+      def.returns = false;
+      for (int i=0; i<used; i++) {
+          env = stmts[i].check(def, ctxt, inLoop, env);
+      }
+      return env;
+  }
+
+/** Check that this for initializer is valid, returning the
+ *  variable environment after the initializer has run, which
+ *  may have added new entries if the initializer introduces
+ *  local variables (i.e., the VarDeclInit case).
+ */
+public VarEnv check(Fundef def, Context ctxt, VarEnv env) throws Failure
+    case ForInit abstract;
+    case NoInit  {
+        return env;
+    }
+    case ExprInit {
+        expr.checkExpr(ctxt, env);
+        return env;
+    }
+    case VarDeclInit {
+        return decl.check(def, ctxt, false, env);
+    }
+
+/** Check this variable introduction, given the type for
+ *  the associated variable declaration and the initial
+ *  environment, and then return the modified environment.
+ */
+public VarEnv check(Fundef def, Type type, Context ctxt, VarEnv env)
+  case VarIntro {
+      // Extend the environment:
+      return ve = new VarEnv(id, type, new LocalTemp(id.toString()), env);
+  }
+  case InitVarIntro {
+      // Check that initializer has correct type:
+      try {
+          if (!init.typeOf(ctxt, env).equal(type)) {
+              ctxt.report(new Failure("initializer has wrong type"));
+          }
+      } catch (Failure f) {
+          ctxt.report(f);
+      }
+      return ve = new VarEnv(id, type, new LocalTemp(id.toString()), env);
+  }
+
+class Fundefs {
+
+    /** Search for the definition of a function with a particular
+     *  name in a given list of function definitions, returning a
+     *  null result if no matching function is found.
+     */
+    static Fundef find(Id fun, Fundefs defs) {
+        for (; defs!=null; defs=defs.next) {
+            if (defs.def.isCalled(fun)) {
+                return defs.def;
+            }
+        }
+        return null;
+    }
+
+    /** Check the definitions for each function in a given list
+     *  of function definitions and return a pointer to the main
+     *  function.
+     */
+    static Fundef check(Context ctxt, Fundefs defs) throws Failure {
+        Id     mainId  = new Id(Assembly.entry);
+        Fundef mainFun = Fundefs.find(mainId, defs);
+        if (mainFun==null) {
+            throw new Failure("program does not define a " + mainId + " function");
+        }
+        if (mainFun.getFormals()!=null) {
+            throw new Failure(mainId + " function should not have any arguments");
+        }
+        for (; defs!=null; defs=defs.next) {
+            Fundef def = defs.def;
+            Id     fun = def.getFun();
+            if (find(fun, defs.next)!=null) {
+                throw new Failure("program contains multiple definitions for function " + fun);
+            }
+            defs.def.check(ctxt);
+        }
+        return mainFun;
+    }
+}
+
+class Fundef {
+    /** Test to see if this function's name matches the
+     *  specified identifier.
+     */
+    boolean isCalled(Id id) {
+        return fun.equals(id);
+    }
+
+    /** Type check a call to this function with a given list
+     *  of arguments.
+     */
+    Type checkCall(Args args, Context ctxt, VarEnv env) throws Failure {
+        Formals fs = formals;
+        while (fs!=null && args!=null) {
+            Type argType = args.getArg().typeOf(ctxt, env);
+            Formal f     = fs.getFormal();
+            if (!argType.equal(f.getType())) {
+                throw new Failure("wrong type for argument "
+                                    + f.getName());
+            }
+            fs   = fs.getNext();
+            args = args.getNext();
+        }
+        if (args!=null) {
+            throw new Failure("Call to function " + fun
+                              + " has too many arguments");
+        } else if (fs!=null) {
+            throw new Failure("Call to function " + fun
+                              + " has too few arguments");
+        }
+        return type;
+    }
+
+    /** Flag to indicate if this function returns.
+     */
+    public boolean returns = false;
+
+    /** Determine whether the specified expression is valid as a
+     *  return result for this function; the expression can/should
+     *  be null for a void function.
+     */
+    VarEnv checkReturn(Expr expr, Context ctxt, VarEnv env) throws Failure {
+        if (expr!=null) {
+            if (type==null) {
+                throw new Failure("void function should not return a value");
+            } else if (!expr.typeOf(ctxt, env).equal(type)) {
+                throw new Failure("return expression has wrong type");
+            }
+        } else if (type!=null) {
+            throw new Failure("return value is required");
+        }
+        returns = true;
+        return env;
+    }
+
+    /** Check this function definition in the given context.
+     */
+    void check(Context ctxt) throws Failure {
+        if (body!=null) {
+            body.check(this, ctxt, false, Formals.buildEnv(formals));
+            if (!returns && type!=null) {
+                throw new Failure("function does not return");
+            }
+        }
+    }
+}
+
+class Formals {
+    /** Build an environment that corresponds to a list of formal
+     *  parameters.
+     */
+    static VarEnv buildEnv(Formals formals) {
+        if (formals==null) {
+            return null;
+        } else {
+            return formals.formal.extendEnv(buildEnv(formals.next));
+        }
+    }
+}
+
+class Formal {
+    /** Captures the variable that represents this formal parameter.
+     */
+    private Var param;
+
+    /** Retrieve the MIL variable associated with this parameter.
+     */
+    getter param;
+
+    /** Construct an environment that adds this formal parameter.
+     */
+    VarEnv extendEnv(VarEnv env) {
+        param = new ParamTemp(name.toString());
+        return new VarEnv(name, type, param, env);
+    }
+}
+
+class Call {
+
+    /** Return the type of value that will be produced when this
+     *  expression is evaluated.
+     */
+    public Type typeOf(Context ctxt, VarEnv env) throws Failure {
+        Type result = typeCall(ctxt, env);
+        if (result==null) {
+            throw new Failure("Function " + name + " does not return a value");
+        }
+        return result;
+    }
+
+    /** Type check a function call, returning either the return type
+     *  or null if this is a void function.
+     */
+    Type typeCall(Context ctxt, VarEnv env) throws Failure {
+        // Look for the definition of this function
+        def = ctxt.find(name);
+        if (def==null) {
+            throw new Failure("Cannot find function \"" + name + "\"");
+        }
+        return def.checkCall(args, ctxt, env);
+    }
+}
+
+/** Type check this expression in places where it is used as a statement.
+ *  We override this method in Call to deal with methods that
+ *  return void.
+ */
+void checkExpr(Context ctxt, VarEnv env) throws Failure
+  case Expr {
+      typeOf(ctxt, env);
+  }
+  case Call {
+      typeCall(ctxt, env);
+  }
+
+
+/** Provides a simple mechanism for assembly language output.
+ */
+public class Assembly {
+    /** In the current system, we assume that all values can be represented
+     *  by a single word whose size in bytes is given by the WORDSIZE constant.
+     */
+    public final static int WORDSIZE = 4;
+
+    /** Specifies the name of the entry point to the compiled code.
+     */
+    static final String entry = "mini_main";
+}
+
+/** A simple program for testing the Mini lexer, parser, and
+ *  static analysis phases.
+ */
+public class Check {
+  import compiler.*;
+
+  public static void main(String[] args) {
+      if (args.length!=1) {
+          System.out.println("Program requires exactly one argument");
+      } else {
+          Handler handler = new SimpleHandler();
+          try {
+              MiniLexer lexer
+                = new MiniLexer(new java.io.FileReader(args[0]), handler);
+              MiniParser parser
+                = new MiniParser(handler, lexer);
+              Fundefs defs = parser.getProgram();
+
+              if (defs!=null) {                       // Did parser succeed?
+                  Fundef mainFun = Fundefs.check(new Context(handler, defs), defs);
+                  if (handler.getNumFailures()==0) {  // Static analysis ok?
+                      System.out.println("Program appears to be valid!");
+                  }
+              }
+          } catch (Failure f) {
+              handler.report(f);
+          } catch (Exception e) {
+              handler.report(new Failure("Exception: " + e));
+          }
+          System.out.println("Total failures found: "
+                               + handler.getNumFailures());
+      }
+  }
+}
+

@@ -1,0 +1,457 @@
+void mini_main() {
+   int[] nums = new int[10];
+   nums[0] = 3;
+   nums[1] = 5;
+   nums[2] = 1;
+   nums[3] = 7;
+   nums[4] = 8;
+   nums[5] = 0;
+   nums[6] = 4;
+   nums[7] = 6;
+   nums[8] = 9;
+   nums[9] = 2;
+   quicksort(nums, 0, 9);
+}
+
+void quicksort(int[] a, int m, int n) {
+    if (n>m) {
+        int i = m - 1, j = n, p = a[n], t;
+        for (;;) {
+            do i = i + 1; while (a[i] < p);
+            do j = j - 1; while (a[j] > p);
+            if (i>=j) break;
+            t = a[i]; a[i] = a[j]; a[j] = t;
+        }
+        t = a[i]; a[i] = a[n]; a[n] = t;
+        quicksort(a, m, j); quicksort(a, i+1,n);
+    }
+}
+Program appears to be valid!
+Function quicksort implemented by b1
+Function mini_main implemented by b0
+Compilation to MIL complete
+Resulting program is:
+--------------------------------------
+not recursive
+b2() =
+  return _
+--------------------------------------
+not recursive
+b19() =
+  b2()
+--------------------------------------
+recursive
+b11(m, n, i, p, a, j) =
+  b10(m, n, i, p, a, j)
+b16(m, n, j, p, a, i) =
+  b15(m, n, j, p, a, i)
+b7(m, n, p, a, j, i) =
+  b5(m, n, p, a, j, i)
+b5(m, n, p, a, j, i) =
+  t19 <- mul((4, i))
+  t20 <- add((a, t19))
+  t <- load((t20))
+  _ <- return t
+  t14 <- mul((4, i))
+  t15 <- add((a, t14))
+  t16 <- mul((4, j))
+  t17 <- add((a, t16))
+  t18 <- load((t17))
+  _ <- store((t15, t18))
+  _ <- return t18
+  t12 <- mul((4, j))
+  t13 <- add((a, t12))
+  _ <- store((t13, t))
+  _ <- return t
+  b3(m, n, j, p, a, i)
+b18(a, n, m) =
+  t34 <- return 1
+  i <- sub((m, t34))
+  j <- return n
+  t32 <- mul((4, n))
+  t33 <- add((a, t32))
+  p <- load((t33))
+  t <- return _
+  b3(m, n, j, p, a, i)
+b3(m, n, j, p, a, i) =
+  b15(m, n, j, p, a, i)
+b15(m, n, j, p, a, i) =
+  t27 <- return 1
+  i <- add((i, t27))
+  _ <- return i
+  b13(m, n, j, p, a, i)
+b13(m, n, j, p, a, i) =
+  t28 <- mul((4, i))
+  t29 <- add((a, t28))
+  t30 <- load((t29))
+  t31 <- lt((t30, p))
+  case t31 of
+    True() -> b16(m, n, j, p, a, i)
+    _ -> b17(m, n, i, p, a, j)
+b17(m, n, i, p, a, j) =
+  b14(m, n, i, p, a, j)
+b14(m, n, i, p, a, j) =
+  b10(m, n, i, p, a, j)
+b10(m, n, i, p, a, j) =
+  t22 <- return 1
+  j <- sub((j, t22))
+  _ <- return j
+  b8(m, n, i, p, a, j)
+b8(m, n, i, p, a, j) =
+  t23 <- mul((4, j))
+  t24 <- add((a, t23))
+  t25 <- load((t24))
+  t26 <- gt((t25, p))
+  case t26 of
+    True() -> b11(m, n, i, p, a, j)
+    _ -> b12(p, m, n, a, i, j)
+b12(p, m, n, a, i, j) =
+  b9(p, m, n, a, i, j)
+b9(p, m, n, a, i, j) =
+  t21 <- gte((i, j))
+  case t21 of
+    True() -> b6(m, i, a, n)
+    _ -> b7(m, n, p, a, j, i)
+b6(m, i, a, n) =
+  b4(m, i, a, n)
+b4(m, i, a, n) =
+  t10 <- mul((4, i))
+  t11 <- add((a, t10))
+  t <- load((t11))
+  _ <- return t
+  t5 <- mul((4, i))
+  t6 <- add((a, t5))
+  t7 <- mul((4, n))
+  t8 <- add((a, t7))
+  t9 <- load((t8))
+  _ <- store((t6, t9))
+  _ <- return t9
+  t3 <- mul((4, n))
+  t4 <- add((a, t3))
+  _ <- store((t4, t))
+  _ <- return t
+  _ <- b1(a, m, j)
+  t1 <- return 1
+  t2 <- add((i, t1))
+  _ <- b1(a, t2, n)
+  b2()
+b1(a, m, n) =
+  t0 <- gt((n, m))
+  case t0 of
+    True() -> b18(a, n, m)
+    _ -> b19()
+--------------------------------------
+not recursive
+b0() =
+  t77 <- return 10
+  t78 <- mul((4, t77))
+  nums <- newarray((t78))
+  t73 <- return 0
+  t74 <- mul((4, t73))
+  t75 <- add((nums, t74))
+  t76 <- return 3
+  _ <- store((t75, t76))
+  _ <- return t76
+  t69 <- return 1
+  t70 <- mul((4, t69))
+  t71 <- add((nums, t70))
+  t72 <- return 5
+  _ <- store((t71, t72))
+  _ <- return t72
+  t65 <- return 2
+  t66 <- mul((4, t65))
+  t67 <- add((nums, t66))
+  t68 <- return 1
+  _ <- store((t67, t68))
+  _ <- return t68
+  t61 <- return 3
+  t62 <- mul((4, t61))
+  t63 <- add((nums, t62))
+  t64 <- return 7
+  _ <- store((t63, t64))
+  _ <- return t64
+  t57 <- return 4
+  t58 <- mul((4, t57))
+  t59 <- add((nums, t58))
+  t60 <- return 8
+  _ <- store((t59, t60))
+  _ <- return t60
+  t53 <- return 5
+  t54 <- mul((4, t53))
+  t55 <- add((nums, t54))
+  t56 <- return 0
+  _ <- store((t55, t56))
+  _ <- return t56
+  t49 <- return 6
+  t50 <- mul((4, t49))
+  t51 <- add((nums, t50))
+  t52 <- return 4
+  _ <- store((t51, t52))
+  _ <- return t52
+  t45 <- return 7
+  t46 <- mul((4, t45))
+  t47 <- add((nums, t46))
+  t48 <- return 6
+  _ <- store((t47, t48))
+  _ <- return t48
+  t41 <- return 8
+  t42 <- mul((4, t41))
+  t43 <- add((nums, t42))
+  t44 <- return 9
+  _ <- store((t43, t44))
+  _ <- return t44
+  t37 <- return 9
+  t38 <- mul((4, t37))
+  t39 <- add((nums, t38))
+  t40 <- return 2
+  _ <- store((t39, t40))
+  _ <- return t40
+  t35 <- return 0
+  t36 <- return 9
+  _ <- b1(nums, t35, t36)
+  return _
+Running optimizer ...
+Replacing default branch with match on False
+Replacing default branch with match on False
+Replacing default branch with match on False
+Replacing default branch with match on False
+-------------------------
+suffixInline succeeded for call to block b2 from block b19
+suffixInline succeeded for call to block b5 from block b7
+suffixInline succeeded for call to block b3 from block b7
+inlining eliminated a wildcard binding in b5
+inlining eliminated a wildcard binding in b5
+inlining eliminated a wildcard binding in b5
+suffixInline succeeded for call to block b3 from block b5
+suffixInline succeeded for call to block b3 from block b18
+inlining eliminated a wildcard binding in b15
+suffixInline succeeded for call to block b13 from block b15
+eliminateGoto succeeded on call to b15
+eliminateGoto succeeded on call to b14
+eliminateGoto succeeded on call to b15
+eliminateGoto succeeded on call to b14
+suffixInline succeeded for call to block b14 from block b17
+inlining eliminated a wildcard binding in b10
+suffixInline succeeded for call to block b8 from block b10
+eliminateGoto succeeded on call to b10
+eliminateGoto succeeded on call to b9
+eliminateGoto succeeded on call to b10
+eliminateGoto succeeded on call to b9
+suffixInline succeeded for call to block b9 from block b12
+eliminateGoto succeeded on call to b4
+eliminateGoto succeeded on call to b4
+suffixInline succeeded for call to block b4 from block b6
+suffixInline succeeded for call to block b2 from block b6
+inlining eliminated a wildcard binding in b4
+inlining eliminated a wildcard binding in b4
+inlining eliminated a wildcard binding in b4
+suffixInline succeeded for call to block b2 from block b4
+inlining eliminated a wildcard binding in b0
+inlining eliminated a wildcard binding in b0
+inlining eliminated a wildcard binding in b0
+inlining eliminated a wildcard binding in b0
+inlining eliminated a wildcard binding in b0
+inlining eliminated a wildcard binding in b0
+inlining eliminated a wildcard binding in b0
+inlining eliminated a wildcard binding in b0
+inlining eliminated a wildcard binding in b0
+inlining eliminated a wildcard binding in b0
+applied right monad law in b0
+suffixInline succeeded for call to block b1 from block b0
+Inlining pass finished, running shake.
+applied left monad law for t82 <- return t81
+cse: using previously computed value t79 for t83
+cse: using previously computed value t80 for t84
+applied left monad law for t89 <- return t87
+cse: using previously computed value t85 for t90
+cse: using previously computed value t86 for t91
+applied left monad law for t93 <- return t81
+liveness replaced t92 with a wildcard
+liveness replaced t88 with a wildcard
+applied left monad law for t27 <- return 1
+applied left monad law for t22 <- return 1
+cse: using previously computed value t10 for t5
+cse: using previously computed value t11 for t6
+cse: using previously computed value t7 for t3
+cse: using previously computed value t8 for t4
+applied left monad law for t1 <- return 1
+applied left monad law for t34 <- return 1
+applied left monad law for j <- return n
+applied left monad law for t <- return _
+applied left monad law for t77 <- return 10
+constant folding for mul
+applied left monad law for t78 <- return 40
+applied left monad law for t73 <- return 0
+constant folding for mul
+applied left monad law for t74 <- return 0
+rewrite: x + 0 ==> x
+applied left monad law for t75 <- return nums
+applied left monad law for t76 <- return 3
+applied left monad law for t69 <- return 1
+constant folding for mul
+applied left monad law for t70 <- return 4
+applied left monad law for t72 <- return 5
+applied left monad law for t65 <- return 2
+constant folding for mul
+applied left monad law for t66 <- return 8
+applied left monad law for t68 <- return 1
+applied left monad law for t61 <- return 3
+constant folding for mul
+applied left monad law for t62 <- return 12
+applied left monad law for t64 <- return 7
+applied left monad law for t57 <- return 4
+constant folding for mul
+applied left monad law for t58 <- return 16
+applied left monad law for t60 <- return 8
+applied left monad law for t53 <- return 5
+constant folding for mul
+applied left monad law for t54 <- return 20
+applied left monad law for t56 <- return 0
+applied left monad law for t49 <- return 6
+constant folding for mul
+applied left monad law for t50 <- return 24
+applied left monad law for t52 <- return 4
+applied left monad law for t45 <- return 7
+constant folding for mul
+applied left monad law for t46 <- return 28
+applied left monad law for t48 <- return 6
+applied left monad law for t41 <- return 8
+constant folding for mul
+applied left monad law for t42 <- return 32
+applied left monad law for t44 <- return 9
+applied left monad law for t37 <- return 9
+constant folding for mul
+applied left monad law for t38 <- return 36
+applied left monad law for t40 <- return 2
+applied left monad law for t35 <- return 0
+applied left monad law for t36 <- return 9
+constant folding for gt
+shorting out match on constructor True
+Flow pass finished, running shake.
+Steps performed = 110
+-------------------------
+eliminateGoto succeeded on call to b10
+applied right monad law in b4
+Inlining pass finished, running shake.
+lifted allocator for t122
+lifted allocator for t122
+lifted allocator for t122
+lifted allocator for t122
+lifted allocator for t122
+lifted allocator for t122
+lifted allocator for t122
+lifted allocator for t122
+lifted allocator for t122
+lifted allocator for t122
+lifted allocator for t122
+lifted allocator for t122
+lifted allocator for t122
+lifted allocator for t122
+lifted allocator for t122
+lifted allocator for t122
+lifted allocator for t122
+lifted allocator for t122
+lifted allocator for t122
+lifted allocator for t122
+liveness replaced t122 with a wildcard
+Flow pass finished, running shake.
+Steps performed = 23
+-------------------------
+inlining eliminated a wildcard binding in b0
+Inlining pass finished, running shake.
+Flow pass finished, running shake.
+Steps performed = 1
+-------------------------
+Inlining pass finished, running shake.
+Flow pass finished, running shake.
+Steps performed = 0
+TOTAL steps performed = 134
+Results ...
+--------------------------------------
+not recursive
+b19() =
+  return _
+--------------------------------------
+recursive
+b7(m, n, p, a, j, i) =
+  t79 <- mul((i, 4))
+  t80 <- add((a, t79))
+  t81 <- load((t80))
+  t85 <- mul((j, 4))
+  t86 <- add((a, t85))
+  t87 <- load((t86))
+  _ <- store((t80, t87))
+  _ <- store((t86, t81))
+  b15(m, n, j, p, a, i)
+b15(m, n, j, p, a, i) =
+  i <- add((i, 1))
+  t94 <- mul((i, 4))
+  t95 <- add((a, t94))
+  t96 <- load((t95))
+  t97 <- lt((t96, p))
+  case t97 of
+    True() -> b15(m, n, j, p, a, i)
+    False() -> b10(m, n, i, p, a, j)
+b10(m, n, i, p, a, j) =
+  j <- add((j, -1))
+  t98 <- mul((j, 4))
+  t99 <- add((a, t98))
+  t100 <- load((t99))
+  t101 <- gt((t100, p))
+  case t101 of
+    True() -> b10(m, n, i, p, a, j)
+    False() -> b9(p, m, n, a, i, j)
+b9(p, m, n, a, i, j) =
+  t21 <- gte((i, j))
+  case t21 of
+    True() -> b4(m, i, a, n)
+    False() -> b7(m, n, p, a, j, i)
+b4(m, i, a, n) =
+  t10 <- mul((i, 4))
+  t11 <- add((a, t10))
+  t <- load((t11))
+  t7 <- mul((n, 4))
+  t8 <- add((a, t7))
+  t9 <- load((t8))
+  _ <- store((t11, t9))
+  _ <- store((t8, t))
+  _ <- b1(a, m, j)
+  t2 <- add((i, 1))
+  b1(a, t2, n)
+b1(a, m, n) =
+  t0 <- gt((n, m))
+  case t0 of
+    True() -> b18(a, n, m)
+    False() -> b19()
+b18(a, n, m) =
+  i <- add((m, -1))
+  t32 <- mul((n, 4))
+  t33 <- add((a, t32))
+  p <- load((t33))
+  b15(m, n, n, p, a, i)
+--------------------------------------
+not recursive
+b0() =
+  nums <- newarray((40))
+  _ <- store((nums, 3))
+  t71 <- add((nums, 4))
+  _ <- store((t71, 5))
+  t67 <- add((nums, 8))
+  _ <- store((t67, 1))
+  t63 <- add((nums, 12))
+  _ <- store((t63, 7))
+  t59 <- add((nums, 16))
+  _ <- store((t59, 8))
+  t55 <- add((nums, 20))
+  _ <- store((t55, 0))
+  t51 <- add((nums, 24))
+  _ <- store((t51, 4))
+  t47 <- add((nums, 28))
+  _ <- store((t47, 6))
+  t43 <- add((nums, 32))
+  _ <- store((t43, 9))
+  t39 <- add((nums, 36))
+  _ <- store((t39, 2))
+  b18(nums, 9, 0)
+Done ...
+Total failures found: 0

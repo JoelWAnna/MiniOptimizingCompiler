@@ -1,0 +1,46 @@
+void mini_main() {
+  int three = 3;
+  int four  = 4;
+  print fib(three + four);
+  print redundant(three, four);
+//  print redundant(four, four);
+  int x = square(three);
+  print x+1+x;
+  print fact(three);
+  print tailfact(1, four);
+}
+
+int fib(int n) {
+  if (n<2) {
+    return n;
+  } else {
+    return fib(n-1) + fib(n-2);
+  }
+}
+
+int redundant(int x, int y) {   // argument y is not used
+  int i = 1;
+  while (i < 10) {
+    x = x + i;
+    i = i + 1;
+  }
+  return x;
+}
+
+int square(int x) {
+  return x*x;
+}
+
+int fact(int n) {
+  if (n==0)
+      return 1;
+  else
+      return n * fact(n-1);
+}
+
+int tailfact(int a, int n) {
+  if (n==0)
+      return a;
+  else
+      return tailfact(a*n, n-1);
+}

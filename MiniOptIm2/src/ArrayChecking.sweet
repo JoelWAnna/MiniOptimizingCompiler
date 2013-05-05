@@ -1,0 +1,36 @@
+// Provides implementations for the ArrayAccess and ArrayAssign type checking
+// methods that is (intentionally) omitted from TypeChecking.sweet.
+
+package mini;
+
+public Type typeOf(Context ctxt, VarEnv env) throws Failure
+  case ArrayAccess ! {
+      // Calculate type of elements in arr, which must be an array:
+      Type et = arr.typeOf(ctxt,env).elementType();
+      if (et==null) {
+          throw new Failure("Array expression does not have array type");
+      }
+      // Make sure index type is an int
+      if (!idx.typeOf(ctxt,env).equal(Type.INT)) {
+          ctxt.report(new Failure("Arithmetic operands have different types"));
+      }
+      // Return the array element type:
+      return et;
+  }
+  case ArrayAssign ! {
+      // Calculate type of elements in arr, which must be an array:
+      Type et = arr.typeOf(ctxt,env).elementType();
+      if (et==null) {
+          throw new Failure("Array expression does not have array type");
+      }
+      // Make sure index type is an int
+      if (!idx.typeOf(ctxt,env).equal(Type.INT)) {
+          ctxt.report(new Failure("Arithmetic operands have different types"));
+      }
+      // Make sure that the rhs type matches the element type:
+      if (!rhs.typeOf(ctxt,env).equal(et)) {
+          throw new Failure("Right hand side of assignment does not match array type");
+      }
+      // Return the array element type:
+      return et;
+  }
