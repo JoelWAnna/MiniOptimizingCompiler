@@ -1,4 +1,10 @@
-public class MILProgram ! {public static int count_g = 0;}
+
+package mil;
+
+	class MILProgram 
+	{
+		public static int count_g = 0;
+	}
 
     public void optimize()
     case MILProgram !  {
@@ -62,7 +68,7 @@ public class MILProgram ! {public static int count_g = 0;}
     locks with each constant brought into the block 
 
  */
-public void GlobalConstantPropagation() {
+public void GlobalConstantPropagation() 
 case MILProgram {
         for (DefnSCCs dsccs = sccs; dsccs!=null; dsccs=dsccs.next) {
             for (Defns ds=dsccs.head.getBindings(); ds!=null; ds=ds.next) {
@@ -94,8 +100,8 @@ case MILProgram {
         if the tail calls block id, cons the tail to the list returned from c.getBlockCall
      
      */
-    public BlockCalls getBlockCall(String id) !
-    case Code {return null;}
+    public BlockCalls getBlockCall(String id)
+    case Code { return null; }
     case Bind {
         BlockCall thisCall = null;
         BlockCall bc = t.isBlockCall();
@@ -111,7 +117,7 @@ case MILProgram {
         
         return calls;
     }
-    case Done {
+    case Done { 
         BlockCall thisCall = null;
         BlockCall bc = t.isBlockCall();
         if (bc != null)
@@ -125,11 +131,6 @@ case MILProgram {
             calls = new BlockCalls(thisCall, calls);
         
         return calls;
-    }
-    case TAlt { 
-        if (bc != null && bc.callsBlock(id))
-            return bc;
-        return null;
     }
     case Match {
         BlockCalls block_calls = null;
@@ -149,19 +150,25 @@ case MILProgram {
         return block_calls;
     }
 
-
-	
-    public abstract class Atom
-    public case static class CAtom(private final String identifier) {
-            public static final CAtom NAC = new CAtom("Not a constant");
-            public static final CAtom UNDEF = new CAtom("undefined");
+    public BlockCall getBlockCall(String id)
+    case TAlt { 
+        if (bc != null && bc.callsBlock(id))
+            return bc;
+        return null;
     }
-//    @Override
-    public String toString() !
-    case CAtom    { return identifier; }
-//    @Override
-    public Val lookup(ValEnv env) throws Fail !
-        case CAtom    { throw new Fail("lookup called on " + identifier); }
+public class NAC extends Atom
+public class UNDEF extends Atom
+macro Singleton(NAC)
+macro Singleton(UNDEF)
+			public String toString() 
+				case NAC !{ return "Not a constant"; }
+				case UNDEF !{ return "undefined"; }
+
+
+			public Val lookup(ValEnv env) throws Fail 
+				case NAC !{ throw new Fail("lookup called on " + "Not a constant"); }
+				case UNDEF !{ throw new Fail("lookup called on " + "undefined"); }
+    
 
 
 
@@ -180,7 +187,7 @@ case MILProgram {
                          arguments[i] = a;
                      }
                      else {
-                         arguments[i] = Atom.CAtom.NAC;
+                         arguments[i] = NAC.obj;
                      }
     
                  }
@@ -191,9 +198,9 @@ case MILProgram {
         for (int i = 0; i < formals.length; ++i)
         {
             if (arguments[i] == null) break;
-            if (arguments[i] != Atom.CAtom.NAC) {
+            if (arguments[i] != NAC.obj) {
                 if (arguments[i].isConst() != null &&  !arguments[i].sameAtom(formals[i])) {
-                    arguments[i] = Atom.CAtom.NAC;
+                    arguments[i] = NAC.obj;
                 }
             }
             else {
@@ -214,7 +221,7 @@ case MILProgram {
     case Code { return atoms; }
     case Bind { for(int i = 0; i < atoms.length; ++i) {
             if (v.sameAtom(atoms[i])) {
-                atoms[i] = Atom.CAtom.NAC;
+                atoms[i] = NAC.obj;
             }
         }
         return c.checkformals(atoms);    
@@ -335,11 +342,12 @@ case MILProgram {
     }
 
     public abstract class Defn {
-        public case Block(private Code code) {
+        public case Block {
             private Blocks children;
             private Atom replacedVar;
             private int version;
-        }
+		}
+    }
 
     /** propagateConstants
      * @param maxArgReplacement - determines the maximum tuple size of the lattice for each parameter
@@ -394,12 +402,12 @@ case MILProgram {
     				{
         				for (int j = 0; j < formals.length; ++j )
         				{
-        					if (knownArgs[j][0] != Atom.CAtom.NAC)
+        					if (knownArgs[j][0] != NAC.obj)
         						
         					{
         						// TODO: is it ever valid to not replace it with NAC?
-        						if (reEntryFormals[j] ==  Atom.CAtom.NAC)
-        							knownArgs[j][0] =  Atom.CAtom.NAC;
+        						if (reEntryFormals[j] ==  NAC.obj)
+        							knownArgs[j][0] =  NAC.obj;
         						if ((reEntryFormals[j].isConst() != null))
         						{
         							int k;
@@ -415,7 +423,7 @@ case MILProgram {
 	        							}
 	        						}
 	        						if (k == maxArgReplacement) {
-	        							knownArgs[j][0] = Atom.CAtom.NAC;
+	        							knownArgs[j][0] = NAC.obj;
 	        						}
         						}
         					}
@@ -425,7 +433,7 @@ case MILProgram {
     					Atom formals2[] =  current_call.head.args;
     					for (int j = 0; j < formals.length; ++j )
         				{
-        					if (knownArgs[j][0] !=  Atom.CAtom.NAC && (formals2[j].isConst() != null))
+        					if (knownArgs[j][0] !=  NAC.obj && (formals2[j].isConst() != null))
         					{
         						int k;
         						for (k = 0; k < maxArgReplacement; ++k)
@@ -439,7 +447,7 @@ case MILProgram {
         							}
         						}
         						if (k == maxArgReplacement) {
-        							knownArgs[j][0] =  Atom.CAtom.NAC;
+        							knownArgs[j][0] =  NAC.obj;
         						}
         					}
         				}
@@ -452,7 +460,7 @@ case MILProgram {
 		int newVersion = version+1;
 		for (int j = 0; j < formals.length; ++j )
 		{
-			if (knownArgs[j][0] == Atom.CAtom.NAC || knownArgs[j][0] == Atom.CAtom.UNDEF) {
+			if (knownArgs[j][0] == NAC.obj || knownArgs[j][0] == UNDEF.obj) {
 				//System.out.println("Arg " + j + " is " + knownArgs[j][0].toString());
 				continue;
 			}

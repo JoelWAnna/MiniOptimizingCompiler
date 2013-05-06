@@ -226,4 +226,12 @@ public class TAlt {
     void fixTrailingBlockCalls() {
         bc.fixTrailingBlockCalls();
     }
+
+    public BlockCall getBlockCall(String id) { 
+        if (bc != null && bc.callsBlock(id))
+            return bc;
+        return null;
+    }
+
+    public void replaceBc(BlockCall bc) { this.bc = bc; }
 }

@@ -128,4 +128,16 @@ public class TopLevel extends Defn {
     void eliminateDuplicates() {
         tail.eliminateDuplicates();
      }
+
+    /** propagateConstants
+     * @param maxArgReplacement - determines the maximum tuple size of the lattice for each parameter
+     *
+     *
+     *
+     */
+    public Defns propagateConstants(int maxArgReplacement) {
+        // TODO: Implement this, only sibling class that it is implemented is Block.java
+        System.out.println("reached TopLevel propagateConstants of block" + id);
+        return null;
+    }
 }

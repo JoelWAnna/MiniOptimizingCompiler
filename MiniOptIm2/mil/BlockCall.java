@@ -284,4 +284,9 @@ public class BlockCall extends Call {
         }
         // else { debug.Internal.error("tail block call with non null arguments"); }
     }
+
+    boolean callsBlock(String id) {
+        if (b == null) return false;
+        return b.getId().equalsIgnoreCase(id);
+    }
 }

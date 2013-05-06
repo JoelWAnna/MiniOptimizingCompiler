@@ -95,34 +95,52 @@ public class MILProgram {
     public void optimize() {
         shake();
         cfunSimplify();
-  
-        int totalCount = 0;
-        count          = 1;
-        for (int i=0; i<MAX_OPTIMIZE_PASSES && count>0; i++) {
-            debug.Log.println("-------------------------");
-  //!System.out.println("==================================================");
-  //!System.out.println("Step " + i);
-  //!System.out.println("==================================================");
-  //!display();
-  //!System.out.println("==================================================");
+    
+        int lastcount;
+        
+        int outerIterator = 1;        
+        do {
             count = 0;
-            inlining();
-            debug.Log.println("Inlining pass finished, running shake.");
-            shake();
-            liftAllocators();  // TODO: Is this the right position for liftAllocators?
-            eliminateUnusedArgs();
-            flow();
-  //     collapse();
-            debug.Log.println("Flow pass finished, running shake.");
-            shake();
-            debug.Log.println("Steps performed = " + count);
-            totalCount += count;
-        }
-        count = 0;
-        collapse(); // TODO: move inside loop?
-        shake();    // restore SCCs
-        totalCount += count;
-        debug.Log.println("TOTAL steps performed = " + totalCount);
+            count_g = 0;
+            int i=1;
+            do {
+              debug.Log.println("-------------------------");
+        //!System.out.println("==================================================");
+        //!System.out.println("Step " + i);
+        //!System.out.println("==================================================");
+        //!display();
+        //!System.out.println("==================================================");
+              lastcount = count;
+              count = 0;
+              inlining();
+              debug.Log.println("Inlining pass finished, running shake.");
+              shake();
+              liftAllocators();  // TODO: Is this the right position for liftAllocators?
+              flow();
+              debug.Log.println("Flow pass finished, running shake.");
+              shake();
+              debug.Log.println("Steps performed = " + count);
+              ++i;
+            } while (i < 20 && count>0);
+            //break;
+            count = lastcount;
+            int j=0;
+            do {
+                lastcount = count_g;
+                count_g = 0;
+                GlobalConstantPropagation();
+                debug.Log.println("GlobalConstantPropagation pass finished, running shake.");
+                shake();
+                debug.Log.println("Steps performed = " + count_g);
+                //display();
+                ++j;
+            } while (j<20 && count_g>0);
+               count_g = lastcount;
+            ++outerIterator;
+        } while (outerIterator < 20 && count+count_g>0);
+
+        debug.Log.println("Loops performed = " + outerIterator);
+        
     }
 
     /** Apply constructor function simplifications to this program.
@@ -294,4 +312,28 @@ public class MILProgram {
             dsccs.head.fixTrailingBlockCalls();
         }
     }
+
+    public static int count_g = 0;
+
+    /** Run a Global Contant Propagation pass over this program.  Assumes a previous call
+     *  to shake() to compute call graph information.
+     *  For each Defn call propagateConstants with the argument 3 for max number of different known specializations
+     *
+     *If a function is called with y different constants
+     *and y is less than the max, then there will be y different
+     *locks with each constant brought into the block 
+     *
+     */
+    public void GlobalConstantPropagation() {
+        for (DefnSCCs dsccs = sccs; dsccs!=null; dsccs=dsccs.next) {
+            for (Defns ds=dsccs.head.getBindings(); ds!=null; ds=ds.next) {
+                Defns addedDefns = ds.head.propagateConstants(3);
+
+                for (;addedDefns != null; addedDefns = addedDefns.next) {
+                    count++;
+                }
+
+              }
+        }
+      }
 }

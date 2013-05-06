@@ -252,4 +252,12 @@ public abstract class Defn {
     void fixTrailingBlockCalls() {
         /* do nothing */
     }
+
+    /** propagateConstants
+     * @param maxArgReplacement - determines the maximum tuple size of the lattice for each parameter
+     *
+     *
+     *
+     */
+    public abstract Defns propagateConstants(int maxArgReplacement);
 }
