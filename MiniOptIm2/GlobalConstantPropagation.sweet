@@ -7,7 +7,12 @@
     each pass running up to 20 times of the local and global optimization loops. This may be more than enough,
     as the loop ends when both the local and global loops fail to perform any modifications.
 **/
-public class MILProgram ! {public static int count_g = 0;}
+package mil;
+
+	class MILProgram 
+	{
+		public static int count_g = 0;
+	}
 
     public void optimize()
     case MILProgram !  {
@@ -60,14 +65,12 @@ public class MILProgram ! {public static int count_g = 0;}
         debug.Log.println("Loops performed = " + outerIterator);
         
     }
-/*****************************************************************************************************/
-/*****************************************************************************************************/
+
 /**
     The method GlobalConstantPropagation is called by the global optimization loop, and calls propagate 
     constants on each of the Defns in the programs. The method was created in a similar manner as liftAllocators
     and the other local optimization loops.
 **/
-
 /** Run a Global Contant Propagation pass over this program.  Assumes a previous call
  *  to shake() to compute call graph information.
  *  For each Defn call propagateConstants with the argument 3 for max number of different known specializations
@@ -77,7 +80,8 @@ public class MILProgram ! {public static int count_g = 0;}
     locks with each constant brought into the block 
 
  */
-public void GlobalConstantPropagation() {
+package mil;
+public void GlobalConstantPropagation() 
 case MILProgram {
         for (DefnSCCs dsccs = sccs; dsccs!=null; dsccs=dsccs.next) {
             for (Defns ds=dsccs.head.getBindings(); ds!=null; ds=ds.next) {
@@ -90,15 +94,15 @@ case MILProgram {
               }
         }
       }
-/*****************************************************************************************************/
-/*****************************************************************************************************/
+	 
+
 
 /**
     In order to look at all of the arguments used to call a block, it was necessary to add a method to
     return a list of BlockCalls. To accomodate this I added a helper method to BlockCall to compare a 
     passed in id with the Block field in the BlockCall object.
-**/
-    macro List(BlockCall) // Introduces class BlockCalls
+**/	  
+macro List(BlockCall) // Introduces class BlockCalls
 
     boolean callsBlock(String id)
     case BlockCall {
@@ -115,8 +119,8 @@ case MILProgram {
         if the tail calls block id, cons the tail to the list returned from c.getBlockCall
      
      */
-    public BlockCalls getBlockCall(String id) !
-    case Code {return null;}
+    public BlockCalls getBlockCall(String id)
+    case Code { return null; }
     case Bind {
         BlockCall thisCall = null;
         BlockCall bc = t.isBlockCall();
@@ -132,7 +136,7 @@ case MILProgram {
         
         return calls;
     }
-    case Done {
+    case Done { 
         BlockCall thisCall = null;
         BlockCall bc = t.isBlockCall();
         if (bc != null)
@@ -146,11 +150,6 @@ case MILProgram {
             calls = new BlockCalls(thisCall, calls);
         
         return calls;
-    }
-    case TAlt { 
-        if (bc != null && bc.callsBlock(id))
-            return bc;
-        return null;
     }
     case Match {
         BlockCalls block_calls = null;
@@ -170,27 +169,34 @@ case MILProgram {
         return block_calls;
     }
 
-/*****************************************************************************************************/
-/*****************************************************************************************************/
+    public BlockCall getBlockCall(String id)
+    case TAlt { 
+        if (bc != null && bc.callsBlock(id))
+            return bc;
+        return null;
+    }
+	
 /**
 	When constructing the lattice for each argument to a block call, it is necessary to have two predefined
 	values, for the top and bottom of the lattice. New Atom children classes NAC & UNDEF were added to identify
 	if an argument is Not A Constant (NAC) or no information is known about the argument UNDEF.
 **/
-    public abstract class Atom
-    public case static class CAtom(private final String identifier) {
-            public static final CAtom NAC = new CAtom("Not a constant");
-            public static final CAtom UNDEF = new CAtom("undefined");
-    }
-//    @Override
-    public String toString() !
-    case CAtom    { return identifier; }
-//    @Override
-    public Val lookup(ValEnv env) throws Fail !
-        case CAtom    { throw new Fail("lookup called on " + identifier); }
+public class NAC extends Atom
+public class UNDEF extends Atom
+macro Singleton(NAC)
+macro Singleton(UNDEF)
+			public String toString() 
+				case NAC !{ return "Not a constant"; }
+				case UNDEF !{ return "undefined"; }
 
-/*****************************************************************************************************/
-/*****************************************************************************************************/
+
+			public Val lookup(ValEnv env) throws Fail 
+				case NAC !{ throw new Fail("lookup called on " + "Not a constant"); }
+				case UNDEF !{ throw new Fail("lookup called on " + "undefined"); }
+    
+
+
+
 /**
 	For the case of a block calling itself, there are two types of potential modifications of the formals.
 	They are both handled by the checkArguments method in the Block class. First, there is the possibility
@@ -217,7 +223,7 @@ case MILProgram {
                          arguments[i] = a;
                      }
                      else {
-                         arguments[i] = Atom.CAtom.NAC;
+                         arguments[i] = NAC.obj;
                      }
     
                  }
@@ -228,9 +234,9 @@ case MILProgram {
         for (int i = 0; i < formals.length; ++i)
         {
             if (arguments[i] == null) break;
-            if (arguments[i] != Atom.CAtom.NAC) {
+            if (arguments[i] != NAC.obj) {
                 if (arguments[i].isConst() != null &&  !arguments[i].sameAtom(formals[i])) {
-                    arguments[i] = Atom.CAtom.NAC;
+                    arguments[i] = NAC.obj;
                 }
             }
             else {
@@ -251,19 +257,21 @@ case MILProgram {
     case Code { return atoms; }
     case Bind { for(int i = 0; i < atoms.length; ++i) {
             if (v.sameAtom(atoms[i])) {
-                atoms[i] = Atom.CAtom.NAC;
+                atoms[i] = NAC.obj;
             }
         }
         return c.checkformals(atoms);    
     }
-/*****************************************************************************************************/
-/*****************************************************************************************************/
+
+
+
 /**
     Once a new block has been created with a constant parameter removed/replaced it is necessary to update
 	the original blocks which called the parent block with that particular constant argument.
 	A helper function replaceBc was added to TAlt to remove the need for extracting all of the fields of a
 	TAlt to create a new object with the BlockCall replaced.
-**/
+**/	
+
     public void replaceBc(BlockCall bc)
     case TAlt { this.bc = bc; }
 
@@ -375,8 +383,8 @@ case MILProgram {
           }
         return success;
     }
-/*****************************************************************************************************/
-/*****************************************************************************************************/
+
+
 /**
     The bulk of the work of the global constant propagation algorithm is performed by the method
     propagateConstants.
@@ -409,11 +417,12 @@ case MILProgram {
 	The replaceCalls method is called for this caller with the new created block.
 **/
     public abstract class Defn {
-        public case Block(private Code code) {
+        public case Block {
             private Blocks children;
             private Atom replacedVar;
             private int version;
-        }
+		}
+    }
 
     /** propagateConstants
      * @param maxArgReplacement - determines the maximum tuple size of the lattice for each parameter
@@ -468,12 +477,12 @@ case MILProgram {
     				{
         				for (int j = 0; j < formals.length; ++j )
         				{
-        					if (knownArgs[j][0] != Atom.CAtom.NAC)
+        					if (knownArgs[j][0] != NAC.obj)
         						
         					{
         						// TODO: is it ever valid to not replace it with NAC?
-        						if (reEntryFormals[j] ==  Atom.CAtom.NAC)
-        							knownArgs[j][0] =  Atom.CAtom.NAC;
+        						if (reEntryFormals[j] ==  NAC.obj)
+        							knownArgs[j][0] =  NAC.obj;
         						if ((reEntryFormals[j].isConst() != null))
         						{
         							int k;
@@ -489,7 +498,7 @@ case MILProgram {
 	        							}
 	        						}
 	        						if (k == maxArgReplacement) {
-	        							knownArgs[j][0] = Atom.CAtom.NAC;
+	        							knownArgs[j][0] = NAC.obj;
 	        						}
         						}
         					}
@@ -499,7 +508,7 @@ case MILProgram {
     					Atom formals2[] =  current_call.head.args;
     					for (int j = 0; j < formals.length; ++j )
         				{
-        					if (knownArgs[j][0] !=  Atom.CAtom.NAC && (formals2[j].isConst() != null))
+        					if (knownArgs[j][0] !=  NAC.obj && (formals2[j].isConst() != null))
         					{
         						int k;
         						for (k = 0; k < maxArgReplacement; ++k)
@@ -513,7 +522,7 @@ case MILProgram {
         							}
         						}
         						if (k == maxArgReplacement) {
-        							knownArgs[j][0] =  Atom.CAtom.NAC;
+        							knownArgs[j][0] =  NAC.obj;
         						}
         					}
         				}
@@ -526,7 +535,7 @@ case MILProgram {
 		int newVersion = version+1;
 		for (int j = 0; j < formals.length; ++j )
 		{
-			if (knownArgs[j][0] == Atom.CAtom.NAC || knownArgs[j][0] == Atom.CAtom.UNDEF) {
+			if (knownArgs[j][0] == NAC.obj || knownArgs[j][0] == UNDEF.obj) {
 				//System.out.println("Arg " + j + " is " + knownArgs[j][0].toString());
 				continue;
 			}

@@ -867,4 +867,13 @@ public class Block extends Defn {
 
                 return Created;
     }
+
+    public int dataflow() {
+        System.out.println("At block " + id);
+        return 0;
+        }
+
+    public Pairs ins;
+
+    public Pairs outs;
 }

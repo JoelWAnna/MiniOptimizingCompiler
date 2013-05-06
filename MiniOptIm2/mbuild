@@ -18,7 +18,8 @@
  	   mil.sweet \
  	   optimize.sweet \
 	   MilGen.sweet \
-	   ../GlobalConstantPropagation-codeOnly.sweet \
+	   ../GlobalConstantPropagation.sweet \
+	   ../dataflow.sweet \
 	 -o.. )
 
 javac compiler/*.java mini/*.java mil/*.java

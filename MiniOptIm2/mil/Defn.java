@@ -260,4 +260,6 @@ public abstract class Defn {
      *
      */
     public abstract Defns propagateConstants(int maxArgReplacement);
+
+    public int dataflow() { return 0;}
 }

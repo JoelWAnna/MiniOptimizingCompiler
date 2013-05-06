@@ -138,7 +138,7 @@ public class MILProgram {
                count_g = lastcount;
             ++outerIterator;
         } while (outerIterator < 20 && count+count_g>0);
-
+                dataflow();
         debug.Log.println("Loops performed = " + outerIterator);
         
     }
@@ -336,4 +336,14 @@ public class MILProgram {
               }
         }
       }
+
+    void dataflow() {
+        for (int i = 1; i != 0;) {
+                for (DefnSCCs dsccs = sccs; dsccs!=null; dsccs=dsccs.next) {
+                  for (Defns ds=dsccs.head.getBindings(); ds!=null; ds=ds.next) {
+                        i = ds.head.dataflow();
+                  }
+                }
+        }
+}
 }
