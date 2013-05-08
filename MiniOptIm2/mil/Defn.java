@@ -1,5 +1,36 @@
 package mil;
 
+/**
+ *The bulk of the work of the global constant propagation algorithm is performed by the method
+ *propagateConstants.
+ *This method is not yet defined for a TopLevel or ClosureDefn child class as they are not used in MIL
+ *code generated from a Mini program.
+ *
+ *In the Block class the first operation is to verify that there have not been more than 3 levels
+ *of derived blocks from a particular parent.
+ *
+ *The lattice array is constucted of size maxArgReplacement by the number of formals.
+ *For the case of a call from a block to itself, the reentryFormals array is created by
+ *the method checkArguments.
+ *
+ *The list of caller blocks is iterated through, retrieving the list of BlockCalls from the caller
+ *using the getBlockCall method and the list of block calls is run through one of two inner loops.
+ *The first is for the case of a block calling itself which is the same as the general loop, with the
+ *exception that if an argument is NAC from reentryFormals, the lattice index for that argument is not changed.
+ *The general case loops through each of the formals, if the lattice is set to NAC that formal is ignored
+ *otherwise, if the formal is Const, and there is room in the lattice for another potential constant, it is added
+ *to the first empty slot in the array for that formal. If there is no longer room for that argument, it is changed
+ *into NAC because there are too many potential constants for that parameter.
+ *
+ *Once the lattice is completely filled out, for each parameter that has a least one but no more than 
+ *maxArgReplacement or less constants     (anything other than NAC/UNDEF), the callers to this function are
+ *looped through, checking for that particular call. Everytime a call to the block with that argument is found
+ *first check the list of children to see if a suitable replacement has already been found, if not create a new
+ *child block by copying the code of this block, and applying an AtomSubst for that parameter to the new block
+ *adding this block to the list of children.
+ *
+ *The replaceCalls method is called for this caller with the new created block.
+ */
 public abstract class Defn {
 
     /** Return the identifier that is associated with this definition.
@@ -262,4 +293,8 @@ public abstract class Defn {
     public abstract Defns propagateConstants(int maxArgReplacement);
 
     public int dataflow() { return 0;}
+
+    public void clearInsOuts() {}
+
+    public void printInsOuts() {}
 }

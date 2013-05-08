@@ -657,6 +657,17 @@ public class Block extends Defn {
         return args;
     }
 
+    /**
+     *For the case of a block calling itself, there are two types of potential modifications of the formals.
+     *They are both handled by the checkArguments method in the Block class. First, there is the possibility
+     *of block calling itself with different parameters than its formals list. 
+     *The getBlock call method is used on the code field, and on each BlockCall returned if the argument is
+     *a Constant, it is saved to the lattice structure, if it is a different variable than the lattice value
+     *for that argument is set to NAC.
+     *Once the return calls are checked, a second pass is run to see if the incoming argument
+     *is given a new value with a call to Bind. Currently, if Bind is called on an incoming parameter
+     *the argument is set to NAC
+     */
     private Atom[] checkArguments() {
         Atom [] arguments = new Atom[formals.length];
          for (int i = 0; i < formals.length; ++i)
@@ -870,8 +881,55 @@ public class Block extends Defn {
 
     public int dataflow() {
         System.out.println("At block " + id);
+        boolean firstRound = true;
+        boolean union = true;
+        boolean mode = !union; // The interpretation of !union is intersection
+        for(Defns callersIter= this.getCallers(); callersIter != null; callersIter = callersIter.next)
+        {
+                Block caller = (Block) callersIter.head;
+                
+                if (firstRound) {
+                        firstRound = false;
+                        callersIter = callersIter.next;
+                        if (callersIter == null) {
+                                // only 1 caller to this block
+                                if (caller.outs != null) {
+                                        ins = caller.outs.copy();
+                                }
+                                break;
+                        }
+                        else{   
+                                Block nextCaller = (Block) callersIter.head;
+                                ins = Pairs.meets(caller.outs, nextCaller.outs, mode);
+                        }
+                }
+                else {
+                        ins = Pairs.meets(ins, caller.outs, mode);
+                }
+        }
+
+        Pairs oldOuts = outs;
+        outs = code.outset(ins);
+        int oldlen = Pairs.length(oldOuts);
+        if ((oldlen != Pairs.length(outs) )
+                || (oldlen != Pairs.length(Pairs.meets(oldOuts, outs, !union)))
+                ){
+                return 1;
+        }       
+
         return 0;
         }
+
+    public void clearInsOuts() { ins = outs = null; }
+
+    public void printInsOuts() {
+        if (ins != null) {
+        ins.print(true, id);
+        }
+        if (outs != null) {
+                outs.print(false, id);
+        }
+}
 
     public Pairs ins;
 

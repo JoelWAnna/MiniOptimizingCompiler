@@ -39,7 +39,12 @@ public class Pair {
                         atoms = new Atoms(current.head, atoms);
                 current = current.next;
                 }
+                return true;
         }
         return false;
 }
+
+    public Pair copy() {
+        return new Pair(t, atoms.copy());
+        }
 }

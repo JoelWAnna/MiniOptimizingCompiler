@@ -233,5 +233,11 @@ public class TAlt {
         return null;
     }
 
+    /**
+     *Once a new block has been created with a constant parameter removed/replaced it is necessary to update
+     *the original blocks which called the parent block with that particular constant argument.
+     *A helper function replaceBc was added to TAlt to remove the need for extracting all of the fields of a
+     *TAlt to create a new object with the BlockCall replaced.
+     */
     public void replaceBc(BlockCall bc) { this.bc = bc; }
 }

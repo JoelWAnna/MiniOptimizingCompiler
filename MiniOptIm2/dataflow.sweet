@@ -1,0 +1,350 @@
+
+package mil;
+    public void optimize()
+    case MILProgram !  {
+        shake();
+        cfunSimplify();
+    
+        int lastcount;
+        
+        int outerIterator = 1;        
+        do {
+            count = 0;
+            count_g = 0;
+            int i=1;
+            do {
+              debug.Log.println("-------------------------");
+        //!System.out.println("==================================================");
+        //!System.out.println("Step " + i);
+        //!System.out.println("==================================================");
+        //!display();
+        //!System.out.println("==================================================");
+              lastcount = count;
+              count = 0;
+              inlining();
+              debug.Log.println("Inlining pass finished, running shake.");
+              shake();
+              liftAllocators();  // TODO: Is this the right position for liftAllocators?
+              flow();
+              debug.Log.println("Flow pass finished, running shake.");
+              shake();
+              debug.Log.println("Steps performed = " + count);
+              ++i;
+            } while (i < 20 && count>0);
+            //break;
+            count = lastcount;
+            int j=0;
+            do {
+                lastcount = count_g;
+                count_g = 0;
+                GlobalConstantPropagation();
+                debug.Log.println("GlobalConstantPropagation pass finished, running shake.");
+                shake();
+                debug.Log.println("Steps performed = " + count_g);
+                //display();
+                ++j;
+            } while (j<20 && count_g>0);
+               count_g = lastcount;
+            ++outerIterator;
+        } while (outerIterator < 20 && count+count_g>0);
+		dataflow();
+        debug.Log.println("Loops performed = " + outerIterator);
+        
+    }
+	void dataflow()
+	case MILProgram {
+		/*
+			for (DefnSCCs dsccs = sccs; dsccs!=null; dsccs=dsccs.next) {
+			  for (Defns ds=dsccs.head.getBindings(); ds!=null; ds=ds.next) {
+				ds.head.clearInsOuts();
+			  }
+			}
+		*/  
+		for (int i = 1; i != 0;) {
+			for (DefnSCCs dsccs = sccs; dsccs!=null; dsccs=dsccs.next) {
+			  for (Defns ds=dsccs.head.getBindings(); ds!=null; ds=ds.next) {
+				i = ds.head.dataflow();
+			  }
+			}
+		}
+		for (DefnSCCs dsccs = sccs; dsccs!=null; dsccs=dsccs.next) {
+			for (Defns ds=dsccs.head.getBindings(); ds!=null; ds=ds.next) {
+				ds.head.printInsOuts();
+			}
+		}
+	}
+			
+
+	public int dataflow()
+	case Block {
+		System.out.println("At block " + id);
+		boolean firstRound = true;
+		boolean union = true;
+		boolean mode = !union; // The interpretation of !union is intersection
+		for(Defns callersIter= this.getCallers(); callersIter != null; callersIter = callersIter.next)
+		{
+			Block caller = (Block) callersIter.head;
+			
+			if (firstRound) {
+				firstRound = false;
+				callersIter = callersIter.next;
+				if (callersIter == null) {
+					// only 1 caller to this block
+					if (caller.outs != null) {
+						ins = caller.outs.copy();
+					}
+					break;
+				}
+				else{	
+					Block nextCaller = (Block) callersIter.head;
+					ins = Pairs.meets(caller.outs, nextCaller.outs, mode);
+				}
+			}
+			else {
+				ins = Pairs.meets(ins, caller.outs, mode);
+			}
+		}
+
+		Pairs oldOuts = outs;
+		outs = code.outset(ins);
+		int oldlen = Pairs.length(oldOuts);
+		if ((oldlen != Pairs.length(outs) )
+			|| (oldlen != Pairs.length(Pairs.meets(oldOuts, outs, !union)))
+			){
+			return 1;
+		}	
+
+		return 0;
+		}
+	case Defn { return 0;}
+	public void clearInsOuts()
+	case Defn {}
+	case Block { ins = outs = null; }
+	public void printInsOuts()
+	case Defn {}
+	case Block {
+			if (ins != null) {
+			ins.print(true, id);
+			}
+			if (outs != null) {
+				outs.print(false, id);
+			}
+		}
+	public Pairs outset(Pairs ins)
+	case Code abstract;
+	case Bind {
+		Pairs outs = null;
+		Pair d = new Pair(t, new Atoms(v, null));
+		if (ins == null) {
+			outs = new Pairs(d, null);
+		}
+		else {
+			outs = ins.copy();
+			outs.kill(v);
+			outs.gen(d);
+		}
+        if (c == null) {
+        	System.out.println("unlinked bind call found!?!");
+        	return outs;
+        }
+		return c.outset(outs);
+		}
+	case Done { /* todo */ return ins;}
+	case Match { /* todo */ return ins;}
+	case Halt   { /* todo */ return ins;}
+
+	public class Pair(public Tail t, public Atoms atoms) {
+	}
+	public class Block {
+		public Pairs ins;
+		public Pairs outs;
+	}
+	
+
+	public boolean equal(Pair other)
+	case Pair {
+			if (this.t.sameTail(other.t))
+			{
+				return true;
+			}
+			return false;
+		}
+	public boolean merge(Pair other) 
+	case Pair {
+			if (this.equal(other)) {
+				Atoms current = other.atoms;
+				while (current != null)
+				{
+					boolean found = false;
+					Atoms old = atoms;
+					while (old != null) {
+						if (old.head.sameAtom(current.head)) {
+							found = true;
+							break;
+						}
+						old = old.next;
+					}
+				if (!found)
+					atoms = new Atoms(current.head, atoms);
+				current = current.next;
+				}
+				return true;
+			}
+			return false;
+		}
+	public Pair copy()
+	case Pair {
+		return new Pair(t, atoms.copy());
+		}
+	
+
+	macro List(Atom)
+	macro List(Pair)
+	macro AddLength(Pairs) 
+	public void print(boolean inset, String id)
+	case Pairs {
+		if (inset) {
+			System.out.println("Inset for block " + id);
+		}
+		else {
+			System.out.println("Outset for block " + id);
+		}
+		print();
+	}
+	public void print()
+	case Pairs {
+		head.t.display();
+		Atoms current = head.atoms;
+		while (current != null) {
+			System.out.println(current.head.toString());
+			current = current.next;
+		}
+		if (next != null)
+			next.print();
+	}
+		
+		
+		
+		
+	
+			
+	
+	public Pairs copy()
+	case Pairs	{
+		if (next != null)
+			return new Pairs(head.copy(), next.copy());	
+		return new Pairs(head.copy(), next);		
+	}
+	public Atoms copy()
+	case Atoms	{
+		if (next != null)
+			return new Atoms(head, next.copy());
+		return new Atoms(head, next);
+	}
+
+	public Var isVar() 
+	case Atom { return null; }
+	case Var { return this; }
+
+	public Pairs kill(Atom a)
+	case Pairs {
+		Var v = a.isVar();
+		if (v == null)
+			return this;
+		if (head.t.contains(v)) {
+			if (next != null)
+				return next.kill(v);
+			return null;
+		}
+		if (next != null)
+			return new Pairs(head, next.kill(v));
+		return new Pairs(head, null);
+	}
+	public Pairs gen(Pair p)
+	case Pairs {
+		if (head.merge(p)) {
+			return this;
+		}
+		if (next != null) {
+			return new Pairs(head, next.gen(p));
+		}	
+		return new Pairs(p, null);
+	}
+
+	public static Pairs meets(Pairs toMeetA, Pairs toMeetB, boolean union)
+	case Pairs {
+		if (toMeetA == null) {
+			if (toMeetB == null || !union) {
+				return null;
+			}
+			return toMeetB.copy();
+		}
+		if (toMeetB == null) {
+			if (toMeetA == null || !union) {
+				return null;
+			}
+			return toMeetA.copy();
+		}
+		// toMeetA != null && toMeetB != null
+		Pairs met = null;
+
+		Pairs toMeetAHead = toMeetA = toMeetA.copy();
+		Pairs toMeetBHead = toMeetB = toMeetB.copy();
+		
+		
+		Pairs previousA = null;
+		Pairs previousB = null;
+
+		while (toMeetA != null)
+		{
+			toMeetB = toMeetBHead;
+			previousB = null;
+			boolean found = false;
+			while (toMeetB != null)
+			{
+				if (toMeetA.head.equal(toMeetB.head)) {
+						Pair toInsert = toMeetA.head.copy();
+						toInsert.merge(toMeetB.head);
+						met = new Pairs(toInsert, met);
+						found = true;
+						if (previousA == null) {
+							toMeetAHead = toMeetA.next;
+						}
+						else {
+							previousA.next = toMeetA.next;
+						}
+						if (previousB == null) {
+							toMeetBHead = toMeetB.next;
+						}
+						else {
+							previousB.next = toMeetB.next;
+						}
+						break;
+				}
+				else {
+					previousB = toMeetB;
+				}
+				toMeetB = toMeetB.next;
+			}
+			if (!found) {
+				if (union) {
+					met = new Pairs(toMeetA.head.copy(), met);
+				}
+				previousA = toMeetA;
+			}
+			toMeetA = toMeetA.next;
+		}
+
+		if (union) {
+			while (toMeetAHead != null) {
+				met = new Pairs(toMeetAHead.head.copy(), met);
+				toMeetAHead = toMeetAHead.next;
+			}
+			while (toMeetBHead != null) {
+				met = new Pairs(toMeetBHead.head.copy(), met);
+				toMeetBHead = toMeetBHead.next;
+			}
+		}
+		return met;
+	}
+ 

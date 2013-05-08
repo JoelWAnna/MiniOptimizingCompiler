@@ -315,15 +315,6 @@ public class MILProgram {
 
     public static int count_g = 0;
 
-    /** Run a Global Contant Propagation pass over this program.  Assumes a previous call
-     *  to shake() to compute call graph information.
-     *  For each Defn call propagateConstants with the argument 3 for max number of different known specializations
-     *
-     *If a function is called with y different constants
-     *and y is less than the max, then there will be y different
-     *locks with each constant brought into the block 
-     *
-     */
     public void GlobalConstantPropagation() {
         for (DefnSCCs dsccs = sccs; dsccs!=null; dsccs=dsccs.next) {
             for (Defns ds=dsccs.head.getBindings(); ds!=null; ds=ds.next) {
@@ -338,11 +329,23 @@ public class MILProgram {
       }
 
     void dataflow() {
+        /*
+                for (DefnSCCs dsccs = sccs; dsccs!=null; dsccs=dsccs.next) {
+                  for (Defns ds=dsccs.head.getBindings(); ds!=null; ds=ds.next) {
+                        ds.head.clearInsOuts();
+                  }
+                }
+        */  
         for (int i = 1; i != 0;) {
                 for (DefnSCCs dsccs = sccs; dsccs!=null; dsccs=dsccs.next) {
                   for (Defns ds=dsccs.head.getBindings(); ds!=null; ds=ds.next) {
                         i = ds.head.dataflow();
                   }
+                }
+        }
+        for (DefnSCCs dsccs = sccs; dsccs!=null; dsccs=dsccs.next) {
+                for (Defns ds=dsccs.head.getBindings(); ds!=null; ds=ds.next) {
+                        ds.head.printInsOuts();
                 }
         }
 }

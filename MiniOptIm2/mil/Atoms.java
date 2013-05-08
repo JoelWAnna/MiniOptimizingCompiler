@@ -12,4 +12,10 @@ public class Atoms {
         this.head = head;
         this.next = next;
     }
+
+    public Atoms copy() {
+        if (next != null)
+                return new Atoms(head, next.copy());
+        return new Atoms(head, next);
+}
 }

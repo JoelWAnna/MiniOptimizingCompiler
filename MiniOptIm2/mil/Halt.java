@@ -115,4 +115,6 @@ public class Halt extends Code {
     void fixTrailingBlockCalls() {
         /* do nothing */
     }
+
+    public Pairs outset(Pairs ins) { /* todo */ return ins;}
 }

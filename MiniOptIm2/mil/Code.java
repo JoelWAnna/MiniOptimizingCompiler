@@ -285,4 +285,6 @@ public abstract class Code {
      *@param b: the new Block object which was specialized from id
      */
     boolean replaceCalls(String id, int j, Atom replaced, Block b) { return false; }
+
+    public abstract Pairs outset(Pairs ins);
 }

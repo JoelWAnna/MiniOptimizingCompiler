@@ -428,4 +428,22 @@ public class Bind extends Code {
         
         return c.replaceCalls(id, j, replaced, b) || success;
     }
+
+    public Pairs outset(Pairs ins) {
+        Pairs outs = null;
+        Pair d = new Pair(t, new Atoms(v, null));
+        if (ins == null) {
+                outs = new Pairs(d, null);
+        }
+        else {
+                outs = ins.copy();
+                outs.kill(v);
+                outs.gen(d);
+        }
+if (c == null) {
+        System.out.println("unlinked bind call found!?!");
+        return outs;
+}
+        return c.outset(outs);
+        }
 }
