@@ -243,4 +243,6 @@ public abstract class Tail {
     void fixTrailingBlockCalls() {
         /* do nothing */
     }
+
+    public Pairs addIns(Pairs ins) { return null; }
 }

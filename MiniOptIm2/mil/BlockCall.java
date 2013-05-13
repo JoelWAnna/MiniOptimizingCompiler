@@ -289,4 +289,9 @@ public class BlockCall extends Call {
         if (b == null) return false;
         return b.getId().equalsIgnoreCase(id);
     }
+
+    public Pairs addIns(Pairs ins) {
+        b.nextIns = new Pairss(ins, b.nextIns);
+        return b.outs;
+}
 }

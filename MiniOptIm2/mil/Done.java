@@ -297,5 +297,9 @@ public class Done extends Code {
         return false;
     }
 
-    public Pairs outset(Pairs ins) { /* todo */ return ins;}
+    public Pairs outset(Pairs ins) { 
+        Pairs outs = t.addIns(ins);                     
+        //if (ins != null) ins.print(false, "blaJ");
+        //if (outs != null)  outs.print(false, "blaJ");
+        return Pairs.meets(outs, ins, true); }
 }

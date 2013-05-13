@@ -292,6 +292,10 @@ public abstract class Defn {
      */
     public abstract Defns propagateConstants(int maxArgReplacement);
 
+    public void setNextOuts() {}
+
+    public void computeInMeets() {}
+
     public int dataflow() { return 0;}
 
     public void clearInsOuts() {}

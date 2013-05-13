@@ -85,7 +85,7 @@ public void GlobalConstantPropagation()
 case MILProgram {
         for (DefnSCCs dsccs = sccs; dsccs!=null; dsccs=dsccs.next) {
             for (Defns ds=dsccs.head.getBindings(); ds!=null; ds=ds.next) {
-                Defns addedDefns = ds.head.propagateConstants(3);
+                Defns addedDefns = ds.head.propagateConstants(1);
 
                 for (;addedDefns != null; addedDefns = addedDefns.next) {
                     count++;

@@ -1,0 +1,20 @@
+\documentclass[14pt]{article}
+\author{Joel Anna<annajoel@pdx.edu>}
+\usepackage{fancyhdr}
+\usepackage{lastpage}
+\pagestyle{fancy}
+\lhead{\footnotesize \parbox{11cm}{Joel Anna} }
+%\lfoot{\footnotesize \parbox{11cm}{\textit{2}}}
+\cfoot{}
+\rhead{\footnotesize Week 6 Report:  }
+%\rfoot{\footnotesize Page \thepage\ of \pageref{LastPage}}
+\renewcommand{\headheight}{24pt}
+\begin{document}
+\paragraph{CS401 Optimization Week 6 report} 
+.\\
+This week I completed the first version of the data flow analysis pass for MIL.
+For the data flow analysis, the first step is to compute the in set of each block by using the meets of the outsets of the blocks that call it. After all of the in sets are computed, dataflow is called on each block, computing the gen and kill set for each tail, adding the outset at a block call to the list of incoming outsets for that block, to be used at the next pass of the data flow algorithm. Once the dataflow pass has been completed, the outsets are set to their new values, as the old outsets were used for the complete path.
+This loop continues until no changes to an outset.
+The next step will be to take the results of the algorithm done by hand, and compare with the results of the MIL code, and correct/add to any areas where they do not match.
+
+\end{document}

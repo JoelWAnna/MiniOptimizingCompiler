@@ -240,4 +240,6 @@ public class TAlt {
      *TAlt to create a new object with the BlockCall replaced.
      */
     public void replaceBc(BlockCall bc) { this.bc = bc; }
+
+    public Pairs addIns(Pairs ins) {      return bc.addIns(ins); }
 }

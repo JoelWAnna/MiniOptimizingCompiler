@@ -97,7 +97,7 @@ public class MILProgram {
         cfunSimplify();
     
         int lastcount;
-        
+        boolean RUNGLOBALCONSTPROP = true;
         int outerIterator = 1;        
         do {
             count = 0;
@@ -125,17 +125,19 @@ public class MILProgram {
             //break;
             count = lastcount;
             int j=0;
-            do {
-                lastcount = count_g;
-                count_g = 0;
-                GlobalConstantPropagation();
-                debug.Log.println("GlobalConstantPropagation pass finished, running shake.");
-                shake();
-                debug.Log.println("Steps performed = " + count_g);
-                //display();
-                ++j;
-            } while (j<20 && count_g>0);
-               count_g = lastcount;
+                        if (RUNGLOBALCONSTPROP) {
+                                do {
+                                        lastcount = count_g;
+                                        count_g = 0;
+                                        GlobalConstantPropagation();
+                                        debug.Log.println("GlobalConstantPropagation pass finished, running shake.");
+                                        shake();
+                                        debug.Log.println("Steps performed = " + count_g);
+                                        //display();
+                                        ++j;
+                                } while (j<20 && count_g>0);
+                                   count_g = lastcount; 
+                        }
             ++outerIterator;
         } while (outerIterator < 20 && count+count_g>0);
                 dataflow();
@@ -318,7 +320,7 @@ public class MILProgram {
     public void GlobalConstantPropagation() {
         for (DefnSCCs dsccs = sccs; dsccs!=null; dsccs=dsccs.next) {
             for (Defns ds=dsccs.head.getBindings(); ds!=null; ds=ds.next) {
-                Defns addedDefns = ds.head.propagateConstants(3);
+                Defns addedDefns = ds.head.propagateConstants(1);
 
                 for (;addedDefns != null; addedDefns = addedDefns.next) {
                     count++;
@@ -335,14 +337,26 @@ public class MILProgram {
                         ds.head.clearInsOuts();
                   }
                 }
-        */  
+        */
+
         for (int i = 1; i != 0;) {
+                for (DefnSCCs dsccs = sccs; dsccs!=null; dsccs=dsccs.next) {
+                        for (Defns ds=dsccs.head.getBindings(); ds!=null; ds=ds.next) {
+                                ds.head.computeInMeets();
+                        }
+                }
                 for (DefnSCCs dsccs = sccs; dsccs!=null; dsccs=dsccs.next) {
                   for (Defns ds=dsccs.head.getBindings(); ds!=null; ds=ds.next) {
                         i = ds.head.dataflow();
                   }
                 }
+                for (DefnSCCs dsccs = sccs; dsccs!=null; dsccs=dsccs.next) {
+                  for (Defns ds=dsccs.head.getBindings(); ds!=null; ds=ds.next) {
+                        ds.head.setNextOuts();
+                  }
+                }
         }
+
         for (DefnSCCs dsccs = sccs; dsccs!=null; dsccs=dsccs.next) {
                 for (Defns ds=dsccs.head.getBindings(); ds!=null; ds=ds.next) {
                         ds.head.printInsOuts();

@@ -35,11 +35,15 @@ public class Pairs {
 
     public void print() {
         head.t.display();
+        System.out.print("->");
         Atoms current = head.atoms;
+        System.out.print(current.head.toString());
+        current = current.next;
         while (current != null) {
-                System.out.println(current.head.toString());
+                System.out.print("," + current.head.toString());
                 current = current.next;
-        }
+                }
+        System.out.println("");
         if (next != null)
                 next.print();
 }
@@ -70,7 +74,7 @@ public class Pairs {
         }
         if (next != null) {
                 return new Pairs(head, next.gen(p));
-        }       
+        }
         return new Pairs(p, null);
 }
 

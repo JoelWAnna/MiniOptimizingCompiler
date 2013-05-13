@@ -436,7 +436,8 @@ public class Bind extends Code {
                 outs = new Pairs(d, null);
         }
         else {
-                outs = ins.copy();
+                outs = t.addIns(ins);
+                outs = Pairs.meets(outs, ins, true);
                 outs.kill(v);
                 outs.gen(d);
         }

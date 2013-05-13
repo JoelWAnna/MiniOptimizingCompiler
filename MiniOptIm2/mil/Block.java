@@ -879,40 +879,49 @@ public class Block extends Defn {
                 return Created;
     }
 
-    public int dataflow() {
-        System.out.println("At block " + id);
+    public void setNextOuts() {
+        outs = nextOuts;
+        }
+
+    public void computeInMeets() {
+        System.out.println("computeInMeets At block " + id);
         boolean firstRound = true;
         boolean union = true;
         boolean mode = !union; // The interpretation of !union is intersection
-        for(Defns callersIter= this.getCallers(); callersIter != null; callersIter = callersIter.next)
-        {
-                Block caller = (Block) callersIter.head;
+        Pairss insIter;
+        for (insIter = nextIns; insIter != null; insIter = insIter.next) {
+                Pairs caller =  insIter.head;
                 
                 if (firstRound) {
                         firstRound = false;
-                        callersIter = callersIter.next;
-                        if (callersIter == null) {
+                        nextIns = nextIns.next;
+                        if (nextIns == null) {
                                 // only 1 caller to this block
-                                if (caller.outs != null) {
-                                        ins = caller.outs.copy();
+                                if (caller != null) {
+                                        ins = caller.copy();
                                 }
                                 break;
                         }
                         else{   
-                                Block nextCaller = (Block) callersIter.head;
-                                ins = Pairs.meets(caller.outs, nextCaller.outs, mode);
+                                Pairs nextCaller =  nextIns.head;
+                                ins = Pairs.meets(caller, nextCaller, mode);
                         }
                 }
                 else {
-                        ins = Pairs.meets(ins, caller.outs, mode);
+                        ins = Pairs.meets(ins, caller, mode);
                 }
         }
+        nextIns = null;
+        }
 
-        Pairs oldOuts = outs;
-        outs = code.outset(ins);
-        int oldlen = Pairs.length(oldOuts);
-        if ((oldlen != Pairs.length(outs) )
-                || (oldlen != Pairs.length(Pairs.meets(oldOuts, outs, !union)))
+    public int dataflow() {
+        System.out.println("dataflow At block " + id);
+        boolean union = true;
+
+        nextOuts = code.outset(ins);
+        int oldlen = Pairs.length(outs);
+        if ((oldlen != Pairs.length(nextOuts) )
+                || (oldlen != Pairs.length(Pairs.meets(nextOuts, outs, !union)))
                 ){
                 return 1;
         }       
@@ -920,7 +929,7 @@ public class Block extends Defn {
         return 0;
         }
 
-    public void clearInsOuts() { ins = outs = null; }
+    public void clearInsOuts() { nextIns = null; ins = outs = null; }
 
     public void printInsOuts() {
         if (ins != null) {
@@ -931,7 +940,11 @@ public class Block extends Defn {
         }
 }
 
+    public Pairss nextIns;
+
     public Pairs ins;
 
     public Pairs outs;
+
+    public Pairs nextOuts;
 }
