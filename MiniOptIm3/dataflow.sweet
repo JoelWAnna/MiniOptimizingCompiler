@@ -1,57 +1,8 @@
 
 package mil;
     public void optimize()
-    case MILProgram !  {
-        shake();
-        cfunSimplify();
-    
-        int lastcount;
-        boolean RUNGLOBALCONSTPROP = true;
-        int outerIterator = 1;        
-        do {
-            count = 0;
-            count_g = 0;
-            int i=1;
-            do {
-              debug.Log.println("-------------------------");
-        //!System.out.println("==================================================");
-        //!System.out.println("Step " + i);
-        //!System.out.println("==================================================");
-        //!display();
-        //!System.out.println("==================================================");
-              lastcount = count;
-              count = 0;
-              inlining();
-              debug.Log.println("Inlining pass finished, running shake.");
-              shake();
-              liftAllocators();  // TODO: Is this the right position for liftAllocators?
-              flow();
-              debug.Log.println("Flow pass finished, running shake.");
-              shake();
-              debug.Log.println("Steps performed = " + count);
-              ++i;
-            } while (i < 20 && count>0);
-            //break;
-            count = lastcount;
-            int j=0;
-			if (RUNGLOBALCONSTPROP) {
-				do {
-					lastcount = count_g;
-					count_g = 0;
-					GlobalConstantPropagation();
-					debug.Log.println("GlobalConstantPropagation pass finished, running shake.");
-					shake();
-					debug.Log.println("Steps performed = " + count_g);
-					//display();
-					++j;
-				} while (j<20 && count_g>0);
-				   count_g = lastcount; 
-			}
-            ++outerIterator;
-        } while (outerIterator < 20 && count+count_g>0);
+    case MILProgram >  {
 		dataflow();
-        debug.Log.println("Loops performed = " + outerIterator);
-        
     }
 	void dataflow()
 	case MILProgram {
@@ -208,7 +159,6 @@ package mil;
 			}
 			return ins;
 			}
-	case Halt   { /* todo */ return ins;}
 
 	public class Pair(public Tail t, public Atoms atoms) {
 	}
