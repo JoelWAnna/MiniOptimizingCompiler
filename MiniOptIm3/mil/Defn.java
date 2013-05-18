@@ -268,4 +268,14 @@ public abstract class Defn {
     void fixTrailingBlockCalls() {
         /* do nothing */
     }
+
+    public void setNextOuts() {}
+
+    public void computeInMeets() {}
+
+    public int dataflow() { return 0;}
+
+    public void clearInsOuts() {}
+
+    public void printInsOuts() {}
 }

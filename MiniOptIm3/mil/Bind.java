@@ -370,4 +370,23 @@ return t.detectLoops(src, visited)
     void fixTrailingBlockCalls() {
         c.fixTrailingBlockCalls();
     }
+
+    public Pairs outset(Pairs ins) {
+        Pairs outs = null;
+        Pair d = new Pair(t, new Atoms(v, null));
+        if (ins == null) {
+                outs = new Pairs(d, null);
+        }
+        else {
+                outs = t.addIns(ins);
+                outs = Pairs.meets(outs, ins, true);
+                outs.kill(v);
+                outs.gen(d);
+        }
+if (c == null) {
+        System.out.println("unlinked bind call found!?!");
+        return outs;
+}
+        return c.outset(outs);
+        }
 }

@@ -59,4 +59,6 @@ public abstract class Var extends Atom {
         }
         return false;
     }
+
+    public Var isVar() { return this; }
 }

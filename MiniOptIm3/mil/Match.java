@@ -430,4 +430,22 @@ public class Match extends Code {
           alts[i].fixTrailingBlockCalls();
         }
     }
+
+    public Pairs outset(Pairs ins) {
+        Pairss outs = null;
+        if (def != null) {
+                Pairs defOuts = def.addIns(ins);
+                if (defOuts != null) {
+                        outs = new Pairss(defOuts, outs);
+                }
+        }
+    for (int i=0; i<alts.length; i++) {
+                Pairs altsOuts = alts[i].addIns(ins);
+                if (altsOuts != null) {
+                        outs = new Pairss(altsOuts, outs);
+                }
+                
+        }
+        return ins;
+        }
 }

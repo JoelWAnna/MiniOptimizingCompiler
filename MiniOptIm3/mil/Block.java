@@ -697,4 +697,73 @@ public class Block extends Defn {
         }
         return args;
     }
+
+    public void setNextOuts() {
+        outs = nextOuts;
+        }
+
+    public void computeInMeets() {
+        System.out.println("computeInMeets At block " + id);
+        boolean firstRound = true;
+        boolean union = true;
+        boolean mode = !union; // The interpretation of !union is intersection
+        Pairss insIter;
+        for (insIter = nextIns; insIter != null; insIter = insIter.next) {
+                Pairs caller =  insIter.head;
+                
+                if (firstRound) {
+                        firstRound = false;
+                        nextIns = nextIns.next;
+                        if (nextIns == null) {
+                                // only 1 caller to this block
+                                if (caller != null) {
+                                        ins = caller.copy();
+                                }
+                                break;
+                        }
+                        else{   
+                                Pairs nextCaller =  nextIns.head;
+                                ins = Pairs.meets(caller, nextCaller, mode);
+                        }
+                }
+                else {
+                        ins = Pairs.meets(ins, caller, mode);
+                }
+        }
+        nextIns = null;
+        }
+
+    public int dataflow() {
+        System.out.println("dataflow At block " + id);
+        boolean union = true;
+
+        nextOuts = code.outset(ins);
+        int oldlen = Pairs.length(outs);
+        if ((oldlen != Pairs.length(nextOuts) )
+                || (oldlen != Pairs.length(Pairs.meets(nextOuts, outs, !union)))
+                ){
+                return 1;
+        }       
+
+        return 0;
+        }
+
+    public void clearInsOuts() { nextIns = null; ins = outs = null; }
+
+    public void printInsOuts() {
+        if (ins != null) {
+        ins.print(true, id);
+        }
+        if (outs != null) {
+                outs.print(false, id);
+        }
+}
+
+    public Pairss nextIns;
+
+    public Pairs ins;
+
+    public Pairs outs;
+
+    public Pairs nextOuts;
 }

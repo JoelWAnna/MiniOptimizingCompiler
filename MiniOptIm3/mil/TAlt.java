@@ -230,4 +230,6 @@ public class TAlt {
     void fixTrailingBlockCalls() {
         bc.fixTrailingBlockCalls();
     }
+
+    public Pairs addIns(Pairs ins) {      return bc.addIns(ins); }
 }

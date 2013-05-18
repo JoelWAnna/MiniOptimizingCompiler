@@ -266,4 +266,6 @@ public abstract class Code {
      *  computed by the live variables analysis.
      */
     abstract void fixTrailingBlockCalls();
+
+    public abstract Pairs outset(Pairs ins);
 }

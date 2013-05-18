@@ -18,7 +18,6 @@
  	   mil.sweet \
  	   optimize.sweet \
 	   MilGen.sweet \
-	   ../GlobalConstantPropagation.sweet \
 	   ../dataflow.sweet \
 	 -o.. )
 

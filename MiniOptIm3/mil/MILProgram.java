@@ -123,7 +123,9 @@ public class MILProgram {
         shake();    // restore SCCs
         totalCount += count;
         debug.Log.println("TOTAL steps performed = " + totalCount);
-    }
+    
+        dataflow();
+}
 
     /** Apply constructor function simplifications to this program.
      */
@@ -341,4 +343,38 @@ public class MILProgram {
             dsccs.head.fixTrailingBlockCalls();
         }
     }
+
+    void dataflow() {
+        /*
+                for (DefnSCCs dsccs = sccs; dsccs!=null; dsccs=dsccs.next) {
+                  for (Defns ds=dsccs.head.getBindings(); ds!=null; ds=ds.next) {
+                        ds.head.clearInsOuts();
+                  }
+                }
+        */
+
+        for (int i = 1; i != 0;) {
+                for (DefnSCCs dsccs = sccs; dsccs!=null; dsccs=dsccs.next) {
+                        for (Defns ds=dsccs.head.getBindings(); ds!=null; ds=ds.next) {
+                                ds.head.computeInMeets();
+                        }
+                }
+                for (DefnSCCs dsccs = sccs; dsccs!=null; dsccs=dsccs.next) {
+                  for (Defns ds=dsccs.head.getBindings(); ds!=null; ds=ds.next) {
+                        i = ds.head.dataflow();
+                  }
+                }
+                for (DefnSCCs dsccs = sccs; dsccs!=null; dsccs=dsccs.next) {
+                  for (Defns ds=dsccs.head.getBindings(); ds!=null; ds=ds.next) {
+                        ds.head.setNextOuts();
+                  }
+                }
+        }
+
+        for (DefnSCCs dsccs = sccs; dsccs!=null; dsccs=dsccs.next) {
+                for (Defns ds=dsccs.head.getBindings(); ds!=null; ds=ds.next) {
+                        ds.head.printInsOuts();
+                }
+        }
+}
 }

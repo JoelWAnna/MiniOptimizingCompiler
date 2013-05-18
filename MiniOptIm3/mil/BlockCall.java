@@ -260,4 +260,9 @@ public class BlockCall extends Call {
         }
         // else { debug.Internal.error("tail block call with non null arguments"); }
     }
+
+    public Pairs addIns(Pairs ins) {
+        b.nextIns = new Pairss(ins, b.nextIns);
+        return b.outs;
+}
 }
