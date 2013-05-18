@@ -1,6 +1,9 @@
 # remove all class files:
 find . -name '*.class' -exec rm {} \;
 
+# remove Java source files from mil/*:
+rm mil/*.java
+
 # remove temporary files
 rm -r tmp
 

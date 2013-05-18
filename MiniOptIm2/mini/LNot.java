@@ -32,14 +32,6 @@ class LNot extends UnExpr {
      *  to the specified continuation.
      */
     public Code compTail(final TailCont kt) { // !exp
-        return exp.compVar(new VarCont() {
-            Code with(final Var v) {
-                Temp  r    = new Temp();
-                mil.Block join = new mil.Block(kt.with(new mil.Return(r)));
-                return Stmt.ifthenelse(v,
-                    new Bind(r, DataAlloc.False, join.toCode()),
-                    new Bind(r, DataAlloc.True,  join.toCode()));
-             }
-        });
+        return exp.unary(Prim.bnot, kt);
     }
 }

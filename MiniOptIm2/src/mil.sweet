@@ -69,9 +69,9 @@ block computes the sum of the squares of its two arguments (details
 about the code sequence on the right of the @=@ sign will be described
 in a later section):
 \begin{verbatim}
-  b(x,y) = u <- mul((x,x));      -- compute x*x in u
-           v <- mul((y,y));      -- compute y*y in v
-           w <- add((u,v));      -- add the two squares
+  b(x,y) = u <- mul((x,x))      -- compute x*x in u
+           v <- mul((y,y))      -- compute y*y in v
+           w <- add((u,v))      -- add the two squares
            return w              -- return final result
 \end{verbatim}
 Definitions of the form @k{v1, ...; vn} v = c@ are used to specify the
@@ -84,7 +84,7 @@ definition, we can use a closure with code pointer @k@ and a stored free
 variable @n@ to represent the function @(\x -> n + x)@ that will return
 the value @n+x@ whenever it is called with an argument @x@:
 \begin{verbatim}
-  k{n} x = u <- add((n,x));
+  k{n} x = u <- add((n,x))
            return u
 \end{verbatim}
 Finally, a definition of the form @v <- t@ represents a binding
@@ -102,7 +102,7 @@ of which is a subclass of an abstract base class called @Defn@.
 Note that names for individual blocks are generated automatically
 as strings of the form @bN@ where a different integer @N@ is used
 for each distinct block.  In a similar way, closure definitions
-are assigned values of the form @kN@.
+are assigned names of the form @kN@.
 
 @*/
 public abstract class Defn {
@@ -230,7 +230,6 @@ following grammar shows a concrete syntax for code sequences:
   c    ::=  v <- t; c        -- monadic bind
         |   t                -- tail call (ends a block)
         |   case v of alts   -- case construct (ends a block)
-        |   halt             -- halt the program (ends a block)
 
   alts ::=  {alt1;...;altn}                -- alternatives
 
@@ -269,13 +268,13 @@ optional after each of the separate bind expressions):
 In either case, running this code sequence will evaluate each of the
 expressions @t1@, \ldots, @tn@ (saving the result at each step in the
 corresponding variable @v1@, \ldots, @vn@) until it reaches an end
-expression, @e@, which will have one of three possible forms: an
-unconditional jump (i.e., a ``tail call'', @t@0); a conditional jump (i.e.,
-a @case@ construct, described below); or a @halt@ instruction (which, as the
-name suggests, terminates the program).  Note that, like a traditional basic
-block, there are no labels in the middle of code sequences.  As a result, we
-cannot enter a code sequence part way through, and once we do enter a code
-sequence, we will not leave it until we reach the end expression @e@.
+expression, @e@, which will have one of two possible forms: either an
+unconditional jump (i.e., a generalized ``tail call'', @t@0); or else a
+conditional jump (i.e., a @case@ construct, described below).  Note
+that, like a traditional basic block, there are no labels in the middle
+of code sequences.  As a result, we cannot enter a code sequence part
+way through, and once we do enter a code sequence, we will not leave it
+until we reach the end expression @e@.
 
 An end expression @case v of alts@ describes a conditional jump that uses
 the value of the variable @v@---sometimes referred to as the ``discriminant''
@@ -337,7 +336,7 @@ then loops back to examine the rest of the list.
     = m <- add((n,1))
       loop(m, list)
 \end{verbatim}
-We will use the classes @Bind@, @Done@, @Match@, and @Halt@ described
+We will use the classes @Bind@, @Done@, and @Match@, described
 below, all of which are subclasses of an abstract base class @Code@ to
 provide the representation for MIL code sequences.
 
@@ -382,19 +381,7 @@ public abstract class Code {
                      *  alternatives apply.
                      */
                     private BlockCall def)
-
-  /** Represents a code sequence that halts/terminates the current program.
-   */
-  public case Halt  // halt/abort
 }
-
-/*@
-The following macro declares @Halt@ as a singleton class; in subsequent code, we
-will refer to the unique value of this class using @Halt.obj@ instead of using a
-constructor call of the form @new Halt()@.
-
-@*/
-macro Singleton(Halt)
 
 /*@
 Note that the MIL @case@ construct is represented by the class @Match@ in the
@@ -432,7 +419,6 @@ public boolean contains(Var w)
   case Code abstract;
   case Done { return t.contains(w); }
   case Bind { return t.contains(w) || (v!=w && c.contains(w)); }
-  case Halt { return false; }
   case Match {
       if (a==w || (def!=null && def.contains(w))) {
           return true;
@@ -714,7 +700,25 @@ values of @purity@ are @PURE@, @IMPURE@, and @THUNK@, each of which is
 described further in the comments below.
 
 @*/
-public class Prim(private String id, private int arity, private int purity) {
+public class Prim(/** The name that will be used for this primitive.
+                   */
+                  private String id,
+
+                  /** The arity/number of arguments for this primitive.
+                   */
+                  private int arity,
+
+                  /** Records the purity setting (PURE, IMPURE, or THUNK) for this
+                   *  primitive.
+                   */
+                  private int purity,
+ 
+                  /** Flag to indicate if this function will never return,
+                   *  meaning that anything following a call to this function
+                   *  will be ignored.
+                   */
+                  private boolean doesntReturn) {
+
   /** Return the name of this primitive.
    */
   public getter id;
@@ -758,30 +762,58 @@ divide by zero exception if its second argument is zero.
 
 @*/
 class Prim {
-  // Bitwise operators
-  public static final Prim not  = new Prim("not", 1, PURE);
-  public static final Prim and  = new Prim("and", 2, PURE);
-  public static final Prim or   = new Prim("or",  2, PURE);
-  public static final Prim xor  = new Prim("xor", 2, PURE);
+  // Bitwise operators (on integers):
+  public static final Prim not  = new Prim("not",  1, PURE, false);
+  public static final Prim and  = new Prim("and",  2, PURE, false);
+  public static final Prim or   = new Prim("or",   2, PURE, false);
+  public static final Prim xor  = new Prim("xor",  2, PURE, false);
+
+  // Boolean negation:
+  public static final Prim bnot = new Prim("bnot", 1, PURE, false);
 
   // Shift operations:
-  public static final Prim shl  = new Prim("shl", 2, PURE);
-  public static final Prim shr  = new Prim("shr", 2, PURE);
+  public static final Prim shl  = new Prim("shl",  2, PURE, false);
+  public static final Prim shr  = new Prim("shr",  2, PURE, false);
 
   // Integer arithmetic:
-  public static final Prim neg  = new Prim("neg", 1, PURE);
-  public static final Prim add  = new Prim("add", 2, PURE);
-  public static final Prim sub  = new Prim("sub", 2, PURE);
-  public static final Prim mul  = new Prim("mul", 2, PURE);
-  public static final Prim div  = new Prim("div", 2, IMPURE);
+  public static final Prim neg  = new Prim("neg",  1, PURE, false);
+  public static final Prim add  = new Prim("add",  2, PURE, false);
+  public static final Prim sub  = new Prim("sub",  2, PURE, false);
+  public static final Prim mul  = new Prim("mul",  2, PURE, false);
+  public static final Prim div  = new Prim("div",  2, IMPURE, false);
 
   // Integer comparisons:
-  public static final Prim eq   = new Prim("eq",  2, PURE);
-  public static final Prim neq  = new Prim("neq", 2, PURE);
-  public static final Prim lt   = new Prim("lt",  2, PURE);
-  public static final Prim lte  = new Prim("lte", 2, PURE);
-  public static final Prim gt   = new Prim("gt",  2, PURE);
-  public static final Prim gte  = new Prim("gte", 2, PURE);
+  public static final Prim eq   = new Prim("eq",   2, PURE, false);
+  public static final Prim neq  = new Prim("neq",  2, PURE, false);
+  public static final Prim lt   = new Prim("lt",   2, PURE, false);
+  public static final Prim lte  = new Prim("lte",  2, PURE, false);
+  public static final Prim gt   = new Prim("gt",   2, PURE, false);
+  public static final Prim gte  = new Prim("gte",  2, PURE, false);
+}
+
+/*@
+As a special case, we define a primitive, together with corresponding @PrimCall@
+and @Code@ values, called @halt@, to represent an operation that will terminate
+or abort the current program if it is executed.  Note that this primitive requires
+the @IMPURE@ setting (because deleting a call to @halt@ could certainly change
+the behavior of the program), but can also set @doesntReturn@ to @true@ because
+code that follows a @halt@ will never be executed.
+
+@*/
+class Prim {
+  /** Represents a primitive that halts/terminates the current program.
+   */
+  public static final Prim halt = new Prim("halt", 0, IMPURE, true); // halt/abort
+}
+class PrimCall {
+  /** Represents a tail expression that halts/terminates the current program.
+   */
+  public static final Call halt = new PrimCall(Prim.halt).withArgs(new Atom[0]);
+}
+class Code {
+  /** Represents a code sequence that halts/terminates the current program.
+   */
+  public static final Code halt = new Done(PrimCall.halt);
 }
 
 /*@
@@ -1035,9 +1067,6 @@ public Defns dependencies()
  */
 public Defns dependencies(Defns ds)
   case Code abstract;
-  case Halt {  // halt
-      return ds;
-  }
   case Bind {  // v <- t; c
       return t.dependencies(c.dependencies(ds));
   }
@@ -1232,9 +1261,6 @@ public void display()
   }
 
   case Code abstract;
-  case Halt {
-      indentln("halt");
-  }
   case Bind {
       indent();
 // TODO: hiding the _ <- part of a bind seems mostly like a good thing to do,
@@ -1284,6 +1310,7 @@ public void display()
 void displayDefn()
   case Defn abstract;
   case Block {
+//System.out.println("doesntReturn = " + doesntReturn);
       Call.display(id, "(", formals, ")");
       System.out.println(" =");
       if (code==null) {
@@ -1676,9 +1703,6 @@ public Code apply(AtomSubst s)
  */
 public Code forceApply(AtomSubst s)
   case Code abstract;
-  case Halt {    // halt
-      return this;
-  }
   case Bind {    // v <- t; c
       Temp w = new Temp();
       return new Bind(w, t.forceApply(s), c.forceApply(new AtomSubst(v, w, s)));
@@ -1850,7 +1874,6 @@ public Val lookup(ValEnv env) throws Fail
 
 public Val eval(ValEnv env) throws Fail
   case Code      abstract;
-  case Halt      { throw new Fail("Execution halted"); }
   case Done      { return t.eval(env); }
   case Bind      { return c.eval(new ValEnv(v, t.eval(env), env)); }
   case Match     { return a.lookup(env).match(alts, def, env); }

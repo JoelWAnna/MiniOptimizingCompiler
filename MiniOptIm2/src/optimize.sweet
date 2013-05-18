@@ -87,7 +87,7 @@ and removing redundant default branches in @Match@es.
 
 @(v <- b(x); invoke v) == b'(x)@
 
-@(f <- b(x); f @ v) == b'(x, v)@
+@(f <- b(x); f @@ v) == b'(x, v)@
 
 \item {\bf Liveness Analysis and Dead Code Elimination}\/ are used to determine which
       variable bindings are producing values that might be referenced later in the
@@ -177,7 +177,7 @@ class MILProgram {
           liftAllocators();  // TODO: Is this the right position for liftAllocators?
           eliminateUnusedArgs();
           flow();
-//     collapse();
+//!       collapse();
           debug.Log.println("Flow pass finished, running shake.");
           shake();
           debug.Log.println("Steps performed = " + count);
@@ -370,13 +370,10 @@ Code cfunSimplify()
       t = t.removeNewtypeCfun();
       return this;
   }
-  case Halt {
-      return this;
-  }
   case Match {
       // If there are no alternatives, replace this Match with a Done:
       if (alts.length==0) { // no alternatives; use default
-          return (def==null) ? Halt.obj : new Done(def);
+          return (def==null) ? Code.halt : new Done(def);
       }
  
       // Determine which constructor numbers are covered by alts:
@@ -603,7 +600,7 @@ with fresh variables @f@ and @a@:
 \end{verbatim}       
 %}%end codesize       
 Translations like this can be made for any block, even if the associated
-code sequence does not end in a simple tail (e.g., if it is a @Halt@ or a
+code sequence does not end in a simple tail (i.e., if it is a
 @Match@), although this may also require the definition of other new blocks
 with an extra argument.  For example, a definition for @b@ of the form:
 
@@ -763,7 +760,6 @@ new block for each original.
  */
 Code deriveWithInvoke()
   case Code abstract;
-  case Halt { return this; }
   case Done {
       Var v = new Temp();
       return new Bind(v, t, new Done(new Invoke(v)));
@@ -915,7 +911,6 @@ final argument.
  */
 Code deriveWithEnter(Atom arg)
   case Code abstract;
-  case Halt { return this; }
   case Done {
       Var f = new Temp();
       return new Bind(f, t, new Done(new Enter(f,arg)));
@@ -1096,7 +1091,6 @@ handled.
  */
 Code deriveWithCont(Atom cont)
   case Code abstract;
-  case Halt { return this; }
   case Done {
       Var v = new Temp();
       return new Bind(v, t, new Done(new Enter(cont,v)));
@@ -1374,7 +1368,6 @@ class Block {
 Code copy()
   case Code  abstract;
   case Done  { return new Done(t); }
-  case Halt  { return this; }
   case Bind  { return new Bind(v, t, c.copy()); }
   case Match { return new Match(a, TAlt.copy(alts), def); }
 
@@ -1457,7 +1450,36 @@ public BlockCall deriveWithKnownCons(Allocator[] allocs)
       return null;
     } else {
       BlockCall bc = new BlockCall(nb);
+      bc.withArgs(specializedArgs(allocs));
+//!System.out.print("Rewrote knownCons call: ");
+//!this.display();
+//!System.out.print(" as: ");
+//!bc.display();
+//!System.out.println();
+      return bc;
+    }
+  }
 
+CompAlloc deriveWithKnownCons(Allocator[] allocs)
+  case CompAlloc {
+    Block nm = m.deriveWithKnownCons(allocs);
+    if (nm==null) {
+//!System.out.println("Declined to specialize this block!");
+      return null;
+    } else {
+      CompAlloc ca = new CompAlloc(nm);
+      ca.withArgs(specializedArgs(allocs));
+//!System.out.print("Rewrote knownCons thunk: ");
+//!this.display();
+//!System.out.print(" as: ");
+//!ca.display();
+//!System.out.println();
+      return ca;
+    }
+  }
+
+class Call {
+  Atom[] specializedArgs(Allocator[] allocs) {
       // Compute the number of actual arguments that are needed:
       int len = 0;
       for (int i=0; i<allocs.length; i++) {
@@ -1474,15 +1496,11 @@ public BlockCall deriveWithKnownCons(Allocator[] allocs)
           pos = allocs[i].collectArgs(nargs, pos);
         }
       }
-      bc.withArgs(nargs);
-//!System.out.print("Rewrote knownCons call: ");
-//!this.display();
-//!System.out.print(" as: ");
-//!bc.display();
-//!System.out.println();
-      return bc;
-    }
+
+      // Return specialized list of arguments:
+      return nargs;
   }
+}
 
 class Allocator {
   int collectArgs(Atom[] result, int pos) {
@@ -1496,49 +1514,259 @@ class Allocator {
 /*@
 %------------------------------------------------------------------------------
 \section{Inlining}\label{sec-mil-inlining}
+Inlining is a standard compiler optimization that aims to remove
+runtime overhead by replacing individual calls to a function with
+a (suitably instantiated) copy of the associated function body.
+As a side-effect, inlining can also expose new opportunities for
+optimization.  To illustrate these features, suppose that we are
+working with a program that contains the following block definitions:
+\begin{verbatim}       
+  b1(x,y) = v <- add((x,1)); add((v,y))
+  b2(x,y) = w <- add((y,1)); mul((w,x))
+\end{verbatim}       
+Calling a function typically requires multiple steps to save
+register values and create an appropriate stack frame on entry,
+and then dismantle the frame and restore the original register
+values when the function returns.  Clearly, we would prefer to
+avoid these overheads, particularly for calls to simple functions
+like @b1@ and @b2@ in the above---each of which only requires two
+simple arithmetic operations.  A simple inlining transformation
+uses the definition of @b1@ and @b2@ to transform a code sequence
+of the form:
+\begin{verbatim}
+  t <- b1(p,q); b2(t,p)
+\end{verbatim}
+into the equivalent:
+\begin{verbatim}
+  v <- add((p,1)); t <- add((v,q)); w <- add((p,1)); mul((w,t))
+\end{verbatim}
+Although this second code sequence is longer, it only uses primitive
+calls---which can be translated directly in to individual machine
+instructions---and avoids the need for more general function calls.
+In addition, once the definitions for @b1@ and @b2@ have been inlined,
+we can see that there are two separate steps that compute the
+value of @add((p,1))@.  Subsequent uses of common subexpression
+elimination (see Section~\ref{sec-foo0}) and copy propagation
+(Section~\ref{sec-foo1}) can then further simplify this code
+sequence to:
+\begin{verbatim}
+  v <- add((p,1)); t <- add((v,q); mul((v,t))
+\end{verbatim}
+If the code sequence that we have just transformed was the only
+place in the whole program where @b1@ and @b2@ were called, then
+the optimizations described here will have eliminated the only
+references to those blocks, which will then be dropped from the
+program as dead code after the next call to @shake()@, resulting
+in a program that not only runs faster, but is also smaller.
+
+On the other hand, an aggressive inlining strategy that inlines
+every function call could result in a signficantly larger program,
+duplicating the code from individual function bodies, and requiring
+special care to avoid unrolling recursive definitions to arbitrary
+depths (and sizes).  Increasing program size can also increase the
+cost of further analysis, optimization, and other key steps in the
+compilation process, such as register allocation and instruction
+selection.  For these reasons, a good inliner must strike a careful
+balance, inlining definitions to remove overhead when possible, but
+also trying to avoid a significant increase in program size.
+
 
 @*/
 class MILProgram {
-  /** Run an inlining pass over this program.  Assumes a previous call
-   *  to shake() to compute call graph information, and calls shake()
-   *  automatically again at the end of the inlining pass to eliminate
-   *  dead code and compute updated call graph information.
+  /** Run an inlining pass over this program, assuming a preceding call to
+   *  shake() to compute call graph information.  Starts by performing a
+   *  "return analysis" (to detect blocks that are guaranteed not to return);
+   *  uses the results to perform some initial cleanup; and then performs
+   *  simple loop detection to identify code that loops with no observable
+   *  effect and would cause the inliner to enter an infinite loop.  With
+   *  those preliminaries out of the way, we then invoke the main inliner!
    */
   public void inlining() {
     for (DefnSCCs dsccs = sccs; dsccs!=null; dsccs=dsccs.next) {
-      for (Defns ds=dsccs.head.getBindings(); ds!=null; ds=ds.next) {
-        ds.head.detectLoops(null);
+      Defns defns = dsccs.head.getBindings();
+
+      // Initialize return analysis information for each definition in this scc:
+      for (Defns ds=defns; ds!=null; ds=ds.next) {
+          ds.head.resetDoesntReturn();
       }
-      for (Defns ds=dsccs.head.getBindings(); ds!=null; ds=ds.next) {
+
+      // Compute return analysis results for each item in this scc:
+      boolean changed = true;
+      do {
+          changed = false;
+          for (Defns ds=defns; ds!=null; ds=ds.next) {
+               changed |= ds.head.returnAnalysis();
+          }
+      } while (changed);
+
+      // Use results of return analysis to clean up code:
+      for (Defns ds=defns; ds!=null; ds=ds.next) {
+          ds.head.cleanup();
+      }
+
+      // Run loop detection on this scc, rewriting some block definitions
+      // that would otherwise send the inliner in to an infinite loop:
+      for (Defns ds=defns; ds!=null; ds=ds.next) {
+          ds.head.detectLoops(null);
+      }
+
+      // Perform inlining on the definitions inside this scc:
+      for (Defns ds=defns; ds!=null; ds=ds.next) {
 //!System.out.println("inlining loop at: " + ds.head.getId());
-        ds.head.inlining();
+          ds.head.inlining();
       }
     }
   }
 }
 
-public void inlining()
-  case Defn abstract;
-  case Block       {
-//!System.out.println("==================================");
-//!System.out.println("Going to try inlining on:");
-//!displayDefn();
-//!System.out.println();
-    code = code/*.cleanup(this)*/.inliningBody(this);
-//!System.out.println("And the result is:");
-//!displayDefn();
-//!System.out.println();
+/*@
+%------------------------------------------------------------------------------
+\subsection{Return Analysis}
+
+In this section, we describe a ``return analysis'' whose primary
+purpose is to identify blocks that ``do not return''.  The
+
+
+@*/
+class Block {
+  /** Flag to identify blocks that "do not return".  In other words, if the
+   *  value of this flag for a given block b is true, then we can be sure that
+   *  (x <- b(args); c) == b(args) for any appropriate set of arguments args
+   *  and any valid code sequence c.  There are two situations that can cause
+   *  a block to "not return".  The first is when the block enters an infinite
+   *  loop; such blocks may still be productive (such as the block defined by
+   *  b(x) = (_ <- print((1)); b(x))), so we cannot assume that they will be
+   *  eliminated by eliminateLoops().  The second is when the block's code
+   *  sequence makes a call to a primitive call that does not return.
+   */
+  private boolean doesntReturn = false;
+
+  /** Return flag, computed by previous dataflow analysis, to indicate
+   *  if this block does not return.
+   */
+  boolean doesntReturn() {
+      return doesntReturn;
   }
-  case TopLevel, ClosureDefn    {
-//!  System.out.println("==================================");
-//!  System.out.println("Going to try inlining on:");
-//!  displayDefn();
-//!  System.out.println();
-       tail = tail.inlineTail();
-//!  System.out.println("And the result is:");
-//!  displayDefn();
-//!  System.out.println();
+}
+
+/** Reset the doesntReturn flag, if there is one, for this definition
+ *  ahead of a returnAnalysis().  For this analysis, we use true as
+ *  the initial value, reducing it to false if we find a path that
+ *  allows a block's code to return.
+ */
+void resetDoesntReturn()
+  case Defn  { /* Nothing to do in this case */ }
+  case Block { this.doesntReturn = true; }
+
+class MILProgram {
+  public void returnAnalysis() {
+      // Calculate doesntReturn information for every Block:
+      for (DefnSCCs dsccs = sccs; dsccs!=null; dsccs=dsccs.next) {
+           // Initialize the "doesn't return" information for each definition
+           for (Defns ds=dsccs.head.getBindings(); ds!=null; ds=ds.next) {
+               ds.head.resetDoesntReturn();
+           }
+
+           // Apply return analysis to each of the items in this scc.
+           boolean changed = true;
+           do {
+               changed = false;
+               for (Defns ds=dsccs.head.getBindings(); ds!=null; ds=ds.next) {
+                    changed |= ds.head.returnAnalysis();
+               }
+           } while (changed);
+      }
   }
+}
+
+
+
+/** Apply return analysis to this definition, returning true if this
+ *  results in a change from the previously computed value.
+ */
+boolean returnAnalysis()
+  case Defn { return false; }
+  case Block {
+      boolean newDoesntReturn = code.doesntReturn();
+      if (newDoesntReturn != doesntReturn) {
+          doesntReturn = newDoesntReturn;
+          return true; // signal that a change was detected
+      }
+      return false; // no change
+  }
+
+/** Test for code that is guaranteed not to return.
+ */
+boolean doesntReturn()
+case Code abstract;
+case Done { return t.doesntReturn(); }
+case Bind { return t.doesntReturn() || c.doesntReturn(); }
+case Match {
+    // If the default or any of the alternatives can return,
+    // then the Match might also be able to return.
+    if (def!=null && !def.doesntReturn()) {
+        return false;
+    }
+    for (int i=0; i<alts.length; i++) {
+        if (!alts[i].doesntReturn()) {
+            return false;
+        }
+    }
+    return true;
+}
+case TAlt      { return bc.doesntReturn(); }
+case Tail      { return false; }
+case BlockCall { return b.doesntReturn(); }
+case PrimCall  { return p.doesntReturn(); }
+case Prim      { return doesntReturn; }
+
+/*@
+%------------------------------------------------------------------------------
+\subsection{Pre-Inlining Code Cleanup}
+
+@*/
+void cleanup()
+  case Defn  { /* Nothing to do here */ }
+  case Block { code = code.cleanup(this); }
+
+/** Perform simple clean-up of a code sequence before we begin the main
+ *  inlining process.  If this ends up distilling the code sequence to
+ *  a single Done, then we won't attempt inlining for this code (because
+ *  anyone that attempts to use/call this block will be able to inline
+ *  that call, and then this block will go away.
+ */
+Code cleanup(Block src)
+  case Code { return this; }
+  case Bind {
+    if (v==Wildcard.obj && t.isPure()) {
+      // Rewrite an expression (_ <- p; c) ==> c, if p is pure
+      MILProgram.report("inlining eliminated a wildcard binding in " + src.getId());
+      return c.cleanup(src);
+    } else if (c.isReturn(v)) {
+      // Rewrite an expression (v <- t; return v) ==> t
+      MILProgram.report("applied right monad law in " + src.getId());
+      return new Done(t);
+    } else if (t.doesntReturn()) {
+      // Rewrite (v <- t; c) ==> t, if t doesn't return
+      MILProgram.report("removed code after a tail that does not return in " + src.getId());
+      return new Done(t);
+    } else {
+      c = c.cleanup(src);
+      return this;
+    }
+  }
+
+/** Test whether a given Code/Tail value is an expression of the form return v,
+ *  with the specified variable v as its parameter.  We also return a true result
+ *  for a Tail of the form return _, where the wildcard indicates that any
+ *  return value is acceptable because the result will be ignored by the caller.
+ *  This allows us to turn more calls in to tail calls when they occur at the end
+ *  of "void functions" that do not return a useful result.
+ */
+boolean isReturn(Var v)
+  case Code, Tail { return false; }
+  case Done       { return t.isReturn(v); }
+  case Return     { return a==v || a==Wildcard.obj; }
 
 /*@
 %------------------------------------------------------------------------------
@@ -1607,8 +1835,13 @@ boolean detectLoops(Blocks visited)
 
 boolean detectLoops(Block src, Blocks visited)
   case Code, Tail { return false; }
-  case Done, Bind {     // look for src(x) = b(x) or src(x) = (v <- b(x); ...)
+  case Done {     // look for src(x) = b(x)
     return t.detectLoops(src, visited);
+  }
+  case Bind {     // look for src(x) = (v <- b(x); ...), possibly with some
+                  // initial prefix of pure bindings x1 <- pt1; ...; xn <- ptn
+    return t.detectLoops(src, visited)
+        || (t.isPure() && c.detectLoops(src,visited));
   }
   case BlockCall  {     // Keep searching while we're still in the same SCC
     return (src.getScc()==b.getScc())
@@ -1625,7 +1858,7 @@ class Prim {
    *  impure because eliminating a call to this primitive, even when its value
    *  is not used will typically change the behavior of the enclosing program.
    */
-  public static final Prim loop = new Prim("loop", 0, Prim.IMPURE);
+  public static final Prim loop = new Prim("loop", 0, Prim.IMPURE, true);
 }
 class PrimCall {
   public static final Call loop = new PrimCall(Prim.loop).withArgs(new Atom[0]);
@@ -1640,59 +1873,41 @@ to code sequences involving calls to @loop@ so that, for example,
 We return to tackle this in Section~\ref{sec-foo}.
 
 @*/
+// TODO: Not used!
 boolean loops()
   case Tail     { return false; }
   case PrimCall { return p==Prim.loop; }
 
 /*@
 %------------------------------------------------------------------------------
-\subsection{Pre-Inlining Code Cleanup}
-
-@*/
-/** Perform simple clean-up of a code sequence before we begin the main
- *  inlining process.  If this ends up distilling the code sequence to
- *  a single Done, then we won't attempt inlining for this code (because
- *  anyone that attempts to use/call this block will be able to inline
- *  that call, and then this block will go away.
-Code cleanup(Block src)
-  case Code { return this; }
-  case Bind {
-    if (v==Wildcard.obj && t.isPure()) {
-      // Rewrite an expression (_ <- p; c) ==> c, if p is pure
-      MILProgram.report("inlining eliminated a wildcard binding in " + src.getId());
-      return c.cleanup(src);
-    } else if (c.isReturn(v)) {
-      // Rewrite an expression (v <- t; return v) ==> t
-      MILProgram.report("applied right monad law in " + src.getId());
-      return new Done(t);
-    } else if (t.loops()) {
-      // Rewrite an expression (v <- loop(); c) ==> loop()
-      MILProgram.report("removed code after a call to loop in " + src.getId());
-      return new Done(t);
-    } else {
-      c = c.cleanup(src);
-      return this;
-    }
-  }
- */
-
-/** Test whether a given Code/Tail value is an expression of the form return v,
- *  with the specified variable v as its parameter.  We also return a true result
- *  for a Tail of the form return _, where the wildcard indicates that any
- *  return value is acceptable because the result will be ignored by the caller.
- *  This allows us to turn more calls in to tail calls when they occur at the end
- *  of "void functions" that do not return a useful result.
- */
-boolean isReturn(Var v)
-  case Code, Tail { return false; }
-  case Done       { return t.isReturn(v); }
-  case Return     { return a==v || a==Wildcard.obj; }
-
-/*@
-%------------------------------------------------------------------------------
 \subsection{Inlining Within Code Sequences}
 
 @*/
+/** Apply inlining to the code in this definition.
+ */
+public void inlining()
+  case Defn abstract;
+  case Block       {
+//!System.out.println("==================================");
+//!System.out.println("Going to try inlining on:");
+//!displayDefn();
+//!System.out.println();
+    code = code.inliningBody(this);
+//!System.out.println("And the result is:");
+//!displayDefn();
+//!System.out.println();
+  }
+  case TopLevel, ClosureDefn    {
+//!  System.out.println("==================================");
+//!  System.out.println("Going to try inlining on:");
+//!  displayDefn();
+//!  System.out.println();
+       tail = tail.inlineTail();
+//!  System.out.println("And the result is:");
+//!  displayDefn();
+//!  System.out.println();
+  }
+
 class Code {
   public static final int INLINE_ITER_LIMIT = 3;
 }
@@ -1722,11 +1937,7 @@ class Code {
  *  found ...
  */
 Code inliningBody(Block src)
-  case Code { 
-//!System.out.println("Trying to inline in: ");
-//!src.displayDefn();
-              return inlining(src, INLINE_ITER_LIMIT); }
-//  case Done { t = t.inlineTail(); return this; }
+  case Code { return inlining(src, INLINE_ITER_LIMIT); }
 
 /** Perform inlining on this Code value, decrementing the limit each time
  *  a successful inlining is performed, and declining to pursue further
@@ -1734,9 +1945,6 @@ Code inliningBody(Block src)
  */
 Code inlining(Block src, int limit)
   case Code abstract;
-  case Halt {
-    return this;
-  }
   case Done {
 //!System.out.print("Got down to Done (limit "+limit+"): ");
 //!t.display();
@@ -1753,21 +1961,6 @@ Code inlining(Block src, int limit)
     return this;
   }
   case Bind {
-//*
-    if (v==Wildcard.obj && t.isPure()) {
-      // Rewrite an expression (_ <- p; c) ==> c, if p is pure
-      MILProgram.report("inlining eliminated a wildcard binding in " + src.getId());
-      return c.inlining(src, INLINE_ITER_LIMIT);
-    } else if (c.isReturn(v)) {
-      // Rewrite an expression (v <- t; return v) ==> t
-      MILProgram.report("applied right monad law in " + src.getId());
-      return new Done(t).inlining(src, INLINE_ITER_LIMIT);
-    } else if (t.loops()) {
-      // Rewrite an expression (v <- loop(); c) ==> loop()
-      MILProgram.report("removed code after a call to loop in " + src.getId());
-      return new Done(t).inlining(src, INLINE_ITER_LIMIT);
-    }
-//*/
     if (limit>0) {  // Is this an opportunity for prefix inlining?
       Code ic = t.prefixInline(src, v, c);
       if (ic!=null) {
@@ -1804,11 +1997,11 @@ Code inlining(Block src, int limit)
 //!System.out.println();
         return nc;
       }
-      if ((nc = c.appliesTo(v, bc))!=null) {
+//!      if ((nc = c.appliesTo(v, bc))!=null) {
 //! IN PROGRESS:
 //!System.out.println("We could have used deriveWithCont here!");
 //!display();
-      }
+//!      }
 
     }
     return this;
@@ -2035,7 +2228,7 @@ boolean canSuffixInline(Block src)
  *  first call.
  */
 int suffixInlineLength(int len)
-  case Code  { return 0; }  // TODO: this is only halt now?
+  case Code  abstract;
   case Match { return len+1; }  // TODO: maybe pick a higher value?
   case Done  { return len+1; }
   case Bind  { return c.suffixInlineLength(len+1); }
@@ -2459,7 +2652,7 @@ void eliminateUnusedArgs()
 
       // Calculate unused argument information for every Block and ClosureDefn:
       for (DefnSCCs dsccs = sccs; dsccs!=null; dsccs=dsccs.next) {
-           // Initialize used argument information for each binding
+           // Initialize used argument information for each definition
            for (Defns ds=dsccs.head.getBindings(); ds!=null; ds=ds.next) {
                ds.head.clearUsedArgsInfo();
            }
@@ -2602,7 +2795,7 @@ int countUnusedArgs(Var[] bound)
 Note that we only mark a parameter as used if, first, that parameter is included
 in the set of used variables (i.e., if @Vars.isIn(bound[i], vs)@) and, second, if
 there are no other uses of the same variable at a lower index in the argument list
-(i.e., if @!duplicated(i, bound)@).  We do not expect this latter condition to be
+(i.e., if \verb"!duplicated(i, bound)").  We do not expect this latter condition to be
 a common occurrence, but still check for it, using the following definition for
 the @duplicated()@ method, to allow for the possibility that such examples might
 be introduced by other transformations within the optimizer or code generator.
@@ -2647,7 +2840,6 @@ Vars usedVars()
  */
 Vars usedVars()
   case Code  abstract;
-  case Halt  { return null; }
   case Done  { return t.usedVars(null); }
   case Bind  { return t.usedVars(Vars.remove(v, c.usedVars())); }
   case Match {
@@ -2791,7 +2983,6 @@ void removeUnusedArgs()
 
   // Cases for code sequences:
   case Code abstract;
-  case Halt { /* nothing to do here */ }
   case Done { t.removeUnusedArgs(); }
   case Bind {
       t.removeUnusedArgs();
@@ -2853,7 +3044,7 @@ Clearly, there is actually no need for a @case@ construct here because the
 given fact already provides all of the information that we need to know which
 branch will be taken.  As a result, we can replace the @case@ test with a
 direct jump to @b1(x,y,r)@ using the values for @p@ and @q@ that were also
-provided by the the fact.  In the following, we will refer to transformations
+provided by the fact.  In the following, we will refer to transformations
 of this kind as `shorting out a match' because they eliminate the need for a
 pattern matching operation, reducing the size of the MIL code, and likely
 improving its runtime performance in the process.  As an added benefit, we
@@ -3019,7 +3210,6 @@ public void flow()
  */
 public Code flow(Facts facts, AtomSubst s)
   case Code  abstract;
-  case Halt  { return this; }
   case Done  {
      t = t.apply(s);
 //!System.out.println("At Done, before rewrite");
@@ -3090,16 +3280,11 @@ public Code flow(Facts facts, AtomSubst s)
           alts = new TAlt[0];
           def  = bc.rewriteBlockCall(facts);
           return this;
-/*
-// TODO: the following code only makes sense if "not" is the Boolean operation,
-// and not the bitwise operation that is assumed in (some of) the constant folding
-// code.  That's why it's commented out for now ...
-
       } else {
-          // If a = not((n)), then a match of the form case a of alts can be
+          // If a = bnot((n)), then a match of the form case a of alts can be
           // rewritten as case n of alts', where alts' flips the cases for true
           // and false in the original alternatives, alts.
-          Atom n = t.isNot();
+          Atom n = t.isBnot();
           if (n!=null) {
             a    = n;           // match on the parameter n
             alts = new TAlt[] { // swap alternatives for True and False
@@ -3108,7 +3293,6 @@ public Code flow(Facts facts, AtomSubst s)
                    };
             def  = null;       // Remove default branch
           }
-*/
       }
       // TODO: when we continue on to the following code, possibly after applying the substitution
       // s in the cases above, might we then apply it again in what follows?  (is that a problem?)
@@ -3142,7 +3326,6 @@ public void flow(Var v, Facts facts, AtomSubst s)
 
 public Code andThen(Var v, Code rest)
   case Code  abstract;
-  case Halt  { return this; }
   case Bind  { c = c.andThen(v, rest); return this; }
   case Done  { return new Bind(v, t, rest); }
   case Match {
@@ -3154,9 +3337,9 @@ Atom returnsAtom()
   case Tail   { return null; }
   case Return { return a; }
 
-//Atom isNot()
-//  case Tail     { return null; }
-//  case PrimCall { return p==Prim.not ? args[0] : null; }
+Atom isBnot()
+  case Tail     { return null; }
+  case PrimCall { return p==Prim.bnot ? args[0] : null; }
 
 public Code rewrite(Facts facts)
   case Tail  { return null; }  // default behavior when no other case applies
@@ -3196,6 +3379,22 @@ public Code rewrite(Facts facts)
   case PrimCall {
     return this.rewritePrimCall(facts);
   }
+  case CompAlloc {
+    Allocator[] allocs = this.collectAllocs(facts);
+    if (allocs!=null) {
+      CompAlloc ca = deriveWithKnownCons(allocs);
+      if (ca!=null) {
+        MILProgram.report("deriving specialized block for CompAlloc block " + m.getId());
+//!System.out.print("deriveWithKnownCons for CompAlloc: ");
+//!this.display();
+//!System.out.print(" -> ");
+//!ca.display();
+//!System.out.println();
+        return new Done(ca);
+      }
+    }
+    return null;
+  }
 
 BlockCall rewriteBlockCall(Facts facts)
   case BlockCall {
@@ -3205,25 +3404,14 @@ BlockCall rewriteBlockCall(Facts facts)
     BlockCall bc = this.shortMatch(facts);
     bc = (bc==null) ? this : bc.inlineBlockCall();
 
-    int l = bc.args.length;
-    Allocator[] allocs = null;
-    for (int i=0; i<l; i++) {
-      Tail t = bc.args[i].lookupFact(facts);
-      if (t!=null) {
-        Allocator alloc = t.isAllocator(); // we're only going to keep info about Allocators
-        if (alloc!=null) {
-          if (allocs==null) {
-            allocs = new Allocator[l];
-          }
-          allocs[i] = alloc;
-        }
-      }
-    }
+    // Look for an opportunity to specialize on known constructors:
+    Allocator[] allocs = bc.collectAllocs(facts); // null;
     this.allox = allocs; // TODO: temporary, for inspection of results.
     if (allocs!=null) {
       BlockCall bc1 = bc.deriveWithKnownCons(allocs);
       if (bc1!=null) {
         bc = bc1;
+        MILProgram.report("deriving specialized block for BlockCall to block " + b.getId());
 //!System.out.print("deriveWithKnownCons for BlockCall: ");
 //!this.display();
 //!System.out.print(" -> ");
@@ -3239,6 +3427,26 @@ BlockCall rewriteBlockCall(Facts facts)
 
     return bc;
   }
+
+class Call {
+  Allocator[] collectAllocs(Facts facts) {
+    int l              = args.length;
+    Allocator[] allocs = null;
+    for (int i=0; i<l; i++) {
+      Tail t = args[i].lookupFact(facts);
+      if (t!=null) {
+        Allocator alloc = t.isAllocator(); // we're only going to keep info about Allocators
+        if (alloc!=null) {
+          if (allocs==null) {
+            allocs = new Allocator[l];
+          }
+          allocs[i] = alloc;
+        }
+      }
+    }
+    return allocs;
+  }
+}
 
 /*@
 One final situation where @deriveWithInvoke()@ is useful is in the handling
@@ -3283,7 +3491,6 @@ public BlockCall toBlockCall()
  */
 Vars liveness()
   case Code  abstract;
-  case Halt  { return null; }
   case Done  { return t.liveness(null); }
   case Bind  {
     Vars vs = c.liveness();
@@ -3578,6 +3785,9 @@ class PrimCall {
   }
 }
 
+/** Test to see if this tail expression is a call to a specific primitive,
+ *  returning null in the (most likely) case that it is not.
+ */
 Atom[] isPrim(Prim p)
   case Tail     { return null; }
   case PrimCall { return (p==this.p) ? args : null; }
@@ -3599,48 +3809,65 @@ macro UnaryRewrite(P) {
   }
 }
 
+macro UnaryRewrite(bnot)
+class PrimCall {
+  Code bnotVar(Atom x, Facts facts) {
+    Tail a = x.lookupFact(facts);
+    if (a!=null) {
+
+      // Eliminate double negation:
+      Atom[] ap = a.isPrim(Prim.bnot);
+      if (ap!=null) {
+        MILProgram.report("eliminated double bnot");
+        return done(ap[0]); // bnot(bnot(u)) == u
+      }
+
+      // Handle negations of relational operators:
+      if ((ap = a.isPrim(Prim.eq))!=null) {  //  eq --> neq
+        MILProgram.report("replaced bnot(eq(x,y)) with neq(x,y)");
+        return done(Prim.neq, ap);
+      }
+      if ((ap = a.isPrim(Prim.neq))!=null) {  //  neq --> eq
+        MILProgram.report("replaced bnot(neq(x,y)) with eq(x,y)");
+        return done(Prim.eq, ap);
+      }
+      if ((ap = a.isPrim(Prim.lt))!=null) {   //  lt --> gte
+        MILProgram.report("replaced bnot(lt(x,y)) with gte(x,y)");
+        return done(Prim.gte, ap);
+      }
+      if ((ap = a.isPrim(Prim.lte))!=null) {  //  lte --> gt
+        MILProgram.report("replaced bnot(lte(x,y)) with gt(x,y)");
+        return done(Prim.gt, ap);
+      }
+      if ((ap = a.isPrim(Prim.gt))!=null) {   //  gt --> lte
+        MILProgram.report("replaced bnot(gt(x,y)) with lte(x,y)");
+        return done(Prim.lte, ap);
+      }
+      if ((ap = a.isPrim(Prim.gte))!=null) {  //  gte --> lt
+        MILProgram.report("replaced bnot(gte(x,y)) with lt(x,y)");
+        return done(Prim.lt, ap);
+      }
+    }
+    return null;
+  }
+  static Code bnotConst(int n) {
+    // No opportunity for constant folding here because bnot
+    // takes a boolean (True() or False()) and not an int arg.
+    return null;
+  }
+}
+
 macro UnaryRewrite(not)
 class PrimCall {
   Code notVar(Atom x, Facts facts) {
     Tail a = x.lookupFact(facts);
     if (a!=null) {
-
       // Eliminate double negation:
       Atom[] ap = a.isPrim(Prim.not);
       if (ap!=null) {
         MILProgram.report("eliminated double not");
         return done(ap[0]); // not(not(u)) == u
       }
-
-      // Handle negations of relational operators:
-      // TODO: these are not valid (or even likely to occur) for a bitwise not!
-/*
-      if ((ap = a.isPrim(Prim.eq))!=null) {  //  eq --> neq
-        MILProgram.report("replaced not(eq(x,y)) with neq(x,y)");
-        return done(Prim.neq, ap);
-      }
-      if ((ap = a.isPrim(Prim.neq))!=null) {  //  neq --> eq
-        MILProgram.report("replaced not(neq(x,y)) with eq(x,y)");
-        return done(Prim.eq, ap);
-      }
-      if ((ap = a.isPrim(Prim.lt))!=null) {   //  lt --> gte
-        MILProgram.report("replaced not(lt(x,y)) with gte(x,y)");
-        return done(Prim.gte, ap);
-      }
-      if ((ap = a.isPrim(Prim.lte))!=null) {  //  lte --> gt
-        MILProgram.report("replaced not(lte(x,y)) with gt(x,y)");
-        return done(Prim.gt, ap);
-      }
-      if ((ap = a.isPrim(Prim.gt))!=null) {   //  gt --> lte
-        MILProgram.report("replaced not(gt(x,y)) with lte(x,y)");
-        return done(Prim.lte, ap);
-      }
-      if ((ap = a.isPrim(Prim.gte))!=null) {  //  gte --> lt
-        MILProgram.report("replaced not(gte(x,y)) with lt(x,y)");
-        return done(Prim.lt, ap);
-      }
-*/
-
     }
     return null;
   }
@@ -4240,88 +4467,12 @@ class PrimCall {
 
 /*@
 %------------------------------------------------------------------------------
-\section{Analyzing Number of Calls}
+\section{Eliminating Duplicate Blocks}
 
-@*/
-class Defn {
-  protected int numberCalls;
-  protected int numberThunks;
-  public getter numberCalls, numberThunks;
+Note: won't work for recursive blocks.
 
-  public void resetCallCounts() {
-    numberCalls = numberThunks = 0;
-  }
-
-  /** Register a non-tail call for this block.
-   */
-  public void called()  { numberCalls++;  }
-
-  /** Register the creation of a monadic thunk for this block.
-   */
-  public void thunked() { numberThunks++; }
-}
-
-class MILProgram {
-  public void analyzeCalls() {
-    for (DefnSCCs dsccs = sccs; dsccs!=null; dsccs=dsccs.next) {
-      for (Defns ds=dsccs.head.getBindings(); ds!=null; ds=ds.next) {
-        ds.head.resetCallCounts();
-      }
-      // Now we have initialized all counts in this and preceding SCCs,
-      // so it is safe to count calls in this SCC.
-      for (Defns ds=dsccs.head.getBindings(); ds!=null; ds=ds.next) {
-        ds.head.analyzeCalls();
-      }
-    }
-
-    System.out.print("CALLED :");
-    for (DefnSCCs dsccs = sccs; dsccs!=null; dsccs=dsccs.next) {
-      for (Defns ds=dsccs.head.getBindings(); ds!=null; ds=ds.next) {
-        int calls = ds.head.getNumberCalls();
-        if (calls>0) {
-          System.out.print(" " + ds.head.getId() + "[" + calls + "]");
-        }
-      }
-    }
-    System.out.println();
-
-    System.out.print("THUNKED:");
-    for (DefnSCCs dsccs = sccs; dsccs!=null; dsccs=dsccs.next) {
-      for (Defns ds=dsccs.head.getBindings(); ds!=null; ds=ds.next) {
-        int calls = ds.head.getNumberThunks();
-        if (calls>0) {
-          System.out.print(" " + ds.head.getId() + "[" + calls + "]");
-        }
-      }
-    }
-    System.out.println();
-  }
-}
-
-public void analyzeCalls()
-  case Defn abstract;
-  case Block       { code.analyzeCalls();
- }
-  case ClosureDefn { tail.analyzeCalls(); }
-  case TopLevel    { tail.analyzeCalls(); }
-
-public void analyzeCalls()
-  case Code, Tail { }
-  case Done       { t.analyzeTailCalls(); }
-  case Bind       { t.analyzeCalls(); c.analyzeCalls(); }
-  case Match      { /* a Match can only contain tail calls */ }
-  case BlockCall  { b.called(); }
-  case ClosAlloc  { k.thunked(); }
-  case CompAlloc  { m.thunked(); }
-
-public void analyzeTailCalls()
-  case Tail       { }
-  case ClosAlloc  { k.thunked(); }
-  case CompAlloc  { m.thunked(); }
-
-/*@
 %------------------------------------------------------------------------------
-\section{Summarizing Code Sequences}
+\subsection{Summarizing Code Sequences}
 This section describes an algorithm for computing an integer `summary' of a MIL
 code sequence.  The key property of this algorithm is that alpha equivalent code
 sequences have the same summary values, and hence we can quickly rule out the
@@ -4356,7 +4507,6 @@ int summary()
   case CompAlloc  { return m.summary(args)*33 + 4; }
 
   case Code abstract;
-  case Halt       { return 7; }
   case Done       { return t.summary() * 17 + 3; }
   case Bind       { return t.summary() * 17 + c.summary() * 11 + 511; }
   case Match {
@@ -4395,7 +4545,7 @@ detailed study of its effectiveness.  For now, at least, it seems to work
 fairly well in practice.
 
 %------------------------------------------------------------------------------
-\section{Testing for Equivalent Sequences of Code}
+\subsection{Testing for Equivalent Sequences of Code}
 Calculation of summary values gives us a quick way to determine when two
 sequences of code are not equivalent.  But if we find two code sequences
 that produce the same summary code, then a more careful comparison is needed
@@ -4455,7 +4605,7 @@ ability to specify multiple destinations for the same piece of code.
  */
 boolean alphaCode(Vars thisvars, Code that, Vars thatvars)
   case Code abstract;
-  case Halt, Done, Bind, Match { return that.alpha@class(thatvars, this, thisvars); }
+  case Done, Bind, Match { return that.alpha@class(thatvars, this, thisvars); }
 
 /** Test to see if two Tail expressions are the alpha equivalent.
  */
@@ -4487,7 +4637,6 @@ macro Alpha(Base, X) {
 }
 
 // Specific instances for alpha equivalence testing of Code values:
-macro Alpha(Code,Halt)  ! { return true; }
 macro Alpha(Code,Done)  ! { return this.t.alphaTail(thisvars, that.t, thatvars); }
 macro Alpha(Code,Bind)  ! {
   return this.t.alphaTail(thisvars, that.t, thatvars)
@@ -4605,7 +4754,7 @@ class Vars {
 
 /*@
 %------------------------------------------------------------------------------
-\section{Identifying Duplicated Definitions}
+\subsection{Identifying Duplicated Definitions}
 Given the @summary()@ and @alphaBlock()@ methods defined in the previous
 sections, we can now implement an algorithm for scanning all of the block
 definitions in a given program to calculate appropriate summaries and to
@@ -4722,7 +4871,6 @@ void eliminateDuplicates()
      tail.eliminateDuplicates();
   }
   case Code abstract;
-  case Halt { /* Nothing to do */ }
   case Done { t.eliminateDuplicates(); }
   case Bind { t.eliminateDuplicates(); c.eliminateDuplicates(); }
   case Match {
@@ -4742,4 +4890,85 @@ void eliminateDuplicates()
 
 Block replaceWith()
   case Block { return replaceWith==null ? this : replaceWith; }
+
+/*@
+%------------------------------------------------------------------------------
+\section{Analyzing Number of Calls}
+
+@*/
+class Defn {
+  protected int numberCalls;
+  protected int numberThunks;
+  public getter numberCalls, numberThunks;
+
+  public void resetCallCounts() {
+    numberCalls = numberThunks = 0;
+  }
+
+  /** Register a non-tail call for this block.
+   */
+  public void called()  { numberCalls++;  }
+
+  /** Register the creation of a monadic thunk for this block.
+   */
+  public void thunked() { numberThunks++; }
+}
+
+class MILProgram {
+  public void analyzeCalls() {
+    for (DefnSCCs dsccs = sccs; dsccs!=null; dsccs=dsccs.next) {
+      for (Defns ds=dsccs.head.getBindings(); ds!=null; ds=ds.next) {
+        ds.head.resetCallCounts();
+      }
+      // Now we have initialized all counts in this and preceding SCCs,
+      // so it is safe to count calls in this SCC.
+      for (Defns ds=dsccs.head.getBindings(); ds!=null; ds=ds.next) {
+        ds.head.analyzeCalls();
+      }
+    }
+
+    System.out.print("CALLED :");
+    for (DefnSCCs dsccs = sccs; dsccs!=null; dsccs=dsccs.next) {
+      for (Defns ds=dsccs.head.getBindings(); ds!=null; ds=ds.next) {
+        int calls = ds.head.getNumberCalls();
+        if (calls>0) {
+          System.out.print(" " + ds.head.getId() + "[" + calls + "]");
+        }
+      }
+    }
+    System.out.println();
+
+    System.out.print("THUNKED:");
+    for (DefnSCCs dsccs = sccs; dsccs!=null; dsccs=dsccs.next) {
+      for (Defns ds=dsccs.head.getBindings(); ds!=null; ds=ds.next) {
+        int calls = ds.head.getNumberThunks();
+        if (calls>0) {
+          System.out.print(" " + ds.head.getId() + "[" + calls + "]");
+        }
+      }
+    }
+    System.out.println();
+  }
+}
+
+public void analyzeCalls()
+  case Defn abstract;
+  case Block       { code.analyzeCalls();
+ }
+  case ClosureDefn { tail.analyzeCalls(); }
+  case TopLevel    { tail.analyzeCalls(); }
+
+public void analyzeCalls()
+  case Code, Tail { }
+  case Done       { t.analyzeTailCalls(); }
+  case Bind       { t.analyzeCalls(); c.analyzeCalls(); }
+  case Match      { /* a Match can only contain tail calls */ }
+  case BlockCall  { b.called(); }
+  case ClosAlloc  { k.thunked(); }
+  case CompAlloc  { m.thunked(); }
+
+public void analyzeTailCalls()
+  case Tail       { }
+  case ClosAlloc  { k.thunked(); }
+  case CompAlloc  { m.thunked(); }
 

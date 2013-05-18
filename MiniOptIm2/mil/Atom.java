@@ -80,6 +80,4 @@ public abstract class Atom {
     /** Test two items for alpha equivalence.
      */
     boolean alphaVar(Vars thisvars, Var that, Vars thatvars) { return false; }
-
-    public Var isVar() { return null; }
 }

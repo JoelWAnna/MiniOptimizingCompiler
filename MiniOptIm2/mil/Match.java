@@ -90,7 +90,7 @@ public class Match extends Code {
     Code cfunSimplify() {
         // If there are no alternatives, replace this Match with a Done:
         if (alts.length==0) { // no alternatives; use default
-            return (def==null) ? Halt.obj : new Done(def);
+            return (def==null) ? Code.halt : new Done(def);
         }
    
         // Determine which constructor numbers are covered by alts:
@@ -203,6 +203,22 @@ public class Match extends Code {
 
     Code copy() { return new Match(a, TAlt.copy(alts), def); }
 
+    /** Test for code that is guaranteed not to return.
+     */
+    boolean doesntReturn() {
+        // If the default or any of the alternatives can return,
+        // then the Match might also be able to return.
+        if (def!=null && !def.doesntReturn()) {
+            return false;
+        }
+        for (int i=0; i<alts.length; i++) {
+            if (!alts[i].doesntReturn()) {
+                return false;
+            }
+        }
+        return true;
+    }
+
     /** Perform inlining on this Code value, decrementing the limit each time
      *  a successful inlining is performed, and declining to pursue further
      *  inlining at this node once the limit reachs zero.
@@ -272,16 +288,11 @@ public class Match extends Code {
               alts = new TAlt[0];
               def  = bc.rewriteBlockCall(facts);
               return this;
-    /*
-    // TODO: the following code only makes sense if "not" is the Boolean operation,
-    // and not the bitwise operation that is assumed in (some of) the constant folding
-    // code.  That's why it's commented out for now ...
-    
           } else {
-              // If a = not((n)), then a match of the form case a of alts can be
+              // If a = bnot((n)), then a match of the form case a of alts can be
               // rewritten as case n of alts', where alts' flips the cases for true
               // and false in the original alternatives, alts.
-              Atom n = t.isNot();
+              Atom n = t.isBnot();
               if (n!=null) {
                 a    = n;           // match on the parameter n
                 alts = new TAlt[] { // swap alternatives for True and False
@@ -290,7 +301,6 @@ public class Match extends Code {
                        };
                 def  = null;       // Remove default branch
               }
-    */
           }
           // TODO: when we continue on to the following code, possibly after applying the substitution
           // s in the cases above, might we then apply it again in what follows?  (is that a problem?)
@@ -339,8 +349,6 @@ public class Match extends Code {
         Tail      t = a.apply(s).lookupFact(facts);
         return (t==null) ? null : t.shortMatch(s, alts, def);
       }
-
-    public void analyzeCalls() { /* a Match can only contain tail calls */ }
 
     /** Compute an integer summary for a fragment of MIL code with the key property
      *  that alpha equivalent program fragments have the same summary value.
@@ -398,6 +406,8 @@ public class Match extends Code {
         }
     }
 
+    public void analyzeCalls() { /* a Match can only contain tail calls */ }
+
     /** Compute the set of live variables in this code sequence.
      */
     Vars liveVars() {
@@ -420,104 +430,4 @@ public class Match extends Code {
           alts[i].fixTrailingBlockCalls();
         }
     }
-
-    /** getBlockCall 
-     *  @param id The id of the Block which you want block calls to.
-     *    @return a list of BlockCall objects which call id
-     *
-     *  If the tail of this object is a Block call, compare if it calls the passed in id
-     *  calls getBlockCall on the following code c.
-     *if the tail calls block id, cons the tail to the list returned from c.getBlockCall
-     *
-     */
-    public BlockCalls getBlockCall(String id) {
-        BlockCalls block_calls = null;
-        if (def!=null) {
-            if (def.callsBlock(id)) {
-                block_calls = new BlockCalls(def, block_calls);
-            }
-        }
-
-        for (int i=0; i<alts.length; i++) {
-            BlockCall alt_blockCall = alts[i].getBlockCall(id);
-            if (alt_blockCall != null && alt_blockCall.callsBlock(id))
-            {
-                block_calls = new BlockCalls(alt_blockCall, block_calls);
-            }
-          }
-        return block_calls;
-    }
-
-    /** replaceCalls
-     * @param id: the id of the block call which has been specialized
-     * @param j:  the argument number which has been removed from block id
-     *@param replaced: either the Const object which was removed, or for the case of a recursive call
-     *the Var object which was removed
-     *@param b: the new Block object which was specialized from id
-     */
-    boolean replaceCalls(String id, int j, Atom replaced, Block b) {
-        boolean success = false;
-        if (def!=null) {
-        // Determine if the default case is a call to block id
-            if (def.callsBlock(id)) {
-
-                // Compare to either see if the call to block id can be replaced with a call to block b
-                if (def.args[j].sameAtom(replaced)) {
-                    
-                    BlockCall temp = new BlockCall(b);
-                    int l = def.args.length-1;
-                    temp.args = new Atom[l];
-                    for (int i = 0; i < l; ++i) {
-                        if (i >= j) {
-                            temp.args[i] = def.args[i+1];
-                        }
-                        else
-                            temp.args[i] = def.args[i];
-                    }
-                    def = temp;
-                    success = true;
-                }
-            }
-        }
-
-        for (int i=0; i<alts.length; i++) {
-            BlockCall alt_blockCall = alts[i].getBlockCall(id);
-            if (alt_blockCall != null && alt_blockCall.callsBlock(id)){
-                if (alt_blockCall.args[j].sameAtom(replaced)) {
-                    
-                    BlockCall temp = new BlockCall(b);
-                    int l = alt_blockCall.args.length-1;
-                    temp.args = new Atom[l];
-                    for (int i1 = 0; i1 < l; ++i1) {
-                        if (i1 >= j) {
-                            temp.args[i1] = alt_blockCall.args[i1+1];
-                        }
-                        else
-                            temp.args[i1] = alt_blockCall.args[i1];
-                    }
-                    alts[i].replaceBc(temp);
-                    success = true;
-                }
-            }
-          }
-        return success;
-    }
-
-    public Pairs outset(Pairs ins) {
-        Pairss outs = null;
-        if (def != null) {
-                Pairs defOuts = def.addIns(ins);
-                if (defOuts != null) {
-                        outs = new Pairss(defOuts, outs);
-                }
-        }
-    for (int i=0; i<alts.length; i++) {
-                Pairs altsOuts = alts[i].addIns(ins);
-                if (altsOuts != null) {
-                        outs = new Pairss(altsOuts, outs);
-                }
-                
-        }
-        return ins;
-        }
 }

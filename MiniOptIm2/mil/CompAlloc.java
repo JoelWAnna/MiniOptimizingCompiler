@@ -39,6 +39,23 @@ public class CompAlloc extends Allocator {
 
     boolean isCompAlloc(Block m) { return m==this.m; }
 
+    CompAlloc deriveWithKnownCons(Allocator[] allocs) {
+        Block nm = m.deriveWithKnownCons(allocs);
+        if (nm==null) {
+    //!System.out.println("Declined to specialize this block!");
+          return null;
+        } else {
+          CompAlloc ca = new CompAlloc(nm);
+          ca.withArgs(specializedArgs(allocs));
+    //!System.out.print("Rewrote knownCons thunk: ");
+    //!this.display();
+    //!System.out.print(" as: ");
+    //!ca.display();
+    //!System.out.println();
+          return ca;
+        }
+      }
+
     /** Find the variables that are used in this Tail expression, adding them to
      *  the list that is passed in as a parameter.  Variables that are mentioned
      *  in BlockCalls, ClosAllocs, or CompAllocs are only included if the
@@ -51,6 +68,23 @@ public class CompAlloc extends Allocator {
      */
     void removeUnusedArgs() { m.removeUnusedArgs(this, args); }
 
+    public Code rewrite(Facts facts) {
+        Allocator[] allocs = this.collectAllocs(facts);
+        if (allocs!=null) {
+          CompAlloc ca = deriveWithKnownCons(allocs);
+          if (ca!=null) {
+            MILProgram.report("deriving specialized block for CompAlloc block " + m.getId());
+    //!System.out.print("deriveWithKnownCons for CompAlloc: ");
+    //!this.display();
+    //!System.out.print(" -> ");
+    //!ca.display();
+    //!System.out.println();
+            return new Done(ca);
+          }
+        }
+        return null;
+      }
+
     /** Test to see if this Code/Tail is a CompAlloc (that is, if it has
      *  the form m[x..] for some m and x..).
      */
@@ -59,10 +93,6 @@ public class CompAlloc extends Allocator {
     /** Compute the direct block call m(x..) for a monadic thunk m[x..].
      */
     Call invoke() { return new BlockCall(m).withArgs(args); }
-
-    public void analyzeCalls() { m.thunked(); }
-
-    public void analyzeTailCalls() { m.thunked(); }
 
     /** Compute an integer summary for a fragment of MIL code with the key property
      *  that alpha equivalent program fragments have the same summary value.
@@ -78,4 +108,8 @@ public class CompAlloc extends Allocator {
     boolean alphaCompAlloc(Vars thisvars, CompAlloc that, Vars thatvars) { return this.m==that.m && this.alphaArgs(thisvars, that, thatvars); }
 
     void eliminateDuplicates() { m = m.replaceWith(); }
+
+    public void analyzeCalls() { m.thunked(); }
+
+    public void analyzeTailCalls() { m.thunked(); }
 }

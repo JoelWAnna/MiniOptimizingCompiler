@@ -80,6 +80,28 @@ public abstract class Call extends Tail {
      */
     public Call forceApplyCall(AtomSubst s) { return callDup().withArgs(AtomSubst.apply(args, s)); }
 
+    Atom[] specializedArgs(Allocator[] allocs) {
+        // Compute the number of actual arguments that are needed:
+        int len = 0;
+        for (int i=0; i<allocs.length; i++) {
+          len += (allocs[i]==null ? 1 : allocs[i].getArity());
+        }
+  
+        // Fill in the actual arguments:
+        Atom[]    nargs = new Atom[len];
+        int       pos   = 0;
+        for (int i=0; i<args.length; i++) {
+          if (allocs[i]==null) {
+            nargs[pos++] = args[i];
+          } else {
+            pos = allocs[i].collectArgs(nargs, pos);
+          }
+        }
+  
+        // Return specialized list of arguments:
+        return nargs;
+    }
+
     /** Find the variables that are used in this Tail expression, adding them to
      *  the list that is passed in as a parameter.  Variables that are mentioned
      *  in BlockCalls, ClosAllocs, or CompAllocs are only included if the
@@ -91,6 +113,24 @@ public abstract class Call extends Tail {
           vs = args[i].add(vs);
         }
         return vs;
+      }
+
+    Allocator[] collectAllocs(Facts facts) {
+        int l              = args.length;
+        Allocator[] allocs = null;
+        for (int i=0; i<l; i++) {
+          Tail t = args[i].lookupFact(facts);
+          if (t!=null) {
+            Allocator alloc = t.isAllocator(); // we're only going to keep info about Allocators
+            if (alloc!=null) {
+              if (allocs==null) {
+                allocs = new Allocator[l];
+              }
+              allocs[i] = alloc;
+            }
+          }
+        }
+        return allocs;
       }
 
     /** Special case treatment for top-level bindings of the form  x <- return y;

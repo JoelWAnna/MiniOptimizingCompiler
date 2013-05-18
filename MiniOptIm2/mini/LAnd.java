@@ -20,7 +20,7 @@ class LAnd extends BinLogicExpr {
     /** Compile an expression into a tail that is passed as an argument
      *  to the specified continuation.
      */
-    public Code compTail(final TailCont kt) { // left && right
+    public Code compTail(final TailCont kt) { // left && right; short circuit semantics, not the same as band
         return left.compVar(new VarCont() {
             Code with(final Var v) {
                 final Temp  r    = new Temp();

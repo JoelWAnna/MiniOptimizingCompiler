@@ -122,75 +122,91 @@ public class Bind extends Code {
 
     Code copy() { return new Bind(v, t, c.copy()); }
 
-    boolean detectLoops(Block src, Blocks visited) {     // look for src(x) = b(x) or src(x) = (v <- b(x); ...)
-        return t.detectLoops(src, visited);
+    /** Test for code that is guaranteed not to return.
+     */
+    boolean doesntReturn() { return t.doesntReturn() || c.doesntReturn(); }
+
+    /** Perform simple clean-up of a code sequence before we begin the main
+     *  inlining process.  If this ends up distilling the code sequence to
+     *  a single Done, then we won't attempt inlining for this code (because
+     *  anyone that attempts to use/call this block will be able to inline
+     *  that call, and then this block will go away.
+     */
+    Code cleanup(Block src) {
+        if (v==Wildcard.obj && t.isPure()) {
+          // Rewrite an expression (_ <- p; c) ==> c, if p is pure
+          MILProgram.report("inlining eliminated a wildcard binding in " + src.getId());
+          return c.cleanup(src);
+        } else if (c.isReturn(v)) {
+          // Rewrite an expression (v <- t; return v) ==> t
+          MILProgram.report("applied right monad law in " + src.getId());
+          return new Done(t);
+        } else if (t.doesntReturn()) {
+          // Rewrite (v <- t; c) ==> t, if t doesn't return
+          MILProgram.report("removed code after a tail that does not return in " + src.getId());
+          return new Done(t);
+        } else {
+          c = c.cleanup(src);
+          return this;
+        }
       }
+
+    boolean detectLoops(Block src, Blocks visited) {     // look for src(x) = (v <- b(x); ...), possibly with some
+        // initial prefix of pure bindings x1 <- pt1; ...; xn <- ptn
+return t.detectLoops(src, visited)
+|| (t.isPure() && c.detectLoops(src,visited));
+}
 
     /** Perform inlining on this Code value, decrementing the limit each time
      *  a successful inlining is performed, and declining to pursue further
      *  inlining at this node once the limit reachs zero.
      */
     Code inlining(Block src, int limit) {
-        //*
-            if (v==Wildcard.obj && t.isPure()) {
-              // Rewrite an expression (_ <- p; c) ==> c, if p is pure
-              MILProgram.report("inlining eliminated a wildcard binding in " + src.getId());
-              return c.inlining(src, INLINE_ITER_LIMIT);
-            } else if (c.isReturn(v)) {
-              // Rewrite an expression (v <- t; return v) ==> t
-              MILProgram.report("applied right monad law in " + src.getId());
-              return new Done(t).inlining(src, INLINE_ITER_LIMIT);
-            } else if (t.loops()) {
-              // Rewrite an expression (v <- loop(); c) ==> loop()
-              MILProgram.report("removed code after a call to loop in " + src.getId());
-              return new Done(t).inlining(src, INLINE_ITER_LIMIT);
-            }
-        //*/
-            if (limit>0) {  // Is this an opportunity for prefix inlining?
-              Code ic = t.prefixInline(src, v, c);
-              if (ic!=null) {
-                return ic.inlining(src, limit-1);
-              }
-            }
-            c = c.inlining(src, INLINE_ITER_LIMIT);
-        
-            // Rewrite an expression (v <- b(x,..); invoke v) ==> b'(x,..)
-            //                    or (v <- b(x,..); v @ a)    ==> b'(x,..,a)
-            BlockCall bc = t.isBlockCall();
-            if (bc!=null) {
-              Code nc;
-              if ((nc = c.invokes(v, bc))!=null) {
-                MILProgram.report("pushed invoke into call in " + src.getId());
-                return nc;
-              }
-              if ((nc = c.enters(v, bc))!=null) {
-                MILProgram.report("pushed enter into call in " + src.getId());
-        //!System.out.println("Transformed code:");
-        //!this.display();
-        //!System.out.println();
-        //!System.out.println("Transformed code:");
-        //!nc.display();
-        //!System.out.println();
-                return nc;
-              }
-              if ((nc = c.casesOn(v, bc))!=null) {
-        //!System.out.println("casesOn for:");
-        //!this.display();
-                MILProgram.report("pushed case into call in " + src.getId());
-        //!System.out.println("New code is:");
-        //!nc.display();
-        //!System.out.println();
-                return nc;
-              }
-              if ((nc = c.appliesTo(v, bc))!=null) {
-        //! IN PROGRESS:
-        //!System.out.println("We could have used deriveWithCont here!");
-        //!display();
-              }
-        
-            }
-            return this;
+        if (limit>0) {  // Is this an opportunity for prefix inlining?
+          Code ic = t.prefixInline(src, v, c);
+          if (ic!=null) {
+            return ic.inlining(src, limit-1);
           }
+        }
+        c = c.inlining(src, INLINE_ITER_LIMIT);
+    
+        // Rewrite an expression (v <- b(x,..); invoke v) ==> b'(x,..)
+        //                    or (v <- b(x,..); v @ a)    ==> b'(x,..,a)
+        BlockCall bc = t.isBlockCall();
+        if (bc!=null) {
+          Code nc;
+          if ((nc = c.invokes(v, bc))!=null) {
+            MILProgram.report("pushed invoke into call in " + src.getId());
+            return nc;
+          }
+          if ((nc = c.enters(v, bc))!=null) {
+            MILProgram.report("pushed enter into call in " + src.getId());
+    //!System.out.println("Transformed code:");
+    //!this.display();
+    //!System.out.println();
+    //!System.out.println("Transformed code:");
+    //!nc.display();
+    //!System.out.println();
+            return nc;
+          }
+          if ((nc = c.casesOn(v, bc))!=null) {
+    //!System.out.println("casesOn for:");
+    //!this.display();
+            MILProgram.report("pushed case into call in " + src.getId());
+    //!System.out.println("New code is:");
+    //!nc.display();
+    //!System.out.println();
+            return nc;
+          }
+    //!      if ((nc = c.appliesTo(v, bc))!=null) {
+    //! IN PROGRESS:
+    //!System.out.println("We could have used deriveWithCont here!");
+    //!display();
+    //!      }
+    
+        }
+        return this;
+      }
 
     Code prefixInline(AtomSubst s, Var u, Code d) {
         Var w = new Temp();
@@ -321,8 +337,6 @@ public class Bind extends Code {
         return vs;
       }
 
-    public void analyzeCalls() { t.analyzeCalls(); c.analyzeCalls(); }
-
     /** Compute an integer summary for a fragment of MIL code with the key property
      *  that alpha equivalent program fragments have the same summary value.
      */
@@ -341,6 +355,8 @@ public class Bind extends Code {
 
     void eliminateDuplicates() { t.eliminateDuplicates(); c.eliminateDuplicates(); }
 
+    public void analyzeCalls() { t.analyzeCalls(); c.analyzeCalls(); }
+
     /** Compute the set of live variables in this code sequence.
      */
     Vars liveVars() {
@@ -354,97 +370,4 @@ public class Bind extends Code {
     void fixTrailingBlockCalls() {
         c.fixTrailingBlockCalls();
     }
-
-    /** getBlockCall 
-     *  @param id The id of the Block which you want block calls to.
-     *    @return a list of BlockCall objects which call id
-     *
-     *  If the tail of this object is a Block call, compare if it calls the passed in id
-     *  calls getBlockCall on the following code c.
-     *if the tail calls block id, cons the tail to the list returned from c.getBlockCall
-     *
-     */
-    public BlockCalls getBlockCall(String id) {
-        BlockCall thisCall = null;
-        BlockCall bc = t.isBlockCall();
-        if (bc instanceof BlockCall)
-        {
-            if (bc.callsBlock(id)) {
-                thisCall = bc;
-            }
-        }
-        BlockCalls calls = c.getBlockCall(id);
-        if (thisCall != null)
-            calls = new BlockCalls(thisCall, calls);
-        
-        return calls;
-    }
-
-    /** checkformals
-     * @param atoms A list of formals to compare to the variable "assigned" to with a Bind
-     * If incoming argument is given a new value with a call to Bind.
-     *Currently, if Bind is called on an incoming parameter the argument is set to NAC
-     *
-     */
-    public Atom[] checkformals(Atom[] atoms) { for(int i = 0; i < atoms.length; ++i) {
-        if (v.sameAtom(atoms[i])) {
-            atoms[i] = NAC.obj;
-        }
-    }
-    return c.checkformals(atoms);    
-}
-
-    /** replaceCalls
-     * @param id: the id of the block call which has been specialized
-     * @param j:  the argument number which has been removed from block id
-     *@param replaced: either the Const object which was removed, or for the case of a recursive call
-     *the Var object which was removed
-     *@param b: the new Block object which was specialized from id
-     */
-    boolean replaceCalls(String id, int j, Atom replaced, Block b) {
-        Boolean success = false;
-        BlockCall thisCall = null;
-        BlockCall bc = t.isBlockCall();
-        if (bc != null) {
-            if (bc.callsBlock(id)) {
-                thisCall = bc;
-                if (thisCall.args[j].sameAtom(replaced)) {
-                    
-                    BlockCall temp = new BlockCall(b);
-                    int l = bc.args.length-1;
-                    temp.args = new Atom[l];
-                    for (int i = 0; i < l; ++i) {
-                        if (i >= j) {
-                            temp.args[i] = bc.args[i+1];
-                        }
-                        else
-                            temp.args[i] = bc.args[i];
-                    }
-                    t = temp;
-                    success = true;
-                }
-            }
-        }
-        
-        return c.replaceCalls(id, j, replaced, b) || success;
-    }
-
-    public Pairs outset(Pairs ins) {
-        Pairs outs = null;
-        Pair d = new Pair(t, new Atoms(v, null));
-        if (ins == null) {
-                outs = new Pairs(d, null);
-        }
-        else {
-                outs = t.addIns(ins);
-                outs = Pairs.meets(outs, ins, true);
-                outs.kill(v);
-                outs.gen(d);
-        }
-if (c == null) {
-        System.out.println("unlinked bind call found!?!");
-        return outs;
-}
-        return c.outset(outs);
-        }
 }

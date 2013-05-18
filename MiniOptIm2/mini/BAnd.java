@@ -21,6 +21,7 @@ class BAnd extends BinBitwiseExpr {
      *  to the specified continuation.
      */
     public Code compTail(final TailCont kt) { // left & right
+        Prim op = lt.equal(Type.INT) ? Prim.and : Prim.band;
         return left.binary(Prim.and, right, kt);
     }
 }

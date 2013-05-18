@@ -8,6 +8,10 @@ public abstract class Code {
      */
     public abstract boolean contains(Var w);
 
+    /** Represents a code sequence that halts/terminates the current program.
+     */
+    public static final Code halt = new Done(PrimCall.halt);
+
     /** Find the list of Defns that this Code sequence depends on.
      */
     public abstract Defns dependencies(Defns ds);
@@ -94,7 +98,17 @@ public abstract class Code {
 
     abstract Code copy();
 
-    boolean detectLoops(Block src, Blocks visited) { return false; }
+    /** Test for code that is guaranteed not to return.
+     */
+    abstract boolean doesntReturn();
+
+    /** Perform simple clean-up of a code sequence before we begin the main
+     *  inlining process.  If this ends up distilling the code sequence to
+     *  a single Done, then we won't attempt inlining for this code (because
+     *  anyone that attempts to use/call this block will be able to inline
+     *  that call, and then this block will go away.
+     */
+    Code cleanup(Block src) { return this; }
 
     /** Test whether a given Code/Tail value is an expression of the form return v,
      *  with the specified variable v as its parameter.  We also return a true result
@@ -104,6 +118,8 @@ public abstract class Code {
      *  of "void functions" that do not return a useful result.
      */
     boolean isReturn(Var v) { return false; }
+
+    boolean detectLoops(Block src, Blocks visited) { return false; }
 
     public static final int INLINE_ITER_LIMIT = 3;
 
@@ -131,10 +147,7 @@ public abstract class Code {
      *  case that routes through the block to see if a simple closure can be
      *  found ...
      */
-    Code inliningBody(Block src) { 
-        //!System.out.println("Trying to inline in: ");
-        //!src.displayDefn();
-                      return inlining(src, INLINE_ITER_LIMIT); }
+    Code inliningBody(Block src) { return inlining(src, INLINE_ITER_LIMIT); }
 
     /** Perform inlining on this Code value, decrementing the limit each time
      *  a successful inlining is performed, and declining to pursue further
@@ -155,7 +168,7 @@ public abstract class Code {
      *  something other than Done.  Argument should be initialized to 0 for
      *  first call.
      */
-    int suffixInlineLength(int len) { return 0; }
+    abstract int suffixInlineLength(int len);
 
     /** Test to determine whether this Code is a Done.
      */
@@ -212,8 +225,6 @@ public abstract class Code {
      */
     BlockCall shortMatch(Var[] formals, Atom[] args, Facts facts) { return null; }
 
-    public void analyzeCalls() { }
-
     /** Compute an integer summary for a fragment of MIL code with the key property
      *  that alpha equivalent program fragments have the same summary value.
      */
@@ -222,10 +233,6 @@ public abstract class Code {
     /** Test to see if two Code sequences are alpha equivalent.
      */
     abstract boolean alphaCode(Vars thisvars, Code that, Vars thatvars);
-
-    /** Test two items for alpha equivalence.
-     */
-    boolean alphaHalt(Vars thisvars, Halt that, Vars thatvars) { return false; }
 
     /** Test two items for alpha equivalence.
      */
@@ -240,6 +247,8 @@ public abstract class Code {
     boolean alphaMatch(Vars thisvars, Match that, Vars thatvars) { return false; }
 
     abstract void eliminateDuplicates();
+
+    public void analyzeCalls() { }
 
     /** Generate a new block that contains this code sequence and return
      *  a BlockCall that can be used to call the new block.
@@ -257,34 +266,4 @@ public abstract class Code {
      *  computed by the live variables analysis.
      */
     abstract void fixTrailingBlockCalls();
-
-    /** getBlockCall 
-     *  @param id The id of the Block which you want block calls to.
-     *    @return a list of BlockCall objects which call id
-     *
-     *  If the tail of this object is a Block call, compare if it calls the passed in id
-     *  calls getBlockCall on the following code c.
-     *if the tail calls block id, cons the tail to the list returned from c.getBlockCall
-     *
-     */
-    public BlockCalls getBlockCall(String id) { return null; }
-
-    /** checkformals
-     * @param atoms A list of formals to compare to the variable "assigned" to with a Bind
-     * If incoming argument is given a new value with a call to Bind.
-     *Currently, if Bind is called on an incoming parameter the argument is set to NAC
-     *
-     */
-    public Atom[] checkformals(Atom[] atoms) { return atoms; }
-
-    /** replaceCalls
-     * @param id: the id of the block call which has been specialized
-     * @param j:  the argument number which has been removed from block id
-     *@param replaced: either the Const object which was removed, or for the case of a recursive call
-     *the Var object which was removed
-     *@param b: the new Block object which was specialized from id
-     */
-    boolean replaceCalls(String id, int j, Atom replaced, Block b) { return false; }
-
-    public abstract Pairs outset(Pairs ins);
 }

@@ -95,54 +95,34 @@ public class MILProgram {
     public void optimize() {
         shake();
         cfunSimplify();
-    
-        int lastcount;
-        boolean RUNGLOBALCONSTPROP = true;
-        int outerIterator = 1;        
-        do {
+  
+        int totalCount = 0;
+        count          = 1;
+        for (int i=0; i<MAX_OPTIMIZE_PASSES && count>0; i++) {
+            debug.Log.println("-------------------------");
+  //!System.out.println("==================================================");
+  //!System.out.println("Step " + i);
+  //!System.out.println("==================================================");
+  //!display();
+  //!System.out.println("==================================================");
             count = 0;
-            count_g = 0;
-            int i=1;
-            do {
-              debug.Log.println("-------------------------");
-        //!System.out.println("==================================================");
-        //!System.out.println("Step " + i);
-        //!System.out.println("==================================================");
-        //!display();
-        //!System.out.println("==================================================");
-              lastcount = count;
-              count = 0;
-              inlining();
-              debug.Log.println("Inlining pass finished, running shake.");
-              shake();
-              liftAllocators();  // TODO: Is this the right position for liftAllocators?
-              flow();
-              debug.Log.println("Flow pass finished, running shake.");
-              shake();
-              debug.Log.println("Steps performed = " + count);
-              ++i;
-            } while (i < 20 && count>0);
-            //break;
-            count = lastcount;
-            int j=0;
-                        if (RUNGLOBALCONSTPROP) {
-                                do {
-                                        lastcount = count_g;
-                                        count_g = 0;
-                                        GlobalConstantPropagation();
-                                        debug.Log.println("GlobalConstantPropagation pass finished, running shake.");
-                                        shake();
-                                        debug.Log.println("Steps performed = " + count_g);
-                                        //display();
-                                        ++j;
-                                } while (j<20 && count_g>0);
-                                   count_g = lastcount; 
-                        }
-            ++outerIterator;
-        } while (outerIterator < 20 && count+count_g>0);
-                dataflow();
-        debug.Log.println("Loops performed = " + outerIterator);
-        
+            inlining();
+            debug.Log.println("Inlining pass finished, running shake.");
+            shake();
+            liftAllocators();  // TODO: Is this the right position for liftAllocators?
+            eliminateUnusedArgs();
+            flow();
+  //!       collapse();
+            debug.Log.println("Flow pass finished, running shake.");
+            shake();
+            debug.Log.println("Steps performed = " + count);
+            totalCount += count;
+        }
+        count = 0;
+        collapse(); // TODO: move inside loop?
+        shake();    // restore SCCs
+        totalCount += count;
+        debug.Log.println("TOTAL steps performed = " + totalCount);
     }
 
     /** Apply constructor function simplifications to this program.
@@ -155,22 +135,69 @@ public class MILProgram {
         }
     }
 
-    /** Run an inlining pass over this program.  Assumes a previous call
-     *  to shake() to compute call graph information, and calls shake()
-     *  automatically again at the end of the inlining pass to eliminate
-     *  dead code and compute updated call graph information.
+    /** Run an inlining pass over this program, assuming a preceding call to
+     *  shake() to compute call graph information.  Starts by performing a
+     *  "return analysis" (to detect blocks that are guaranteed not to return);
+     *  uses the results to perform some initial cleanup; and then performs
+     *  simple loop detection to identify code that loops with no observable
+     *  effect and would cause the inliner to enter an infinite loop.  With
+     *  those preliminaries out of the way, we then invoke the main inliner!
      */
     public void inlining() {
         for (DefnSCCs dsccs = sccs; dsccs!=null; dsccs=dsccs.next) {
-          for (Defns ds=dsccs.head.getBindings(); ds!=null; ds=ds.next) {
-            ds.head.detectLoops(null);
+          Defns defns = dsccs.head.getBindings();
+    
+          // Initialize return analysis information for each definition in this scc:
+          for (Defns ds=defns; ds!=null; ds=ds.next) {
+              ds.head.resetDoesntReturn();
           }
-          for (Defns ds=dsccs.head.getBindings(); ds!=null; ds=ds.next) {
+    
+          // Compute return analysis results for each item in this scc:
+          boolean changed = true;
+          do {
+              changed = false;
+              for (Defns ds=defns; ds!=null; ds=ds.next) {
+                   changed |= ds.head.returnAnalysis();
+              }
+          } while (changed);
+    
+          // Use results of return analysis to clean up code:
+          for (Defns ds=defns; ds!=null; ds=ds.next) {
+              ds.head.cleanup();
+          }
+    
+          // Run loop detection on this scc, rewriting some block definitions
+          // that would otherwise send the inliner in to an infinite loop:
+          for (Defns ds=defns; ds!=null; ds=ds.next) {
+              ds.head.detectLoops(null);
+          }
+    
+          // Perform inlining on the definitions inside this scc:
+          for (Defns ds=defns; ds!=null; ds=ds.next) {
     //!System.out.println("inlining loop at: " + ds.head.getId());
-            ds.head.inlining();
+              ds.head.inlining();
           }
         }
       }
+
+    public void returnAnalysis() {
+        // Calculate doesntReturn information for every Block:
+        for (DefnSCCs dsccs = sccs; dsccs!=null; dsccs=dsccs.next) {
+             // Initialize the "doesn't return" information for each definition
+             for (Defns ds=dsccs.head.getBindings(); ds!=null; ds=ds.next) {
+                 ds.head.resetDoesntReturn();
+             }
+  
+             // Apply return analysis to each of the items in this scc.
+             boolean changed = true;
+             do {
+                 changed = false;
+                 for (Defns ds=dsccs.head.getBindings(); ds!=null; ds=ds.next) {
+                      changed |= ds.head.returnAnalysis();
+                 }
+             } while (changed);
+        }
+    }
 
     /** Run a liftAllocators pass over this program, assuming a previous
      *  call to shake() to compute SCCs.
@@ -190,7 +217,7 @@ public class MILProgram {
   
         // Calculate unused argument information for every Block and ClosureDefn:
         for (DefnSCCs dsccs = sccs; dsccs!=null; dsccs=dsccs.next) {
-             // Initialize used argument information for each binding
+             // Initialize used argument information for each definition
              for (Defns ds=dsccs.head.getBindings(); ds!=null; ds=ds.next) {
                  ds.head.clearUsedArgsInfo();
              }
@@ -236,6 +263,27 @@ public class MILProgram {
         }
     }
 
+    public void collapse() {
+        Blocks[] table = new Blocks[251];
+        boolean found  = false;
+  
+        // Visit each block to compute summaries and populate the table:
+        for (DefnSCCs dsccs = sccs; dsccs!=null; dsccs=dsccs.next) {
+            for (Defns ds=dsccs.head.getBindings(); ds!=null; ds=ds.next) {
+                found |= ds.head.summarizeBlocks(table);
+            }
+        }
+  
+        // Update the program to eliminate duplicate blocks:
+        if (found) {
+            for (DefnSCCs dsccs = sccs; dsccs!=null; dsccs=dsccs.next) {
+                for (Defns ds=dsccs.head.getBindings(); ds!=null; ds=ds.next) {
+                   ds.head.eliminateDuplicates();
+                }
+            }
+        }
+    }
+
     public void analyzeCalls() {
         for (DefnSCCs dsccs = sccs; dsccs!=null; dsccs=dsccs.next) {
           for (Defns ds=dsccs.head.getBindings(); ds!=null; ds=ds.next) {
@@ -271,27 +319,6 @@ public class MILProgram {
         System.out.println();
       }
 
-    public void collapse() {
-        Blocks[] table = new Blocks[251];
-        boolean found  = false;
-  
-        // Visit each block to compute summaries and populate the table:
-        for (DefnSCCs dsccs = sccs; dsccs!=null; dsccs=dsccs.next) {
-            for (Defns ds=dsccs.head.getBindings(); ds!=null; ds=ds.next) {
-                found |= ds.head.summarizeBlocks(table);
-            }
-        }
-  
-        // Update the program to eliminate duplicate blocks:
-        if (found) {
-            for (DefnSCCs dsccs = sccs; dsccs!=null; dsccs=dsccs.next) {
-                for (Defns ds=dsccs.head.getBindings(); ds!=null; ds=ds.next) {
-                   ds.head.eliminateDuplicates();
-                }
-            }
-        }
-    }
-
     /** Perform a live variable analysis on this program to determine the
      *  correct formal and actual parameter lists for each block.  In this
      *  analysis, we are relying on the fact that the only trailing/tail
@@ -314,53 +341,4 @@ public class MILProgram {
             dsccs.head.fixTrailingBlockCalls();
         }
     }
-
-    public static int count_g = 0;
-
-    public void GlobalConstantPropagation() {
-        for (DefnSCCs dsccs = sccs; dsccs!=null; dsccs=dsccs.next) {
-            for (Defns ds=dsccs.head.getBindings(); ds!=null; ds=ds.next) {
-                Defns addedDefns = ds.head.propagateConstants(1);
-
-                for (;addedDefns != null; addedDefns = addedDefns.next) {
-                    count++;
-                }
-
-              }
-        }
-      }
-
-    void dataflow() {
-        /*
-                for (DefnSCCs dsccs = sccs; dsccs!=null; dsccs=dsccs.next) {
-                  for (Defns ds=dsccs.head.getBindings(); ds!=null; ds=ds.next) {
-                        ds.head.clearInsOuts();
-                  }
-                }
-        */
-
-        for (int i = 1; i != 0;) {
-                for (DefnSCCs dsccs = sccs; dsccs!=null; dsccs=dsccs.next) {
-                        for (Defns ds=dsccs.head.getBindings(); ds!=null; ds=ds.next) {
-                                ds.head.computeInMeets();
-                        }
-                }
-                for (DefnSCCs dsccs = sccs; dsccs!=null; dsccs=dsccs.next) {
-                  for (Defns ds=dsccs.head.getBindings(); ds!=null; ds=ds.next) {
-                        i = ds.head.dataflow();
-                  }
-                }
-                for (DefnSCCs dsccs = sccs; dsccs!=null; dsccs=dsccs.next) {
-                  for (Defns ds=dsccs.head.getBindings(); ds!=null; ds=ds.next) {
-                        ds.head.setNextOuts();
-                  }
-                }
-        }
-
-        for (DefnSCCs dsccs = sccs; dsccs!=null; dsccs=dsccs.next) {
-                for (Defns ds=dsccs.head.getBindings(); ds!=null; ds=ds.next) {
-                        ds.head.printInsOuts();
-                }
-        }
-}
 }

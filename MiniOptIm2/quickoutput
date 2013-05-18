@@ -1,0 +1,1214 @@
+Program appears to be valid!
+Function quicksort implemented by b1
+Function mini_main implemented by b0
+Compilation to MIL complete
+Resulting program is:
+--------------------------------------
+not recursive
+b2() =
+  return _
+--------------------------------------
+not recursive
+b19() =
+  b2()
+--------------------------------------
+recursive
+b11(m, n, i, p, a, j) =
+  b10(m, n, i, p, a, j)
+b16(m, n, j, p, a, i) =
+  b15(m, n, j, p, a, i)
+b7(m, n, p, a, j, i) =
+  b5(m, n, p, a, j, i)
+b5(m, n, p, a, j, i) =
+  t19 <- mul((4, i))
+  t20 <- add((a, t19))
+  t <- load((t20))
+  _ <- return t
+  t14 <- mul((4, i))
+  t15 <- add((a, t14))
+  t16 <- mul((4, j))
+  t17 <- add((a, t16))
+  t18 <- load((t17))
+  _ <- store((t15, t18))
+  _ <- return t18
+  t12 <- mul((4, j))
+  t13 <- add((a, t12))
+  _ <- store((t13, t))
+  _ <- return t
+  b3(m, n, j, p, a, i)
+b18(a, n, m) =
+  t34 <- return 1
+  i <- sub((m, t34))
+  j <- return n
+  t32 <- mul((4, n))
+  t33 <- add((a, t32))
+  p <- load((t33))
+  t <- return _
+  b3(m, n, j, p, a, i)
+b3(m, n, j, p, a, i) =
+  b15(m, n, j, p, a, i)
+b15(m, n, j, p, a, i) =
+  t27 <- return 1
+  i <- add((i, t27))
+  _ <- return i
+  b13(m, n, j, p, a, i)
+b13(m, n, j, p, a, i) =
+  t28 <- mul((4, i))
+  t29 <- add((a, t28))
+  t30 <- load((t29))
+  t31 <- lt((t30, p))
+  case t31 of
+    True() -> b16(m, n, j, p, a, i)
+    _ -> b17(m, n, i, p, a, j)
+b17(m, n, i, p, a, j) =
+  b14(m, n, i, p, a, j)
+b14(m, n, i, p, a, j) =
+  b10(m, n, i, p, a, j)
+b10(m, n, i, p, a, j) =
+  t22 <- return 1
+  j <- sub((j, t22))
+  _ <- return j
+  b8(m, n, i, p, a, j)
+b8(m, n, i, p, a, j) =
+  t23 <- mul((4, j))
+  t24 <- add((a, t23))
+  t25 <- load((t24))
+  t26 <- gt((t25, p))
+  case t26 of
+    True() -> b11(m, n, i, p, a, j)
+    _ -> b12(p, m, n, a, i, j)
+b12(p, m, n, a, i, j) =
+  b9(p, m, n, a, i, j)
+b9(p, m, n, a, i, j) =
+  t21 <- gte((i, j))
+  case t21 of
+    True() -> b6(m, i, a, n)
+    _ -> b7(m, n, p, a, j, i)
+b6(m, i, a, n) =
+  b4(m, i, a, n)
+b4(m, i, a, n) =
+  t10 <- mul((4, i))
+  t11 <- add((a, t10))
+  t <- load((t11))
+  _ <- return t
+  t5 <- mul((4, i))
+  t6 <- add((a, t5))
+  t7 <- mul((4, n))
+  t8 <- add((a, t7))
+  t9 <- load((t8))
+  _ <- store((t6, t9))
+  _ <- return t9
+  t3 <- mul((4, n))
+  t4 <- add((a, t3))
+  _ <- store((t4, t))
+  _ <- return t
+  _ <- b1(a, m, j)
+  t1 <- return 1
+  t2 <- add((i, t1))
+  _ <- b1(a, t2, n)
+  b2()
+b1(a, m, n) =
+  t0 <- gt((n, m))
+  case t0 of
+    True() -> b18(a, n, m)
+    _ -> b19()
+--------------------------------------
+not recursive
+b0() =
+  t77 <- return 10
+  t78 <- mul((4, t77))
+  nums <- newarray((t78))
+  t73 <- return 0
+  t74 <- mul((4, t73))
+  t75 <- add((nums, t74))
+  t76 <- return 3
+  _ <- store((t75, t76))
+  _ <- return t76
+  t69 <- return 1
+  t70 <- mul((4, t69))
+  t71 <- add((nums, t70))
+  t72 <- return 5
+  _ <- store((t71, t72))
+  _ <- return t72
+  t65 <- return 2
+  t66 <- mul((4, t65))
+  t67 <- add((nums, t66))
+  t68 <- return 1
+  _ <- store((t67, t68))
+  _ <- return t68
+  t61 <- return 3
+  t62 <- mul((4, t61))
+  t63 <- add((nums, t62))
+  t64 <- return 7
+  _ <- store((t63, t64))
+  _ <- return t64
+  t57 <- return 4
+  t58 <- mul((4, t57))
+  t59 <- add((nums, t58))
+  t60 <- return 8
+  _ <- store((t59, t60))
+  _ <- return t60
+  t53 <- return 5
+  t54 <- mul((4, t53))
+  t55 <- add((nums, t54))
+  t56 <- return 0
+  _ <- store((t55, t56))
+  _ <- return t56
+  t49 <- return 6
+  t50 <- mul((4, t49))
+  t51 <- add((nums, t50))
+  t52 <- return 4
+  _ <- store((t51, t52))
+  _ <- return t52
+  t45 <- return 7
+  t46 <- mul((4, t45))
+  t47 <- add((nums, t46))
+  t48 <- return 6
+  _ <- store((t47, t48))
+  _ <- return t48
+  t41 <- return 8
+  t42 <- mul((4, t41))
+  t43 <- add((nums, t42))
+  t44 <- return 9
+  _ <- store((t43, t44))
+  _ <- return t44
+  t37 <- return 9
+  t38 <- mul((4, t37))
+  t39 <- add((nums, t38))
+  t40 <- return 2
+  _ <- store((t39, t40))
+  _ <- return t40
+  t35 <- return 0
+  t36 <- return 9
+  _ <- b1(nums, t35, t36)
+  return _
+Running optimizer ...
+Replacing default branch with match on False
+Replacing default branch with match on False
+Replacing default branch with match on False
+Replacing default branch with match on False
+-------------------------
+suffixInline succeeded for call to block b2 from block b19
+suffixInline succeeded for call to block b5 from block b7
+suffixInline succeeded for call to block b3 from block b7
+inlining eliminated a wildcard binding in b5
+inlining eliminated a wildcard binding in b5
+inlining eliminated a wildcard binding in b5
+suffixInline succeeded for call to block b3 from block b5
+suffixInline succeeded for call to block b3 from block b18
+inlining eliminated a wildcard binding in b15
+suffixInline succeeded for call to block b13 from block b15
+eliminateGoto succeeded on call to b15
+eliminateGoto succeeded on call to b14
+eliminateGoto succeeded on call to b15
+eliminateGoto succeeded on call to b14
+suffixInline succeeded for call to block b14 from block b17
+inlining eliminated a wildcard binding in b10
+suffixInline succeeded for call to block b8 from block b10
+eliminateGoto succeeded on call to b10
+eliminateGoto succeeded on call to b9
+eliminateGoto succeeded on call to b10
+eliminateGoto succeeded on call to b9
+suffixInline succeeded for call to block b9 from block b12
+eliminateGoto succeeded on call to b4
+eliminateGoto succeeded on call to b4
+suffixInline succeeded for call to block b4 from block b6
+suffixInline succeeded for call to block b2 from block b6
+inlining eliminated a wildcard binding in b4
+inlining eliminated a wildcard binding in b4
+inlining eliminated a wildcard binding in b4
+suffixInline succeeded for call to block b2 from block b4
+inlining eliminated a wildcard binding in b0
+inlining eliminated a wildcard binding in b0
+inlining eliminated a wildcard binding in b0
+inlining eliminated a wildcard binding in b0
+inlining eliminated a wildcard binding in b0
+inlining eliminated a wildcard binding in b0
+inlining eliminated a wildcard binding in b0
+inlining eliminated a wildcard binding in b0
+inlining eliminated a wildcard binding in b0
+inlining eliminated a wildcard binding in b0
+applied right monad law in b0
+suffixInline succeeded for call to block b1 from block b0
+Inlining pass finished, running shake.
+applied left monad law for t82 <- return t81
+cse: using previously computed value t79 for t83
+cse: using previously computed value t80 for t84
+applied left monad law for t89 <- return t87
+cse: using previously computed value t85 for t90
+cse: using previously computed value t86 for t91
+applied left monad law for t93 <- return t81
+liveness replaced t92 with a wildcard
+liveness replaced t88 with a wildcard
+applied left monad law for t27 <- return 1
+applied left monad law for t22 <- return 1
+cse: using previously computed value t10 for t5
+cse: using previously computed value t11 for t6
+cse: using previously computed value t7 for t3
+cse: using previously computed value t8 for t4
+applied left monad law for t1 <- return 1
+applied left monad law for t34 <- return 1
+applied left monad law for j <- return n
+applied left monad law for t <- return _
+applied left monad law for t77 <- return 10
+constant folding for mul
+applied left monad law for t78 <- return 40
+applied left monad law for t73 <- return 0
+constant folding for mul
+applied left monad law for t74 <- return 0
+rewrite: x + 0 ==> x
+applied left monad law for t75 <- return nums
+applied left monad law for t76 <- return 3
+applied left monad law for t69 <- return 1
+constant folding for mul
+applied left monad law for t70 <- return 4
+applied left monad law for t72 <- return 5
+applied left monad law for t65 <- return 2
+constant folding for mul
+applied left monad law for t66 <- return 8
+applied left monad law for t68 <- return 1
+applied left monad law for t61 <- return 3
+constant folding for mul
+applied left monad law for t62 <- return 12
+applied left monad law for t64 <- return 7
+applied left monad law for t57 <- return 4
+constant folding for mul
+applied left monad law for t58 <- return 16
+applied left monad law for t60 <- return 8
+applied left monad law for t53 <- return 5
+constant folding for mul
+applied left monad law for t54 <- return 20
+applied left monad law for t56 <- return 0
+applied left monad law for t49 <- return 6
+constant folding for mul
+applied left monad law for t50 <- return 24
+applied left monad law for t52 <- return 4
+applied left monad law for t45 <- return 7
+constant folding for mul
+applied left monad law for t46 <- return 28
+applied left monad law for t48 <- return 6
+applied left monad law for t41 <- return 8
+constant folding for mul
+applied left monad law for t42 <- return 32
+applied left monad law for t44 <- return 9
+applied left monad law for t37 <- return 9
+constant folding for mul
+applied left monad law for t38 <- return 36
+applied left monad law for t40 <- return 2
+applied left monad law for t35 <- return 0
+applied left monad law for t36 <- return 9
+constant folding for gt
+shorting out match on constructor True
+Flow pass finished, running shake.
+Steps performed = 110
+-------------------------
+eliminateGoto succeeded on call to b10
+applied right monad law in b4
+Inlining pass finished, running shake.
+lifted allocator for t122
+lifted allocator for t122
+lifted allocator for t122
+lifted allocator for t122
+lifted allocator for t122
+lifted allocator for t122
+lifted allocator for t122
+lifted allocator for t122
+lifted allocator for t122
+lifted allocator for t122
+lifted allocator for t122
+lifted allocator for t122
+lifted allocator for t122
+lifted allocator for t122
+lifted allocator for t122
+lifted allocator for t122
+lifted allocator for t122
+lifted allocator for t122
+lifted allocator for t122
+lifted allocator for t122
+liveness replaced t122 with a wildcard
+Flow pass finished, running shake.
+Steps performed = 23
+-------------------------
+inlining eliminated a wildcard binding in b0
+Inlining pass finished, running shake.
+Flow pass finished, running shake.
+Steps performed = 1
+-------------------------
+Inlining pass finished, running shake.
+Flow pass finished, running shake.
+Steps performed = 0
+Argument 5 is modified
+Argument 5 is modified
+b20(a, m) =
+  t123 <- add((m, -1))
+  t124 <- mul((9, 4))
+  t125 <- add((a, t124))
+  t126 <- load((t125))
+  b15(m, 9, 9, t126, a, t123)
+Created Block b20 from block b18
+b21(a, n) =
+  t127 <- add((0, -1))
+  t128 <- mul((n, 4))
+  t129 <- add((a, t128))
+  t130 <- load((t129))
+  b15(0, n, n, t130, a, t127)
+Created Block b21 from block b18
+GlobalConstantPropagation pass finished, running shake.
+Steps performed = 0
+-------------------------
+suffixInline succeeded for call to block b20 from block b0
+Inlining pass finished, running shake.
+constant folding for add
+applied left monad law for t131 <- return -1
+constant folding for mul
+applied left monad law for t132 <- return 36
+cse: using previously computed value t39 for t133
+Flow pass finished, running shake.
+Steps performed = 6
+-------------------------
+Inlining pass finished, running shake.
+Flow pass finished, running shake.
+Steps performed = 0
+Argument 5 is modified
+Argument 5 is modified
+b22(n, j, p, a, i) =
+  t135 <- add((i, 1))
+  t136 <- mul((t135, 4))
+  t137 <- add((a, t136))
+  t138 <- load((t137))
+  t139 <- lt((t138, p))
+  case t139 of
+    True() -> b22(n, j, p, a, t135)
+    False() -> b10(0, n, t135, p, a, j)
+Created Block b22 from block b15
+b23(m, j, p, a, i) =
+  t140 <- add((i, 1))
+  t141 <- mul((t140, 4))
+  t142 <- add((a, t141))
+  t143 <- load((t142))
+  t144 <- lt((t143, p))
+  case t144 of
+    True() -> b23(m, j, p, a, t140)
+    False() -> b10(m, 9, t140, p, a, j)
+Created Block b23 from block b15
+GlobalConstantPropagation pass finished, running shake.
+Steps performed = 0
+-------------------------
+Inlining pass finished, running shake.
+rewrite: x ! (w ! d) ==> (x ! w) ! d
+liveness replaced t136 with a wildcard
+Flow pass finished, running shake.
+Steps performed = 2
+-------------------------
+inlining eliminated a wildcard binding in b22
+Inlining pass finished, running shake.
+Flow pass finished, running shake.
+Steps performed = 1
+-------------------------
+Inlining pass finished, running shake.
+Flow pass finished, running shake.
+Steps performed = 0
+Argument 5 is modified
+Argument 5 is modified
+b24(n, i, p, a, j) =
+  t147 <- add((j, -1))
+  t148 <- mul((t147, 4))
+  t149 <- add((a, t148))
+  t150 <- load((t149))
+  t151 <- gt((t150, p))
+  case t151 of
+    True() -> b24(n, i, p, a, t147)
+    False() -> b9(p, 0, n, a, i, t147)
+Created Block b24 from block b10
+Argument 4 is modified
+b25(j, p, a, i) =
+  t152 <- add((i, 1))
+  t153 <- mul((i, 4))
+  t154 <- add((a, t153))
+  t155 <- add((t154, 4))
+  t156 <- load((t155))
+  t157 <- lt((t156, p))
+  case t157 of
+    True() -> b25(j, p, a, t152)
+    False() -> b24(9, t152, p, a, j)
+Created Block b25 from block b22
+GlobalConstantPropagation pass finished, running shake.
+Steps performed = 0
+-------------------------
+Inlining pass finished, running shake.
+rewrite: x ! (w ! d) ==> (x ! w) ! d
+liveness replaced t148 with a wildcard
+Flow pass finished, running shake.
+Steps performed = 2
+-------------------------
+inlining eliminated a wildcard binding in b24
+Inlining pass finished, running shake.
+Flow pass finished, running shake.
+Steps performed = 1
+-------------------------
+Inlining pass finished, running shake.
+Flow pass finished, running shake.
+Steps performed = 0
+Argument 5 is modified
+Argument 5 is modified
+b26(p, n, a, i, j) =
+  t160 <- gte((i, j))
+  case t160 of
+    True() -> b4(0, i, a, n)
+    False() -> b7(0, n, p, a, j, i)
+Created Block b26 from block b9
+Argument 4 is modified
+b27(i, p, a, j) =
+  t161 <- add((j, -1))
+  t162 <- mul((j, 4))
+  t163 <- add((a, t162))
+  t164 <- add((t163, -4))
+  t165 <- load((t164))
+  t166 <- gt((t165, p))
+  case t166 of
+    True() -> b27(i, p, a, t161)
+    False() -> b26(p, 9, a, i, t161)
+Created Block b27 from block b24
+Argument 3 is modified
+b28(p, a, i) =
+  t167 <- add((i, 1))
+  t168 <- mul((i, 4))
+  t169 <- add((a, t168))
+  t170 <- add((t169, 4))
+  t171 <- load((t170))
+  t172 <- lt((t171, p))
+  case t172 of
+    True() -> b28(p, a, t167)
+    False() -> b27(t167, p, a, 9)
+Created Block b28 from block b25
+GlobalConstantPropagation pass finished, running shake.
+Steps performed = 0
+-------------------------
+Inlining pass finished, running shake.
+Flow pass finished, running shake.
+Steps performed = 0
+b29(i, a, n) =
+  t173 <- mul((i, 4))
+  t174 <- add((a, t173))
+  t175 <- load((t174))
+  t176 <- mul((n, 4))
+  t177 <- add((a, t176))
+  t178 <- load((t177))
+  t179 <- store((t174, t178))
+  t180 <- store((t177, t175))
+  t181 <- b1(a, 0, j)
+  t182 <- add((i, 1))
+  b1(a, t182, n)
+Created Block b29 from block b4
+Argument 5 is modified
+Argument 5 is modified
+b30(n, p, a, j, i) =
+  t183 <- mul((i, 4))
+  t184 <- add((a, t183))
+  t185 <- load((t184))
+  t186 <- mul((j, 4))
+  t187 <- add((a, t186))
+  t188 <- load((t187))
+  t189 <- store((t184, t188))
+  t190 <- store((t187, t185))
+  b15(0, n, j, p, a, i)
+Created Block b30 from block b7
+b31(p, a, i, j) =
+  t191 <- gte((i, j))
+  case t191 of
+    True() -> b29(i, a, 9)
+    False() -> b30(9, p, a, j, i)
+Created Block b31 from block b26
+Argument 3 is modified
+Argument 2 is modified
+GlobalConstantPropagation pass finished, running shake.
+Steps performed = 0
+-------------------------
+suffixInline succeeded for call to block b1 from block b29
+Inlining pass finished, running shake.
+liveness replaced t190 with a wildcard
+liveness replaced t189 with a wildcard
+liveness replaced t181 with a wildcard
+liveness replaced t180 with a wildcard
+liveness replaced t179 with a wildcard
+Flow pass finished, running shake.
+Steps performed = 6
+-------------------------
+Inlining pass finished, running shake.
+Flow pass finished, running shake.
+Steps performed = 0
+Argument 5 is modified
+b32(a, n) =
+  t193 <- gt((n, 0))
+  case t193 of
+    True() -> b18(a, n, 0)
+    False() -> b19()
+Created Block b32 from block b1
+Argument 5 is modified
+b33(p, a, j, i) =
+  t194 <- mul((i, 4))
+  t195 <- add((a, t194))
+  t196 <- load((t195))
+  t197 <- mul((j, 4))
+  t198 <- add((a, t197))
+  t199 <- load((t198))
+  t200 <- store((t195, t199))
+  t201 <- store((t198, t196))
+  b22(9, j, p, a, i)
+Created Block b33 from block b30
+b34(i, a) =
+  t202 <- mul((i, 4))
+  t203 <- add((a, t202))
+  t204 <- load((t203))
+  t205 <- mul((9, 4))
+  t206 <- add((a, t205))
+  t207 <- load((t206))
+  t208 <- store((t203, t207))
+  t209 <- store((t206, t204))
+  t210 <- b32(a, j)
+  t211 <- add((i, 1))
+  t212 <- gt((9, t211))
+  case t212 of
+    True() -> b18(a, 9, t211)
+    False() -> b19()
+Created Block b34 from block b29
+Argument 3 is modified
+Argument 2 is modified
+GlobalConstantPropagation pass finished, running shake.
+Steps performed = 0
+-------------------------
+Inlining pass finished, running shake.
+liveness replaced t201 with a wildcard
+liveness replaced t200 with a wildcard
+constant folding for mul
+applied left monad law for t205 <- return 36
+liveness replaced t210 with a wildcard
+liveness replaced t209 with a wildcard
+liveness replaced t208 with a wildcard
+Flow pass finished, running shake.
+Steps performed = 7
+-------------------------
+Inlining pass finished, running shake.
+Flow pass finished, running shake.
+Steps performed = 0
+Argument 5 is modified
+Argument 5 is modified
+Argument 4 is modified
+Argument 4 is modified
+Argument 3 is modified
+Argument 2 is modified
+GlobalConstantPropagation pass finished, running shake.
+Steps performed = 0
+-------------------------
+Inlining pass finished, running shake.
+constant folding for add
+applied left monad law for t127 <- return -1
+constant folding for mul
+applied left monad law for t124 <- return 36
+Flow pass finished, running shake.
+Steps performed = 4
+-------------------------
+Inlining pass finished, running shake.
+Flow pass finished, running shake.
+Steps performed = 0
+Argument 5 is modified
+Argument 5 is modified
+Argument 3 is modified
+Argument 3 is modified
+Argument 2 is modified
+GlobalConstantPropagation pass finished, running shake.
+Steps performed = 0
+-------------------------
+Inlining pass finished, running shake.
+rewrite: x ! (w ! d) ==> (x ! w) ! d
+liveness replaced t141 with a wildcard
+Flow pass finished, running shake.
+Steps performed = 2
+-------------------------
+inlining eliminated a wildcard binding in b23
+Inlining pass finished, running shake.
+Flow pass finished, running shake.
+Steps performed = 1
+-------------------------
+Inlining pass finished, running shake.
+Flow pass finished, running shake.
+Steps performed = 0
+Argument 5 is modified
+Argument 5 is modified
+b35(m, i, p, a, j) =
+  t215 <- add((j, -1))
+  t216 <- mul((t215, 4))
+  t217 <- add((a, t216))
+  t218 <- load((t217))
+  t219 <- gt((t218, p))
+  case t219 of
+    True() -> b35(m, i, p, a, t215)
+    False() -> b9(p, m, 9, a, i, t215)
+Created Block b35 from block b10
+Argument 4 is modified
+Argument 4 is modified
+Argument 4 is modified
+b36(m, p, a, i) =
+  t220 <- add((i, 1))
+  t221 <- mul((i, 4))
+  t222 <- add((a, t221))
+  t223 <- add((t222, 4))
+  t224 <- load((t223))
+  t225 <- lt((t224, p))
+  case t225 of
+    True() -> b36(m, p, a, t220)
+    False() -> b35(m, t220, p, a, 9)
+Created Block b36 from block b23
+Argument 3 is modified
+Argument 3 is modified
+Argument 2 is modified
+GlobalConstantPropagation pass finished, running shake.
+Steps performed = 0
+-------------------------
+Inlining pass finished, running shake.
+rewrite: x ! (w ! d) ==> (x ! w) ! d
+liveness replaced t216 with a wildcard
+Flow pass finished, running shake.
+Steps performed = 2
+-------------------------
+inlining eliminated a wildcard binding in b35
+Inlining pass finished, running shake.
+Flow pass finished, running shake.
+Steps performed = 1
+-------------------------
+Inlining pass finished, running shake.
+Flow pass finished, running shake.
+Steps performed = 0
+Argument 5 is modified
+Argument 5 is modified
+b37(p, m, a, i, j) =
+  t228 <- gte((i, j))
+  case t228 of
+    True() -> b4(m, i, a, 9)
+    False() -> b7(m, 9, p, a, j, i)
+Created Block b37 from block b9
+Argument 4 is modified
+Argument 4 is modified
+Argument 4 is modified
+Argument 3 is modified
+Argument 3 is modified
+Argument 3 is modified
+Argument 2 is modified
+GlobalConstantPropagation pass finished, running shake.
+Steps performed = 0
+-------------------------
+Inlining pass finished, running shake.
+Flow pass finished, running shake.
+Steps performed = 0
+b38(m, p, a, j, i) =
+  t229 <- mul((i, 4))
+  t230 <- add((a, t229))
+  t231 <- load((t230))
+  t232 <- mul((j, 4))
+  t233 <- add((a, t232))
+  t234 <- load((t233))
+  t235 <- store((t230, t234))
+  t236 <- store((t233, t231))
+  b15(m, 9, j, p, a, i)
+Created Block b38 from block b7
+Argument 5 is modified
+Argument 5 is modified
+b39(m, i, a) =
+  t237 <- mul((i, 4))
+  t238 <- add((a, t237))
+  t239 <- load((t238))
+  t240 <- mul((9, 4))
+  t241 <- add((a, t240))
+  t242 <- load((t241))
+  t243 <- store((t238, t242))
+  t244 <- store((t241, t239))
+  t245 <- b1(a, m, j)
+  t246 <- add((i, 1))
+  b1(a, t246, 9)
+Created Block b39 from block b4
+Argument 4 is modified
+Argument 4 is modified
+Argument 4 is modified
+Argument 3 is modified
+Argument 3 is modified
+Argument 3 is modified
+Argument 2 is modified
+GlobalConstantPropagation pass finished, running shake.
+Steps performed = 0
+-------------------------
+suffixInline succeeded for call to block b1 from block b39
+Inlining pass finished, running shake.
+liveness replaced t236 with a wildcard
+liveness replaced t235 with a wildcard
+constant folding for mul
+applied left monad law for t240 <- return 36
+liveness replaced t245 with a wildcard
+liveness replaced t244 with a wildcard
+liveness replaced t243 with a wildcard
+Flow pass finished, running shake.
+Steps performed = 8
+-------------------------
+Inlining pass finished, running shake.
+Flow pass finished, running shake.
+Steps performed = 0
+Argument 5 is modified
+Argument 5 is modified
+Argument 4 is modified
+Argument 4 is modified
+Argument 4 is modified
+Argument 3 is modified
+Argument 3 is modified
+Argument 3 is modified
+Argument 2 is modified
+GlobalConstantPropagation pass finished, running shake.
+Steps performed = 0
+-------------------------
+Inlining pass finished, running shake.
+Flow pass finished, running shake.
+Steps performed = 0
+Argument 5 is modified
+Argument 5 is modified
+Argument 4 is modified
+Argument 4 is modified
+Argument 4 is modified
+Argument 3 is modified
+Argument 4 is modified
+Argument 3 is modified
+Argument 3 is modified
+Argument 2 is modified
+GlobalConstantPropagation pass finished, running shake.
+Steps performed = 0
+At block b19
+At block b7
+At block b15
+At block b10
+At block b9
+At block b4
+At block b1
+At block b18
+At block b30
+At block b21
+At block b22
+At block b24
+At block b26
+At block b29
+At block b32
+At block b38
+At block b23
+At block b36
+At block b35
+At block b37
+At block b39
+At block b20
+At block b34
+At block b31
+At block b33
+At block b25
+At block b27
+At block b28
+At block b0
+At block b19
+At block b7
+At block b15
+At block b10
+At block b9
+At block b4
+At block b1
+At block b18
+At block b30
+At block b21
+At block b22
+At block b24
+At block b26
+At block b29
+At block b32
+At block b38
+At block b23
+At block b36
+At block b35
+At block b37
+At block b39
+At block b20
+At block b34
+At block b31
+At block b33
+At block b25
+At block b27
+At block b28
+At block b0
+Inset for block b7
+add((j, -1))j
+Outset for block b7
+add((j, -1))j
+Outset for block b15
+add((i, 1))i
+Outset for block b10
+add((j, -1))j
+Inset for block b9
+add((j, -1))j
+Outset for block b9
+add((j, -1))j
+Inset for block b4
+add((j, -1))j
+Outset for block b4
+add((j, -1))j
+Inset for block b1
+add((j, -1))j
+t215
+Outset for block b1
+add((j, -1))j
+t215
+Inset for block b18
+add((j, -1))t215
+j
+t147
+Outset for block b18
+add((j, -1))t215
+j
+t147
+Inset for block b30
+add((j, -1))t147
+Outset for block b30
+add((j, -1))t147
+Inset for block b21
+gt((n, 0))t193
+Outset for block b21
+gt((n, 0))t193
+Outset for block b22
+add((i, 1))t135
+Outset for block b24
+add((j, -1))t147
+Inset for block b26
+add((j, -1))t147
+Outset for block b26
+add((j, -1))t147
+Inset for block b29
+add((j, -1))t147
+Outset for block b29
+add((j, -1))t147
+Outset for block b32
+gt((n, 0))t193
+Inset for block b38
+add((j, -1))t215
+Outset for block b38
+add((j, -1))t215
+Outset for block b23
+add((i, 1))t140
+Outset for block b36
+add((i, 1))t220
+Outset for block b35
+add((j, -1))t215
+Inset for block b37
+add((j, -1))t215
+Outset for block b37
+add((j, -1))t215
+Inset for block b39
+add((j, -1))t215
+Outset for block b39
+add((j, -1))t215
+Outset for block b20
+add((m, -1))t123
+Inset for block b34
+gte((i, j))t191
+Outset for block b34
+gte((i, j))t191
+Inset for block b31
+add((j, -1))t161
+Outset for block b31
+add((j, -1))t161
+Inset for block b33
+add((j, -1))t161
+Outset for block b33
+add((j, -1))t161
+Outset for block b25
+add((i, 1))t152
+Outset for block b27
+add((j, -1))t161
+Outset for block b28
+add((i, 1))t167
+Outset for block b0
+newarray((40))nums
+Loops performed = 14
+Results ...
+--------------------------------------
+not recursive
+b19() =
+  return _
+--------------------------------------
+recursive
+b7(m, n, p, a, j, i) =
+  t79 <- mul((i, 4))
+  t80 <- add((a, t79))
+  t81 <- load((t80))
+  t85 <- mul((j, 4))
+  t86 <- add((a, t85))
+  t87 <- load((t86))
+  _ <- store((t80, t87))
+  _ <- store((t86, t81))
+  b15(m, n, j, p, a, i)
+b15(m, n, j, p, a, i) =
+  i <- add((i, 1))
+  t94 <- mul((i, 4))
+  t95 <- add((a, t94))
+  t96 <- load((t95))
+  t97 <- lt((t96, p))
+  case t97 of
+    True() -> b15(m, n, j, p, a, i)
+    False() -> b10(m, n, i, p, a, j)
+b10(m, n, i, p, a, j) =
+  j <- add((j, -1))
+  t98 <- mul((j, 4))
+  t99 <- add((a, t98))
+  t100 <- load((t99))
+  t101 <- gt((t100, p))
+  case t101 of
+    True() -> b10(m, n, i, p, a, j)
+    False() -> b9(p, m, n, a, i, j)
+b9(p, m, n, a, i, j) =
+  t21 <- gte((i, j))
+  case t21 of
+    True() -> b4(m, i, a, n)
+    False() -> b7(m, n, p, a, j, i)
+b4(m, i, a, n) =
+  t10 <- mul((i, 4))
+  t11 <- add((a, t10))
+  t <- load((t11))
+  t7 <- mul((n, 4))
+  t8 <- add((a, t7))
+  t9 <- load((t8))
+  _ <- store((t11, t9))
+  _ <- store((t8, t))
+  _ <- b1(a, m, j)
+  t2 <- add((i, 1))
+  b1(a, t2, n)
+b1(a, m, n) =
+  t0 <- gt((n, m))
+  case t0 of
+    True() -> b18(a, n, m)
+    False() -> b19()
+b18(a, n, m) =
+  i <- add((m, -1))
+  t32 <- mul((n, 4))
+  t33 <- add((a, t32))
+  p <- load((t33))
+  b15(m, n, n, p, a, i)
+--------------------------------------
+recursive
+b30(n, p, a, j, i) =
+  t183 <- mul((i, 4))
+  t184 <- add((a, t183))
+  t185 <- load((t184))
+  t186 <- mul((j, 4))
+  t187 <- add((a, t186))
+  t188 <- load((t187))
+  _ <- store((t184, t188))
+  _ <- store((t187, t185))
+  b22(n, j, p, a, i)
+b21(a, n) =
+  t128 <- mul((n, 4))
+  t129 <- add((a, t128))
+  t130 <- load((t129))
+  b22(n, n, t130, a, -1)
+b22(n, j, p, a, i) =
+  t135 <- add((i, 1))
+  t145 <- mul((i, 4))
+  t146 <- add((a, t145))
+  t137 <- add((t146, 4))
+  t138 <- load((t137))
+  t139 <- lt((t138, p))
+  case t139 of
+    True() -> b22(n, j, p, a, t135)
+    False() -> b24(n, t135, p, a, j)
+b24(n, i, p, a, j) =
+  t147 <- add((j, -1))
+  t158 <- mul((j, 4))
+  t159 <- add((a, t158))
+  t149 <- add((t159, -4))
+  t150 <- load((t149))
+  t151 <- gt((t150, p))
+  case t151 of
+    True() -> b24(n, i, p, a, t147)
+    False() -> b26(p, n, a, i, t147)
+b26(p, n, a, i, j) =
+  t160 <- gte((i, j))
+  case t160 of
+    True() -> b29(i, a, n)
+    False() -> b30(n, p, a, j, i)
+b29(i, a, n) =
+  t173 <- mul((i, 4))
+  t174 <- add((a, t173))
+  t175 <- load((t174))
+  t176 <- mul((n, 4))
+  t177 <- add((a, t176))
+  t178 <- load((t177))
+  _ <- store((t174, t178))
+  _ <- store((t177, t175))
+  _ <- b32(a, j)
+  t182 <- add((i, 1))
+  t192 <- gt((n, t182))
+  case t192 of
+    True() -> b18(a, n, t182)
+    False() -> b19()
+b32(a, n) =
+  t193 <- gt((n, 0))
+  case t193 of
+    True() -> b21(a, n)
+    False() -> b19()
+--------------------------------------
+recursive
+b38(m, p, a, j, i) =
+  t229 <- mul((i, 4))
+  t230 <- add((a, t229))
+  t231 <- load((t230))
+  t232 <- mul((j, 4))
+  t233 <- add((a, t232))
+  t234 <- load((t233))
+  _ <- store((t230, t234))
+  _ <- store((t233, t231))
+  b23(m, j, p, a, i)
+b23(m, j, p, a, i) =
+  t140 <- add((i, 1))
+  t213 <- mul((i, 4))
+  t214 <- add((a, t213))
+  t142 <- add((t214, 4))
+  t143 <- load((t142))
+  t144 <- lt((t143, p))
+  case t144 of
+    True() -> b23(m, j, p, a, t140)
+    False() -> b35(m, t140, p, a, j)
+b36(m, p, a, i) =
+  t220 <- add((i, 1))
+  t221 <- mul((i, 4))
+  t222 <- add((a, t221))
+  t223 <- add((t222, 4))
+  t224 <- load((t223))
+  t225 <- lt((t224, p))
+  case t225 of
+    True() -> b36(m, p, a, t220)
+    False() -> b35(m, t220, p, a, 9)
+b35(m, i, p, a, j) =
+  t215 <- add((j, -1))
+  t226 <- mul((j, 4))
+  t227 <- add((a, t226))
+  t217 <- add((t227, -4))
+  t218 <- load((t217))
+  t219 <- gt((t218, p))
+  case t219 of
+    True() -> b35(m, i, p, a, t215)
+    False() -> b37(p, m, a, i, t215)
+b37(p, m, a, i, j) =
+  t228 <- gte((i, j))
+  case t228 of
+    True() -> b39(m, i, a)
+    False() -> b38(m, p, a, j, i)
+b39(m, i, a) =
+  t237 <- mul((i, 4))
+  t238 <- add((a, t237))
+  t239 <- load((t238))
+  t241 <- add((a, 36))
+  t242 <- load((t241))
+  _ <- store((t238, t242))
+  _ <- store((t241, t239))
+  _ <- b1(a, m, j)
+  t246 <- add((i, 1))
+  t247 <- gt((9, t246))
+  case t247 of
+    True() -> b20(a, t246)
+    False() -> b19()
+b20(a, m) =
+  t123 <- add((m, -1))
+  t125 <- add((a, 36))
+  t126 <- load((t125))
+  b36(m, t126, a, t123)
+--------------------------------------
+not recursive
+b34(i, a) =
+  t202 <- mul((i, 4))
+  t203 <- add((a, t202))
+  t204 <- load((t203))
+  t206 <- add((a, 36))
+  t207 <- load((t206))
+  _ <- store((t203, t207))
+  _ <- store((t206, t204))
+  _ <- b32(a, j)
+  t211 <- add((i, 1))
+  t212 <- gt((9, t211))
+  case t212 of
+    True() -> b20(a, t211)
+    False() -> b19()
+--------------------------------------
+recursive
+b31(p, a, i, j) =
+  t191 <- gte((i, j))
+  case t191 of
+    True() -> b34(i, a)
+    False() -> b33(p, a, j, i)
+b33(p, a, j, i) =
+  t194 <- mul((i, 4))
+  t195 <- add((a, t194))
+  t196 <- load((t195))
+  t197 <- mul((j, 4))
+  t198 <- add((a, t197))
+  t199 <- load((t198))
+  _ <- store((t195, t199))
+  _ <- store((t198, t196))
+  b25(j, p, a, i)
+b25(j, p, a, i) =
+  t152 <- add((i, 1))
+  t153 <- mul((i, 4))
+  t154 <- add((a, t153))
+  t155 <- add((t154, 4))
+  t156 <- load((t155))
+  t157 <- lt((t156, p))
+  case t157 of
+    True() -> b25(j, p, a, t152)
+    False() -> b27(t152, p, a, j)
+b27(i, p, a, j) =
+  t161 <- add((j, -1))
+  t162 <- mul((j, 4))
+  t163 <- add((a, t162))
+  t164 <- add((t163, -4))
+  t165 <- load((t164))
+  t166 <- gt((t165, p))
+  case t166 of
+    True() -> b27(i, p, a, t161)
+    False() -> b31(p, a, i, t161)
+--------------------------------------
+recursive
+b28(p, a, i) =
+  t167 <- add((i, 1))
+  t168 <- mul((i, 4))
+  t169 <- add((a, t168))
+  t170 <- add((t169, 4))
+  t171 <- load((t170))
+  t172 <- lt((t171, p))
+  case t172 of
+    True() -> b28(p, a, t167)
+    False() -> b27(t167, p, a, 9)
+--------------------------------------
+not recursive
+b0() =
+  nums <- newarray((40))
+  _ <- store((nums, 3))
+  t71 <- add((nums, 4))
+  _ <- store((t71, 5))
+  t67 <- add((nums, 8))
+  _ <- store((t67, 1))
+  t63 <- add((nums, 12))
+  _ <- store((t63, 7))
+  t59 <- add((nums, 16))
+  _ <- store((t59, 8))
+  t55 <- add((nums, 20))
+  _ <- store((t55, 0))
+  t51 <- add((nums, 24))
+  _ <- store((t51, 4))
+  t47 <- add((nums, 28))
+  _ <- store((t47, 6))
+  t43 <- add((nums, 32))
+  _ <- store((t43, 9))
+  t39 <- add((nums, 36))
+  _ <- store((t39, 2))
+  t134 <- load((t39))
+  b28(t134, nums, -1)
+Done ...
+Total failures found: 0

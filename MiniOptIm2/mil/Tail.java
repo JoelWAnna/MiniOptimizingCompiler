@@ -88,9 +88,9 @@ public abstract class Tail {
      */
     public Atom appliesTo(Var w) { return null; }
 
-    boolean detectLoops(Block src, Blocks visited) { return false; }
-
-    boolean loops() { return false; }
+    /** Test for code that is guaranteed not to return.
+     */
+    boolean doesntReturn() { return false; }
 
     /** Test whether a given Code/Tail value is an expression of the form return v,
      *  with the specified variable v as its parameter.  We also return a true result
@@ -100,6 +100,10 @@ public abstract class Tail {
      *  of "void functions" that do not return a useful result.
      */
     boolean isReturn(Var v) { return false; }
+
+    boolean detectLoops(Block src, Blocks visited) { return false; }
+
+    boolean loops() { return false; }
 
     Code prefixInline(Block src, Var r, Code c) { return null; }
 
@@ -149,6 +153,8 @@ public abstract class Tail {
 
     Atom returnsAtom() { return null; }
 
+    Atom isBnot() { return null; }
+
     public Code rewrite(Facts facts) { return null; }
 
     /** Special case treatment for top-level bindings of the form  x <- return y;
@@ -181,11 +187,10 @@ public abstract class Tail {
      */
     BlockCall shortMatch(AtomSubst s, TAlt[] alts, BlockCall d) { return null; }
 
+    /** Test to see if this tail expression is a call to a specific primitive,
+     *  returning null in the (most likely) case that it is not.
+     */
     Atom[] isPrim(Prim p) { return null; }
-
-    public void analyzeCalls() { }
-
-    public void analyzeTailCalls() { }
 
     /** Compute an integer summary for a fragment of MIL code with the key property
      *  that alpha equivalent program fragments have the same summary value.
@@ -230,6 +235,10 @@ public abstract class Tail {
 
     void eliminateDuplicates() { /* nothing to do in most cases */ }
 
+    public void analyzeCalls() { }
+
+    public void analyzeTailCalls() { }
+
     /** Compute the set of live variables that appear in this Tail, adding
      *  each one to the list that is passed in as a parameter if it is not
      *  already included.
@@ -243,6 +252,4 @@ public abstract class Tail {
     void fixTrailingBlockCalls() {
         /* do nothing */
     }
-
-    public Pairs addIns(Pairs ins) { return null; }
 }

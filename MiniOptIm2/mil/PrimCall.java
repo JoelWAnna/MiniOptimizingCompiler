@@ -21,6 +21,10 @@ public class PrimCall extends Call {
 
     boolean samePrimCall(PrimCall that) { return this.p==that.p && this.sameArgs(that); }
 
+    /** Represents a tail expression that halts/terminates the current program.
+     */
+    public static final Call halt = new PrimCall(Prim.halt).withArgs(new Atom[0]);
+
     /** Find the list of Defns that this Tail depends on.
      */
     public Defns dependencies(Defns ds) { // p(args)
@@ -40,9 +44,15 @@ public class PrimCall extends Call {
     public Val eval(ValEnv env)
       throws Fail { return p.call(ValEnv.lookup(args, env)); }
 
+    /** Test for code that is guaranteed not to return.
+     */
+    boolean doesntReturn() { return p.doesntReturn(); }
+
     public static final Call loop = new PrimCall(Prim.loop).withArgs(new Atom[0]);
 
     boolean loops() { return p==Prim.loop; }
+
+    Atom isBnot() { return p==Prim.bnot ? args[0] : null; }
 
     public Code rewrite(Facts facts) {
         return this.rewritePrimCall(facts);
@@ -50,6 +60,12 @@ public class PrimCall extends Call {
 
     Code rewritePrimCall(Facts facts) {
         
+        if (p==Prim.bnot) {
+          Atom  x = args[0];
+          Const a = x.isConst();
+          return (a==null) ? bnotVar(x, facts) : bnotConst(a.getVal());
+        }
+      
         if (p==Prim.not) {
           Atom  x = args[0];
           Const a = x.isConst();
@@ -296,48 +312,66 @@ public class PrimCall extends Call {
         this(p, a, new Const(n));
       }
 
+    /** Test to see if this tail expression is a call to a specific primitive,
+     *  returning null in the (most likely) case that it is not.
+     */
     Atom[] isPrim(Prim p) { return (p==this.p) ? args : null; }
+
+    Code bnotVar(Atom x, Facts facts) {
+        Tail a = x.lookupFact(facts);
+        if (a!=null) {
+    
+          // Eliminate double negation:
+          Atom[] ap = a.isPrim(Prim.bnot);
+          if (ap!=null) {
+            MILProgram.report("eliminated double bnot");
+            return done(ap[0]); // bnot(bnot(u)) == u
+          }
+    
+          // Handle negations of relational operators:
+          if ((ap = a.isPrim(Prim.eq))!=null) {  //  eq --> neq
+            MILProgram.report("replaced bnot(eq(x,y)) with neq(x,y)");
+            return done(Prim.neq, ap);
+          }
+          if ((ap = a.isPrim(Prim.neq))!=null) {  //  neq --> eq
+            MILProgram.report("replaced bnot(neq(x,y)) with eq(x,y)");
+            return done(Prim.eq, ap);
+          }
+          if ((ap = a.isPrim(Prim.lt))!=null) {   //  lt --> gte
+            MILProgram.report("replaced bnot(lt(x,y)) with gte(x,y)");
+            return done(Prim.gte, ap);
+          }
+          if ((ap = a.isPrim(Prim.lte))!=null) {  //  lte --> gt
+            MILProgram.report("replaced bnot(lte(x,y)) with gt(x,y)");
+            return done(Prim.gt, ap);
+          }
+          if ((ap = a.isPrim(Prim.gt))!=null) {   //  gt --> lte
+            MILProgram.report("replaced bnot(gt(x,y)) with lte(x,y)");
+            return done(Prim.lte, ap);
+          }
+          if ((ap = a.isPrim(Prim.gte))!=null) {  //  gte --> lt
+            MILProgram.report("replaced bnot(gte(x,y)) with lt(x,y)");
+            return done(Prim.lt, ap);
+          }
+        }
+        return null;
+      }
+
+    static Code bnotConst(int n) {
+        // No opportunity for constant folding here because bnot
+        // takes a boolean (True() or False()) and not an int arg.
+        return null;
+      }
 
     Code notVar(Atom x, Facts facts) {
         Tail a = x.lookupFact(facts);
         if (a!=null) {
-    
           // Eliminate double negation:
           Atom[] ap = a.isPrim(Prim.not);
           if (ap!=null) {
             MILProgram.report("eliminated double not");
             return done(ap[0]); // not(not(u)) == u
           }
-    
-          // Handle negations of relational operators:
-          // TODO: these are not valid (or even likely to occur) for a bitwise not!
-    /*
-          if ((ap = a.isPrim(Prim.eq))!=null) {  //  eq --> neq
-            MILProgram.report("replaced not(eq(x,y)) with neq(x,y)");
-            return done(Prim.neq, ap);
-          }
-          if ((ap = a.isPrim(Prim.neq))!=null) {  //  neq --> eq
-            MILProgram.report("replaced not(neq(x,y)) with eq(x,y)");
-            return done(Prim.eq, ap);
-          }
-          if ((ap = a.isPrim(Prim.lt))!=null) {   //  lt --> gte
-            MILProgram.report("replaced not(lt(x,y)) with gte(x,y)");
-            return done(Prim.gte, ap);
-          }
-          if ((ap = a.isPrim(Prim.lte))!=null) {  //  lte --> gt
-            MILProgram.report("replaced not(lte(x,y)) with gt(x,y)");
-            return done(Prim.gt, ap);
-          }
-          if ((ap = a.isPrim(Prim.gt))!=null) {   //  gt --> lte
-            MILProgram.report("replaced not(gt(x,y)) with lte(x,y)");
-            return done(Prim.lte, ap);
-          }
-          if ((ap = a.isPrim(Prim.gte))!=null) {  //  gte --> lt
-            MILProgram.report("replaced not(gte(x,y)) with lt(x,y)");
-            return done(Prim.lt, ap);
-          }
-    */
-    
         }
         return null;
       }

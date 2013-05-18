@@ -21,6 +21,7 @@ class Gt extends BinCompExpr {
      *  to the specified continuation.
      */
     public Code compTail(final TailCont kt) { // left > right
-        return left.binary(Prim.gt,  right, kt);
+        Prim op = lt.equal(Type.INT) ? Prim.gt : Prim.dgt;
+        return left.binary(op, right, kt);
     }
 }

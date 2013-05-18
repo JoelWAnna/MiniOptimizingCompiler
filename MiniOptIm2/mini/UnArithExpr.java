@@ -13,16 +13,21 @@ abstract class UnArithExpr extends UnExpr {
         super(exp);
     }
 
+    /** Records the argument type for this expression so that we can
+     *  generate appropriate instructions during code generation.
+     */
+    protected Type at = null;
+
     /** Return the type of value that will be produced when this
      *  expression is evaluated.
      */
     public Type typeOf(Context ctxt, VarEnv env)
       throws Failure {
         // Covers unary plus and unary minus:
-        Type t = exp.typeOf(ctxt, env);
-        if (!t.equal(Type.INT) && !t.equal(Type.DOUBLE)) {
+        at = exp.typeOf(ctxt, env);
+        if (!at.equal(Type.INT) && !at.equal(Type.DOUBLE)) {
             throw new Failure("Unary operation expects numeric argument");
         }
-        return t;
+        return at;
     }
 }

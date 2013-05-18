@@ -151,6 +151,10 @@ public class TAlt {
 
     TAlt copy() { return new TAlt(c, args, bc); }
 
+    /** Test for code that is guaranteed not to return.
+     */
+    boolean doesntReturn() { return bc.doesntReturn(); }
+
     void inlineAlt() { bc = bc.inlineBlockCall(); }
 
     /** Find the list of variables that are used in this code sequence.  Variables
@@ -226,20 +230,4 @@ public class TAlt {
     void fixTrailingBlockCalls() {
         bc.fixTrailingBlockCalls();
     }
-
-    public BlockCall getBlockCall(String id) { 
-        if (bc != null && bc.callsBlock(id))
-            return bc;
-        return null;
-    }
-
-    /**
-     *Once a new block has been created with a constant parameter removed/replaced it is necessary to update
-     *the original blocks which called the parent block with that particular constant argument.
-     *A helper function replaceBc was added to TAlt to remove the need for extracting all of the fields of a
-     *TAlt to create a new object with the BlockCall replaced.
-     */
-    public void replaceBc(BlockCall bc) { this.bc = bc; }
-
-    public Pairs addIns(Pairs ins) {      return bc.addIns(ins); }
 }

@@ -117,24 +117,7 @@ public class BlockCall extends Call {
               return null;
             } else {
               BlockCall bc = new BlockCall(nb);
-        
-              // Compute the number of actual arguments that are needed:
-              int len = 0;
-              for (int i=0; i<allocs.length; i++) {
-                len += (allocs[i]==null ? 1 : allocs[i].getArity());
-              }
-        
-              // Fill in the actual arguments:
-              Atom[]    nargs = new Atom[len];
-              int       pos   = 0;
-              for (int i=0; i<args.length; i++) {
-                if (allocs[i]==null) {
-                  nargs[pos++] = args[i];
-                } else {
-                  pos = allocs[i].collectArgs(nargs, pos);
-                }
-              }
-              bc.withArgs(nargs);
+              bc.withArgs(specializedArgs(allocs));
         //!System.out.print("Rewrote knownCons call: ");
         //!this.display();
         //!System.out.print(" as: ");
@@ -143,6 +126,10 @@ public class BlockCall extends Call {
               return bc;
             }
           }
+
+    /** Test for code that is guaranteed not to return.
+     */
+    boolean doesntReturn() { return b.doesntReturn(); }
 
     boolean detectLoops(Block src, Blocks visited) {     // Keep searching while we're still in the same SCC
         return (src.getScc()==b.getScc())
@@ -210,25 +197,14 @@ public class BlockCall extends Call {
         BlockCall bc = this.shortMatch(facts);
         bc = (bc==null) ? this : bc.inlineBlockCall();
     
-        int l = bc.args.length;
-        Allocator[] allocs = null;
-        for (int i=0; i<l; i++) {
-          Tail t = bc.args[i].lookupFact(facts);
-          if (t!=null) {
-            Allocator alloc = t.isAllocator(); // we're only going to keep info about Allocators
-            if (alloc!=null) {
-              if (allocs==null) {
-                allocs = new Allocator[l];
-              }
-              allocs[i] = alloc;
-            }
-          }
-        }
+        // Look for an opportunity to specialize on known constructors:
+        Allocator[] allocs = bc.collectAllocs(facts); // null;
         this.allox = allocs; // TODO: temporary, for inspection of results.
         if (allocs!=null) {
           BlockCall bc1 = bc.deriveWithKnownCons(allocs);
           if (bc1!=null) {
             bc = bc1;
+            MILProgram.report("deriving specialized block for BlockCall to block " + b.getId());
     //!System.out.print("deriveWithKnownCons for BlockCall: ");
     //!this.display();
     //!System.out.print(" -> ");
@@ -249,8 +225,6 @@ public class BlockCall extends Call {
 
     BlockCall shortMatch(Facts facts) { return b.shortMatch(args, facts); }
 
-    public void analyzeCalls() { b.called(); }
-
     /** Compute an integer summary for a fragment of MIL code with the key property
      *  that alpha equivalent program fragments have the same summary value.
      */
@@ -266,12 +240,14 @@ public class BlockCall extends Call {
 
     void eliminateDuplicates() { b = b.replaceWith(); }
 
+    public void analyzeCalls() { b.called(); }
+
     /** Compute the set of live variables that appear in this Tail, adding
      *  each one to the list that is passed in as a parameter if it is not
      *  already included.
      */
     Vars liveVars(Vars vs) {
-        return Vars.add(b.getLiveVars(), vs);
+        return Vars.add(b.getLiveVars(), super.liveVars(vs));
     }
 
     /** Rewrite trailing block calls (i.e., block calls at the end of code
@@ -284,14 +260,4 @@ public class BlockCall extends Call {
         }
         // else { debug.Internal.error("tail block call with non null arguments"); }
     }
-
-    boolean callsBlock(String id) {
-        if (b == null) return false;
-        return b.getId().equalsIgnoreCase(id);
-    }
-
-    public Pairs addIns(Pairs ins) {
-        b.nextIns = new Pairss(ins, b.nextIns);
-        return b.outs;
-}
 }

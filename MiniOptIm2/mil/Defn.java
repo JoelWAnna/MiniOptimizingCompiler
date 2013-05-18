@@ -1,36 +1,5 @@
 package mil;
 
-/**
- *The bulk of the work of the global constant propagation algorithm is performed by the method
- *propagateConstants.
- *This method is not yet defined for a TopLevel or ClosureDefn child class as they are not used in MIL
- *code generated from a Mini program.
- *
- *In the Block class the first operation is to verify that there have not been more than 3 levels
- *of derived blocks from a particular parent.
- *
- *The lattice array is constucted of size maxArgReplacement by the number of formals.
- *For the case of a call from a block to itself, the reentryFormals array is created by
- *the method checkArguments.
- *
- *The list of caller blocks is iterated through, retrieving the list of BlockCalls from the caller
- *using the getBlockCall method and the list of block calls is run through one of two inner loops.
- *The first is for the case of a block calling itself which is the same as the general loop, with the
- *exception that if an argument is NAC from reentryFormals, the lattice index for that argument is not changed.
- *The general case loops through each of the formals, if the lattice is set to NAC that formal is ignored
- *otherwise, if the formal is Const, and there is room in the lattice for another potential constant, it is added
- *to the first empty slot in the array for that formal. If there is no longer room for that argument, it is changed
- *into NAC because there are too many potential constants for that parameter.
- *
- *Once the lattice is completely filled out, for each parameter that has a least one but no more than 
- *maxArgReplacement or less constants     (anything other than NAC/UNDEF), the callers to this function are
- *looped through, checking for that particular call. Everytime a call to the block with that argument is found
- *first check the list of children to see if a suitable replacement has already been found, if not create a new
- *child block by copying the code of this block, and applying an AtomSubst for that parameter to the new block
- *adding this block to the list of children.
- *
- *The replaceCalls method is called for this caller with the new created block.
- */
 public abstract class Defn {
 
     /** Return the identifier that is associated with this definition.
@@ -208,9 +177,25 @@ public abstract class Defn {
      */
     abstract void cfunSimplify();
 
-    public abstract void inlining();
+    /** Reset the doesntReturn flag, if there is one, for this definition
+     *  ahead of a returnAnalysis().  For this analysis, we use true as
+     *  the initial value, reducing it to false if we find a path that
+     *  allows a block's code to return.
+     */
+    void resetDoesntReturn() { /* Nothing to do in this case */ }
+
+    /** Apply return analysis to this definition, returning true if this
+     *  results in a change from the previously computed value.
+     */
+    boolean returnAnalysis() { return false; }
+
+    void cleanup() { /* Nothing to do here */ }
 
     boolean detectLoops(Blocks visited) { return false; }
+
+    /** Apply inlining to the code in this definition.
+     */
+    public abstract void inlining();
 
     void liftAllocators() { /* Nothing to do */ }
 
@@ -229,6 +214,19 @@ public abstract class Defn {
     abstract void removeUnusedArgs();
 
     public abstract void flow();
+
+    /** Compute an integer summary for a fragment of MIL code with the key property
+     *  that alpha equivalent program fragments have the same summary value.
+     */
+    int summary() { return getId().hashCode(); }
+
+    /** Compute a summary for this definition (if it is a block) and then look for
+     *  a previously encountered block with the same code in the given table.
+     *  Return true if a duplicate was found.
+     */
+    abstract boolean summarizeBlocks(Blocks[] table);
+
+    abstract void eliminateDuplicates();
 
     protected int numberCalls;
 
@@ -256,19 +254,6 @@ public abstract class Defn {
 
     public abstract void analyzeCalls();
 
-    /** Compute an integer summary for a fragment of MIL code with the key property
-     *  that alpha equivalent program fragments have the same summary value.
-     */
-    int summary() { return getId().hashCode(); }
-
-    /** Compute a summary for this definition (if it is a block) and then look for
-     *  a previously encountered block with the same code in the given table.
-     *  Return true if a duplicate was found.
-     */
-    abstract boolean summarizeBlocks(Blocks[] table);
-
-    abstract void eliminateDuplicates();
-
     /** Calculate the set of live variables for the code in a block,
      *  returning true if the block is recursive and new variables have
      *  been added to the liveVars list for the block during this call.
@@ -283,22 +268,4 @@ public abstract class Defn {
     void fixTrailingBlockCalls() {
         /* do nothing */
     }
-
-    /** propagateConstants
-     * @param maxArgReplacement - determines the maximum tuple size of the lattice for each parameter
-     *
-     *
-     *
-     */
-    public abstract Defns propagateConstants(int maxArgReplacement);
-
-    public void setNextOuts() {}
-
-    public void computeInMeets() {}
-
-    public int dataflow() { return 0;}
-
-    public void clearInsOuts() {}
-
-    public void printInsOuts() {}
 }

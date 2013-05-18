@@ -21,6 +21,7 @@ class Lte extends BinCompExpr {
      *  to the specified continuation.
      */
     public Code compTail(final TailCont kt) { // left <= right
-        return left.binary(Prim.lte, right, kt);
+        Prim op = lt.equal(Type.INT) ? Prim.lte : Prim.dlte;
+        return left.binary(op,right, kt);
     }
 }

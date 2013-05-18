@@ -21,6 +21,7 @@ class Sub extends BinArithExpr {
      *  to the specified continuation.
      */
     public Code compTail(final TailCont kt) { // left - right
-        return left.binary(Prim.sub, right, kt);
+        Prim op = lt.equal(Type.INT) ? Prim.sub : Prim.dsub;
+        return left.binary(op, right, kt);
     }
 }

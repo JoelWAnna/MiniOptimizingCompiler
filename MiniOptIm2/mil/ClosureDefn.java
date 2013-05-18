@@ -48,6 +48,8 @@ public class ClosureDefn extends Defn {
      */
     void cfunSimplify() { tail = tail.removeNewtypeCfun(); }
 
+    /** Apply inlining to the code in this definition.
+     */
     public void inlining() {
         //!  System.out.println("==================================");
         //!  System.out.println("Going to try inlining on:");
@@ -205,8 +207,6 @@ public class ClosureDefn extends Defn {
                                 AtomSubst.extend(stored, args, null)));
       }
 
-    public void analyzeCalls() { tail.analyzeCalls(); }
-
     /** Calculate a summary value for a list of Atom values, typically the arguments
      *  in a Call.
      */
@@ -228,15 +228,5 @@ public class ClosureDefn extends Defn {
         tail.eliminateDuplicates();
      }
 
-    /** propagateConstants
-     * @param maxArgReplacement - determines the maximum tuple size of the lattice for each parameter
-     *
-     *
-     *
-     */
-    public Defns propagateConstants(int maxArgReplacement) {
-        // TODO: Implement this, only sibling class that it is implemented is Block.java
-        System.out.println("reached ClosureDefn propagateConstants of block" + id);
-        return null;
-    }
+    public void analyzeCalls() { tail.analyzeCalls(); }
 }

@@ -31,15 +31,16 @@ public class Block extends Defn {
     }
 
     void displayDefn() {
-        Call.display(id, "(", formals, ")");
-        System.out.println(" =");
-        if (code==null) {
-            Code.indent();
-            System.out.println("null");
-        } else {
-            code.display();
-        }
-    }
+        //System.out.println("doesntReturn = " + doesntReturn);
+              Call.display(id, "(", formals, ")");
+              System.out.println(" =");
+              if (code==null) {
+                  Code.indent();
+                  System.out.println("null");
+              } else {
+                  code.display();
+              }
+          }
 
     public Val call(Val[] vals)
       throws Fail { return code.eval(ValEnv.extend(formals, vals, null)); }
@@ -232,16 +233,45 @@ public class Block extends Defn {
 
     boolean hasKnownCons(Allocator[] allocs) { return false; }
 
-    public void inlining() {
-        //!System.out.println("==================================");
-        //!System.out.println("Going to try inlining on:");
-        //!displayDefn();
-        //!System.out.println();
-            code = code/*.cleanup(this)*/.inliningBody(this);
-        //!System.out.println("And the result is:");
-        //!displayDefn();
-        //!System.out.println();
-          }
+    /** Flag to identify blocks that "do not return".  In other words, if the
+     *  value of this flag for a given block b is true, then we can be sure that
+     *  (x <- b(args); c) == b(args) for any appropriate set of arguments args
+     *  and any valid code sequence c.  There are two situations that can cause
+     *  a block to "not return".  The first is when the block enters an infinite
+     *  loop; such blocks may still be productive (such as the block defined by
+     *  b(x) = (_ <- print((1)); b(x))), so we cannot assume that they will be
+     *  eliminated by eliminateLoops().  The second is when the block's code
+     *  sequence makes a call to a primitive call that does not return.
+     */
+    private boolean doesntReturn = false;
+
+    /** Return flag, computed by previous dataflow analysis, to indicate
+     *  if this block does not return.
+     */
+    boolean doesntReturn() {
+        return doesntReturn;
+    }
+
+    /** Reset the doesntReturn flag, if there is one, for this definition
+     *  ahead of a returnAnalysis().  For this analysis, we use true as
+     *  the initial value, reducing it to false if we find a path that
+     *  allows a block's code to return.
+     */
+    void resetDoesntReturn() { this.doesntReturn = true; }
+
+    /** Apply return analysis to this definition, returning true if this
+     *  results in a change from the previously computed value.
+     */
+    boolean returnAnalysis() {
+        boolean newDoesntReturn = code.doesntReturn();
+        if (newDoesntReturn != doesntReturn) {
+            doesntReturn = newDoesntReturn;
+            return true; // signal that a change was detected
+        }
+        return false; // no change
+    }
+
+    void cleanup() { code = code.cleanup(this); }
 
     boolean detectLoops(Blocks visited) {
         // Check to see if this block calls code for an already visited block:
@@ -252,6 +282,19 @@ public class Block extends Defn {
         }
         return false;
       }
+
+    /** Apply inlining to the code in this definition.
+     */
+    public void inlining() {
+        //!System.out.println("==================================");
+        //!System.out.println("Going to try inlining on:");
+        //!displayDefn();
+        //!System.out.println();
+            code = code.inliningBody(this);
+        //!System.out.println("And the result is:");
+        //!displayDefn();
+        //!System.out.println();
+          }
 
     public static final int INLINE_LINES_LIMIT = 4;
 
@@ -493,9 +536,6 @@ public class Block extends Defn {
      */
     BlockCall shortMatch(Atom[] args, Facts facts) { return code.shortMatch(formals, args, facts); }
 
-    public void analyzeCalls() { code.analyzeCalls();
-        }
-
     /** Calculate a summary value for a list of Atom values, typically the arguments
      *  in a Call.
      */
@@ -563,6 +603,9 @@ public class Block extends Defn {
 
     Block replaceWith() { return replaceWith==null ? this : replaceWith; }
 
+    public void analyzeCalls() { code.analyzeCalls();
+        }
+
     /** Allocate a block without any initial code.  This allows us to
      *  create looping structures between blocks, assuming that the code
      *  for this particular block will be filled in later by using the
@@ -608,11 +651,9 @@ public class Block extends Defn {
                     changed  = true;
                 }
             }
-  //System.out.println("Rec block " + this.getId() + "(" + Vars.toString(liveVars) + ")" + changed);
             return changed;
         } else {
             liveVars = vs;
-  //System.out.println("Non rec block " + this.getId() + "(" + Vars.toString(vs) + ")");
             return false;
         }
     }
@@ -656,295 +697,4 @@ public class Block extends Defn {
         }
         return args;
     }
-
-    /**
-     *For the case of a block calling itself, there are two types of potential modifications of the formals.
-     *They are both handled by the checkArguments method in the Block class. First, there is the possibility
-     *of block calling itself with different parameters than its formals list. 
-     *The getBlock call method is used on the code field, and on each BlockCall returned if the argument is
-     *a Constant, it is saved to the lattice structure, if it is a different variable than the lattice value
-     *for that argument is set to NAC.
-     *Once the return calls are checked, a second pass is run to see if the incoming argument
-     *is given a new value with a call to Bind. Currently, if Bind is called on an incoming parameter
-     *the argument is set to NAC
-     */
-    private Atom[] checkArguments() {
-        Atom [] arguments = new Atom[formals.length];
-         for (int i = 0; i < formals.length; ++i)
-             arguments[i] = formals[i];
-         BlockCalls bc = code.getBlockCall(id);
-         while (bc != null) {
-             for (int i = 0; i < arguments.length; ++i)
-             {
-                 Atom a = bc.head.args[i];
-                 if (!arguments[i].sameAtom(a)) {
-                     if (a.isConst() != null) {
-                         arguments[i] = a;
-                     }
-                     else {
-                         arguments[i] = NAC.obj;
-                     }
-    
-                 }
-             }
-             bc = bc.next;
-         }
-         arguments = code.checkformals(arguments);
-        for (int i = 0; i < formals.length; ++i)
-        {
-            if (arguments[i] == null) break;
-            if (arguments[i] != NAC.obj) {
-                if (arguments[i].isConst() != null &&  !arguments[i].sameAtom(formals[i])) {
-                    arguments[i] = NAC.obj;
-                }
-            }
-            else {
-                debug.Log.println("Argument " + i + " is modified");
-                
-            }
-        }
-        return arguments;        
-    }
-
-    private Blocks children;
-
-    private Atom replacedVar;
-
-    private int version;
-
-    /** propagateConstants
-     * @param maxArgReplacement - determines the maximum tuple size of the lattice for each parameter
-     *
-     *
-     *
-     */
-    public Defns propagateConstants(int maxArgReplacement) {
-        Defns Created = null;
-        if (formals.length == 0) {
-        //      System.out.println("Block " + id + " has no vars");
-                return null;
-        }
-        if (version > 3) {
-                System.out.println("Block " + id + " is version " + version);
-                
-                        return null;
-
-        }
-        //debug.Log.println("reached Block propagateConstants of block " + id);
-   
-        Atom knownArgs[][] = new Atom[formals.length][maxArgReplacement];
-        Atom reEntryFormals[] = checkArguments();
-        
-        
-        for(Defns xs= this.getCallers(); xs != null; xs = xs.next)
-        {
-                Block x = (Block) xs.head;
-
-                BlockCalls x_calls = x.code.getBlockCall(id);
-                if (x_calls != null)
-                {
-                        BlockCalls current_call = x_calls;
-                        
-                        while (current_call != null) {
-                                
-                                // Check for calls from the current block
-                                if (x.getId().equalsIgnoreCase(id))
-                                {
-                                        for (int j = 0; j < formals.length; ++j )
-                                        {
-                                                if (knownArgs[j][0] != NAC.obj)
-                                                        
-                                                {
-                                                        // TODO: is it ever valid to not replace it with NAC?
-                                                        if (reEntryFormals[j] ==  NAC.obj)
-                                                                knownArgs[j][0] =  NAC.obj;
-                                                        if ((reEntryFormals[j].isConst() != null))
-                                                        {
-                                                                int k;
-                                                        
-                                                                for (k = 0; k < maxArgReplacement; ++k)
-                                                                {
-                                                                        if (knownArgs[j][k] == null) {
-                                                                                knownArgs[j][k] = reEntryFormals[j];
-                                                                                break;
-                                                                        }
-                                                                        if (reEntryFormals[j].sameAtom(knownArgs[j][k])) {
-                                                                                break;
-                                                                        }
-                                                                }
-                                                                if (k == maxArgReplacement) {
-                                                                        knownArgs[j][0] = NAC.obj;
-                                                                }
-                                                        }
-                                                }
-                                        }
-                                }
-                                else { // Not a call from the current block
-                                        Atom formals2[] =  current_call.head.args;
-                                        for (int j = 0; j < formals.length; ++j )
-                                        {
-                                                if (knownArgs[j][0] !=  NAC.obj && (formals2[j].isConst() != null))
-                                                {
-                                                        int k;
-                                                        for (k = 0; k < maxArgReplacement; ++k)
-                                                        {
-                                                                if (knownArgs[j][k] == null) {
-                                                                        knownArgs[j][k] =  formals2[j];
-                                                                        break;
-                                                                }
-                                                                if (formals2[j].sameAtom(knownArgs[j][k])) {
-                                                                        break;
-                                                                }
-                                                        }
-                                                        if (k == maxArgReplacement) {
-                                                                knownArgs[j][0] =  NAC.obj;
-                                                        }
-                                                }
-                                        }
-                                }
-                                current_call = current_call.next;
-                        }
-                }
-        }
-
-                int newVersion = version+1;
-                for (int j = 0; j < formals.length; ++j )
-                {
-                        if (knownArgs[j][0] == NAC.obj || knownArgs[j][0] == UNDEF.obj) {
-                                //System.out.println("Arg " + j + " is " + knownArgs[j][0].toString());
-                                continue;
-                        }
-                        for ( int k = 0; k < maxArgReplacement; ++k) {
-                                if (knownArgs[j][k] != null) {
-                                        Block b = null;
-                                        Blocks currentChild = this.children;
-                                        while (currentChild != null) {
-                                                if (currentChild.head.replacedVar.sameAtom(knownArgs[j][k]))
-                                                {
-                                                        b = currentChild.head;
-                                                        break;
-                                                }
-                                                currentChild = currentChild.next;
-                                        }
-                                        if (b == null ) {
-                                                b = new Block();
-                                                b.version = newVersion++;
-                                            int l = formals.length -1;
-                                            Var[] nfs = new Var[l];
-                                            for (int i = 0; i < l; ++i) {
-                                                if (i >= j)
-                                                {
-                                                        nfs[i] = formals[i+1];
-                                                }
-                                                else
-                                                        nfs[i] = formals[i];
-                                                        
-                                            }
-                                            //
-                                            //  TODO: version 'A' create a new Bind for the arg
-                                            //  Code bind = new Bind(formals[j], new Return(knownArgs[j][k]), code);
-                                            //   b.code = bind;
-                                            //
-                                            // TODO: version 'B' 
-                                            // Current method, copy the entire block, and apply AtomSubst
-                                                b.code = code.copy();
-                                                //
-                                            b.formals = nfs;
-                                            b.replacedVar = knownArgs[j][k];
-                                            b.code.replaceCalls(id, j, formals[j], b);
-                                            // The following line is part of version 'B'
-                                            // which should? be removed if version 'A' can be fixed 
-                                            b.code = b.code.apply(new AtomSubst(formals[j], knownArgs[j][k], null));
-                                            
-                                            b.display();
-                                            children = new Blocks(b, children);
-
-                                                debug.Log.println("Created Block " + b.id + " from block " + id);
-                                                //b.display();
-                                                 Created = new Defns(b, Created);
-                                        }
-        
-                                for(Defns callersIter= this.getCallers(); callersIter != null; callersIter = callersIter.next)
-                                {
-                                        Block caller = (Block) callersIter.head;
-                                        if (caller.code.replaceCalls(id, j, knownArgs[j][k], b))
-                                        {
-                                                // TODO: do anything here?
-                                        }
-                                }
-                                }
-                        }
-                }
-
-                return Created;
-    }
-
-    public void setNextOuts() {
-        outs = nextOuts;
-        }
-
-    public void computeInMeets() {
-        System.out.println("computeInMeets At block " + id);
-        boolean firstRound = true;
-        boolean union = true;
-        boolean mode = !union; // The interpretation of !union is intersection
-        Pairss insIter;
-        for (insIter = nextIns; insIter != null; insIter = insIter.next) {
-                Pairs caller =  insIter.head;
-                
-                if (firstRound) {
-                        firstRound = false;
-                        nextIns = nextIns.next;
-                        if (nextIns == null) {
-                                // only 1 caller to this block
-                                if (caller != null) {
-                                        ins = caller.copy();
-                                }
-                                break;
-                        }
-                        else{   
-                                Pairs nextCaller =  nextIns.head;
-                                ins = Pairs.meets(caller, nextCaller, mode);
-                        }
-                }
-                else {
-                        ins = Pairs.meets(ins, caller, mode);
-                }
-        }
-        nextIns = null;
-        }
-
-    public int dataflow() {
-        System.out.println("dataflow At block " + id);
-        boolean union = true;
-
-        nextOuts = code.outset(ins);
-        int oldlen = Pairs.length(outs);
-        if ((oldlen != Pairs.length(nextOuts) )
-                || (oldlen != Pairs.length(Pairs.meets(nextOuts, outs, !union)))
-                ){
-                return 1;
-        }       
-
-        return 0;
-        }
-
-    public void clearInsOuts() { nextIns = null; ins = outs = null; }
-
-    public void printInsOuts() {
-        if (ins != null) {
-        ins.print(true, id);
-        }
-        if (outs != null) {
-                outs.print(false, id);
-        }
-}
-
-    public Pairss nextIns;
-
-    public Pairs ins;
-
-    public Pairs outs;
-
-    public Pairs nextOuts;
 }

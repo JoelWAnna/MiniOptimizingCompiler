@@ -17,22 +17,28 @@ class BNot extends UnExpr {
      */
     String label() { return "Bitwise not, ~"; }
 
+    /** Records the argument type for this expression so that we can
+     *  generate appropriate instructions during code generation.
+     */
+    protected Type at = null;
+
     /** Return the type of value that will be produced when this
      *  expression is evaluated.
      */
     public Type typeOf(Context ctxt, VarEnv env)
       throws Failure {
-        Type t = exp.typeOf(ctxt, env);
-        if (!t.equal(Type.BOOLEAN) && !t.equal(Type.INT)) {
+        at = exp.typeOf(ctxt, env);
+        if (!at.equal(Type.BOOLEAN) && !at.equal(Type.INT)) {
             ctxt.report(new Failure("Bitwise not expects boolean or int argument"));
         }
-        return t;
+        return at;
     }
 
     /** Compile an expression into a tail that is passed as an argument
      *  to the specified continuation.
      */
     public Code compTail(final TailCont kt) { // ~exp
-        return exp.unary(Prim.not, kt);
+        Prim op = at.equal(Type.INT) ? Prim.not : Prim.bnot;
+        return exp.unary(op, kt);
     }
 }

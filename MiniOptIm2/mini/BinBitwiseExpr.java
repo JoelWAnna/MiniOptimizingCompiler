@@ -12,13 +12,18 @@ abstract class BinBitwiseExpr extends BinExpr {
         super(left, right);
     }
 
+    /** Records the (left) argument type for this expression so that we
+     *  can generate appropriate instructions during code generation.
+     */
+    protected Type lt = null;
+
     /** Return the type of value that will be produced when this
      *  expression is evaluated.
      */
     public Type typeOf(Context ctxt, VarEnv env)
       throws Failure {
         // Covers &, |, ^
-        Type lt = left.typeOf(ctxt, env);
+        lt      = left.typeOf(ctxt, env);
         Type rt = right.typeOf(ctxt, env);
         if (!lt.equal(Type.INT) && !lt.equal(Type.BOOLEAN)) {
             throw new Failure("Invalid operand types for arithmetic operation");

@@ -21,6 +21,7 @@ class Mul extends BinArithExpr {
      *  to the specified continuation.
      */
     public Code compTail(final TailCont kt) { // left * right
-        return left.binary(Prim.mul, right, kt);
+        Prim op = lt.equal(Type.INT) ? Prim.mul : Prim.dmul;
+        return left.binary(op, right, kt);
     }
 }

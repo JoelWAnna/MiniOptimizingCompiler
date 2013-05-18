@@ -142,6 +142,19 @@ class Call {
     private Fundef def = null;
 }
 
+class BNot, UnArithExpr {
+    /** Records the argument type for this expression so that we can
+     *  generate appropriate instructions during code generation.
+     */
+    protected Type at = null;
+}
+class BinArithExpr, BinCompExpr, BinEqualityExpr, BinBitwiseExpr {
+    /** Records the (left) argument type for this expression so that we
+     *  can generate appropriate instructions during code generation.
+     */
+    protected Type lt = null;
+}
+
 /** Return the type of value that will be produced when this
  *  expression is evaluated.
  */
@@ -172,23 +185,23 @@ public Type typeOf(Context ctxt, VarEnv env) throws Failure
       return Type.BOOLEAN;
   }
   case BNot {
-      Type t = exp.typeOf(ctxt, env);
-      if (!t.equal(Type.BOOLEAN) && !t.equal(Type.INT)) {
+      at = exp.typeOf(ctxt, env);
+      if (!at.equal(Type.BOOLEAN) && !at.equal(Type.INT)) {
           ctxt.report(new Failure("Bitwise not expects boolean or int argument"));
       }
-      return t;
+      return at;
   }
   case UnArithExpr {
       // Covers unary plus and unary minus:
-      Type t = exp.typeOf(ctxt, env);
-      if (!t.equal(Type.INT) && !t.equal(Type.DOUBLE)) {
+      at = exp.typeOf(ctxt, env);
+      if (!at.equal(Type.INT) && !at.equal(Type.DOUBLE)) {
           throw new Failure("Unary operation expects numeric argument");
       }
-      return t;
+      return at;
   }
   case BinArithExpr {
       // Covers +, -, *, /
-      Type lt = left.typeOf(ctxt, env);
+      lt      = left.typeOf(ctxt, env);
       Type rt = right.typeOf(ctxt, env);
       if (!lt.equal(rt)) {
           throw new Failure("Arithmetic operands have different types");
@@ -200,7 +213,7 @@ public Type typeOf(Context ctxt, VarEnv env) throws Failure
   }
   case BinCompExpr {
       // Covers <, >, <=, >=
-      Type lt = left.typeOf(ctxt, env);
+      lt      = left.typeOf(ctxt, env);
       Type rt = right.typeOf(ctxt, env);
       if (!lt.equal(rt)) {
           throw new Failure("Comparison operands have different types");
@@ -212,10 +225,13 @@ public Type typeOf(Context ctxt, VarEnv env) throws Failure
   }
   case BinEqualityExpr {
       // Covers ==, !=
-      Type lt = left.typeOf(ctxt, env);
+      lt      = left.typeOf(ctxt, env);
       Type rt = right.typeOf(ctxt, env);
       if (!lt.equal(rt)) {
           throw new Failure("Operands being compared have different types");
+      }
+      if (!lt.equal(Type.INT) && !lt.equal(Type.BOOLEAN) && !lt.equal(Type.DOUBLE)) {
+          throw new Failure("Cannot compare values of type " + lt);
       }
       return Type.BOOLEAN;
   }
@@ -229,7 +245,7 @@ public Type typeOf(Context ctxt, VarEnv env) throws Failure
   }
   case BinBitwiseExpr {
       // Covers &, |, ^
-      Type lt = left.typeOf(ctxt, env);
+      lt      = left.typeOf(ctxt, env);
       Type rt = right.typeOf(ctxt, env);
       if (!lt.equal(Type.INT) && !lt.equal(Type.BOOLEAN)) {
           throw new Failure("Invalid operand types for arithmetic operation");

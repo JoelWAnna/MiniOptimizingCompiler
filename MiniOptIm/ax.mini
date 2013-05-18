@@ -1,8 +1,0 @@
-void mini_main() {
-  int[] foo = new int[12];
-  bar(foo);
-}
-
-int bar(int[] a) {
-  return a[0] + a[1];
-}

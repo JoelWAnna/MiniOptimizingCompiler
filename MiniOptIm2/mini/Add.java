@@ -21,6 +21,7 @@ class Add extends BinArithExpr {
      *  to the specified continuation.
      */
     public Code compTail(final TailCont kt) { // left + right
-        return left.binary(Prim.add, right, kt);
+        Prim op = lt.equal(Type.INT) ? Prim.add : Prim.dadd;
+        return left.binary(op, right, kt);
     }
 }

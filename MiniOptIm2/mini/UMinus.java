@@ -21,6 +21,7 @@ class UMinus extends UnArithExpr {
      *  to the specified continuation.
      */
     public Code compTail(final TailCont kt) { // -exp
-        return exp.unary(Prim.neg, kt);
+        Prim op = at.equal(Type.INT) ? Prim.neg : Prim.dneg;
+        return exp.unary(op, kt);
     }
 }

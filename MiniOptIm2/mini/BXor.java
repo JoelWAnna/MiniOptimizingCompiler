@@ -21,6 +21,7 @@ class BXor extends BinBitwiseExpr {
      *  to the specified continuation.
      */
     public Code compTail(final TailCont kt) { // left ^ right
-        return left.binary(Prim.xor, right, kt);
+        Prim op = lt.equal(Type.INT) ? Prim.xor : Prim.bxor;
+        return left.binary(op, right, kt);
     }
 }

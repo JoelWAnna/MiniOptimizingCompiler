@@ -51,6 +51,8 @@ public class TopLevel extends Defn {
      */
     void cfunSimplify() { tail = tail.removeNewtypeCfun(); }
 
+    /** Apply inlining to the code in this definition.
+     */
     public void inlining() {
         //!  System.out.println("==================================");
         //!  System.out.println("Going to try inlining on:");
@@ -117,8 +119,6 @@ public class TopLevel extends Defn {
      */
     CompAlloc lookForCompAlloc() { return tail.lookForCompAlloc(); }
 
-    public void analyzeCalls() { tail.analyzeCalls(); }
-
     /** Compute a summary for this definition (if it is a block) and then look for
      *  a previously encountered block with the same code in the given table.
      *  Return true if a duplicate was found.
@@ -129,15 +129,5 @@ public class TopLevel extends Defn {
         tail.eliminateDuplicates();
      }
 
-    /** propagateConstants
-     * @param maxArgReplacement - determines the maximum tuple size of the lattice for each parameter
-     *
-     *
-     *
-     */
-    public Defns propagateConstants(int maxArgReplacement) {
-        // TODO: Implement this, only sibling class that it is implemented is Block.java
-        System.out.println("reached TopLevel propagateConstants of block" + id);
-        return null;
-    }
+    public void analyzeCalls() { tail.analyzeCalls(); }
 }

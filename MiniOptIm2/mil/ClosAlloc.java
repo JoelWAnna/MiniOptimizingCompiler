@@ -62,10 +62,6 @@ public class ClosAlloc extends Allocator {
      */
     Tail withArg(Atom a) { return k.withArgs(args, a); }
 
-    public void analyzeCalls() { k.thunked(); }
-
-    public void analyzeTailCalls() { k.thunked(); }
-
     /** Compute an integer summary for a fragment of MIL code with the key property
      *  that alpha equivalent program fragments have the same summary value.
      */
@@ -78,4 +74,8 @@ public class ClosAlloc extends Allocator {
     /** Test two items for alpha equivalence.
      */
     boolean alphaClosAlloc(Vars thisvars, ClosAlloc that, Vars thatvars) { return this.k==that.k && this.alphaArgs(thisvars, that, thatvars); }
+
+    public void analyzeCalls() { k.thunked(); }
+
+    public void analyzeTailCalls() { k.thunked(); }
 }

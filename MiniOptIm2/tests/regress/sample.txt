@@ -175,8 +175,8 @@ applied right monad law in b3
 applied right monad law in b10
 applied right monad law in b11
 applied right monad law in b8
-prefixInline succeeded for call to block b3 from block b0
 applied right monad law in b0
+prefixInline succeeded for call to block b3 from block b0
 Inlining pass finished, running shake.
 removing unused argument y from b2
 applied left monad law for t19 <- return 1

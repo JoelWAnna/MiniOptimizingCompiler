@@ -110,11 +110,11 @@ b12(p, m, n, a, i, j) =
 b9(p, m, n, a, i, j) =
   t21 <- gte((i, j))
   case t21 of
-    True() -> b6(m, i, a, n)
+    True() -> b6(a, n, i, m, j)
     _ -> b7(m, n, p, a, j, i)
-b6(m, i, a, n) =
-  b4(m, i, a, n)
-b4(m, i, a, n) =
+b6(a, n, i, m, j) =
+  b4(a, n, i, m, j)
+b4(a, n, i, m, j) =
   t10 <- mul((4, i))
   t11 <- add((a, t10))
   t <- load((t11))
@@ -217,21 +217,24 @@ Replacing default branch with match on False
 Replacing default branch with match on False
 -------------------------
 suffixInline succeeded for call to block b2 from block b19
+inlining eliminated a wildcard binding in b5
+inlining eliminated a wildcard binding in b5
+inlining eliminated a wildcard binding in b5
+inlining eliminated a wildcard binding in b15
+inlining eliminated a wildcard binding in b10
+inlining eliminated a wildcard binding in b4
+inlining eliminated a wildcard binding in b4
+inlining eliminated a wildcard binding in b4
 suffixInline succeeded for call to block b5 from block b7
 suffixInline succeeded for call to block b3 from block b7
-inlining eliminated a wildcard binding in b5
-inlining eliminated a wildcard binding in b5
-inlining eliminated a wildcard binding in b5
 suffixInline succeeded for call to block b3 from block b5
 suffixInline succeeded for call to block b3 from block b18
-inlining eliminated a wildcard binding in b15
 suffixInline succeeded for call to block b13 from block b15
 eliminateGoto succeeded on call to b15
 eliminateGoto succeeded on call to b14
 eliminateGoto succeeded on call to b15
 eliminateGoto succeeded on call to b14
 suffixInline succeeded for call to block b14 from block b17
-inlining eliminated a wildcard binding in b10
 suffixInline succeeded for call to block b8 from block b10
 eliminateGoto succeeded on call to b10
 eliminateGoto succeeded on call to b9
@@ -242,9 +245,6 @@ eliminateGoto succeeded on call to b4
 eliminateGoto succeeded on call to b4
 suffixInline succeeded for call to block b4 from block b6
 suffixInline succeeded for call to block b2 from block b6
-inlining eliminated a wildcard binding in b4
-inlining eliminated a wildcard binding in b4
-inlining eliminated a wildcard binding in b4
 suffixInline succeeded for call to block b2 from block b4
 inlining eliminated a wildcard binding in b0
 inlining eliminated a wildcard binding in b0
@@ -259,15 +259,12 @@ inlining eliminated a wildcard binding in b0
 applied right monad law in b0
 suffixInline succeeded for call to block b1 from block b0
 Inlining pass finished, running shake.
-applied left monad law for t82 <- return t81
-cse: using previously computed value t79 for t83
-cse: using previously computed value t80 for t84
-applied left monad law for t89 <- return t87
-cse: using previously computed value t85 for t90
-cse: using previously computed value t86 for t91
-applied left monad law for t93 <- return t81
-liveness replaced t92 with a wildcard
-liveness replaced t88 with a wildcard
+cse: using previously computed value t79 for t82
+cse: using previously computed value t80 for t83
+cse: using previously computed value t84 for t88
+cse: using previously computed value t85 for t89
+liveness replaced t90 with a wildcard
+liveness replaced t87 with a wildcard
 applied left monad law for t27 <- return 1
 applied left monad law for t22 <- return 1
 cse: using previously computed value t10 for t5
@@ -328,32 +325,32 @@ applied left monad law for t36 <- return 9
 constant folding for gt
 shorting out match on constructor True
 Flow pass finished, running shake.
-Steps performed = 110
+Steps performed = 107
 -------------------------
-eliminateGoto succeeded on call to b10
 applied right monad law in b4
+eliminateGoto succeeded on call to b10
 Inlining pass finished, running shake.
-lifted allocator for t122
-lifted allocator for t122
-lifted allocator for t122
-lifted allocator for t122
-lifted allocator for t122
-lifted allocator for t122
-lifted allocator for t122
-lifted allocator for t122
-lifted allocator for t122
-lifted allocator for t122
-lifted allocator for t122
-lifted allocator for t122
-lifted allocator for t122
-lifted allocator for t122
-lifted allocator for t122
-lifted allocator for t122
-lifted allocator for t122
-lifted allocator for t122
-lifted allocator for t122
-lifted allocator for t122
-liveness replaced t122 with a wildcard
+lifted allocator for t116
+lifted allocator for t116
+lifted allocator for t116
+lifted allocator for t116
+lifted allocator for t116
+lifted allocator for t116
+lifted allocator for t116
+lifted allocator for t116
+lifted allocator for t116
+lifted allocator for t116
+lifted allocator for t116
+lifted allocator for t116
+lifted allocator for t116
+lifted allocator for t116
+lifted allocator for t116
+lifted allocator for t116
+lifted allocator for t116
+lifted allocator for t116
+lifted allocator for t116
+lifted allocator for t116
+liveness replaced t116 with a wildcard
 Flow pass finished, running shake.
 Steps performed = 23
 -------------------------
@@ -365,7 +362,7 @@ Steps performed = 1
 Inlining pass finished, running shake.
 Flow pass finished, running shake.
 Steps performed = 0
-TOTAL steps performed = 134
+TOTAL steps performed = 131
 Results ...
 --------------------------------------
 not recursive
@@ -377,36 +374,36 @@ b7(m, n, p, a, j, i) =
   t79 <- mul((i, 4))
   t80 <- add((a, t79))
   t81 <- load((t80))
-  t85 <- mul((j, 4))
-  t86 <- add((a, t85))
-  t87 <- load((t86))
-  _ <- store((t80, t87))
-  _ <- store((t86, t81))
+  t84 <- mul((j, 4))
+  t85 <- add((a, t84))
+  t86 <- load((t85))
+  _ <- store((t80, t86))
+  _ <- store((t85, t81))
   b15(m, n, j, p, a, i)
 b15(m, n, j, p, a, i) =
   i <- add((i, 1))
-  t94 <- mul((i, 4))
-  t95 <- add((a, t94))
-  t96 <- load((t95))
-  t97 <- lt((t96, p))
-  case t97 of
+  t91 <- mul((i, 4))
+  t92 <- add((a, t91))
+  t93 <- load((t92))
+  t94 <- lt((t93, p))
+  case t94 of
     True() -> b15(m, n, j, p, a, i)
     False() -> b10(m, n, i, p, a, j)
 b10(m, n, i, p, a, j) =
   j <- add((j, -1))
-  t98 <- mul((j, 4))
-  t99 <- add((a, t98))
-  t100 <- load((t99))
-  t101 <- gt((t100, p))
-  case t101 of
+  t95 <- mul((j, 4))
+  t96 <- add((a, t95))
+  t97 <- load((t96))
+  t98 <- gt((t97, p))
+  case t98 of
     True() -> b10(m, n, i, p, a, j)
     False() -> b9(p, m, n, a, i, j)
 b9(p, m, n, a, i, j) =
   t21 <- gte((i, j))
   case t21 of
-    True() -> b4(m, i, a, n)
+    True() -> b4(a, n, i, m, j)
     False() -> b7(m, n, p, a, j, i)
-b4(m, i, a, n) =
+b4(a, n, i, m, j) =
   t10 <- mul((i, 4))
   t11 <- add((a, t10))
   t <- load((t11))

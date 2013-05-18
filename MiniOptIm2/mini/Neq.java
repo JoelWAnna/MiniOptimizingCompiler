@@ -21,6 +21,9 @@ class Neq extends BinEqualityExpr {
      *  to the specified continuation.
      */
     public Code compTail(final TailCont kt) { // left != right
-        return left.binary(Prim.neq, right, kt);
+        Prim op = lt.equal(Type.BOOLEAN) ? Prim.bneq:
+                  lt.equal(Type.INT)     ? Prim.neq :
+                                           Prim.dneq;
+        return left.binary(op, right, kt);
     }
 }

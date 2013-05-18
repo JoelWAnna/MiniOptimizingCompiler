@@ -47,13 +47,13 @@ Running optimizer ...
 -------------------------
 applied right monad law in b1
 applied right monad law in b2
-prefixInline succeeded for call to block b1 from block b0
-prefixInline succeeded for call to block b2 from block b0
-prefixInline succeeded for call to block b1 from block b0
-prefixInline succeeded for call to block b2 from block b0
-prefixInline succeeded for call to block b1 from block b0
-prefixInline succeeded for call to block b1 from block b0
 applied right monad law in b0
+prefixInline succeeded for call to block b1 from block b0
+prefixInline succeeded for call to block b2 from block b0
+prefixInline succeeded for call to block b1 from block b0
+prefixInline succeeded for call to block b2 from block b0
+prefixInline succeeded for call to block b1 from block b0
+prefixInline succeeded for call to block b1 from block b0
 Inlining pass finished, running shake.
 applied left monad law for t2 <- return 3
 applied left monad law for t3 <- return 4

@@ -21,6 +21,7 @@ class Div extends BinArithExpr {
      *  to the specified continuation.
      */
     public Code compTail(final TailCont kt) { // left / right
-        return left.binary(Prim.div, right, kt);
+        Prim op = lt.equal(Type.INT) ? Prim.div : Prim.ddiv;
+        return left.binary(op, right, kt);
     }
 }

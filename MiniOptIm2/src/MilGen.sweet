@@ -3,21 +3,88 @@ package mil;
 class Prim {
   /** Represents a primitive for printing an integer argument.
    */
-  public static final Prim print    = new Prim("print",    1, IMPURE);
+  public static final Prim print    = new Prim("print",    1, IMPURE, false);
 
   /** Represents a primitive for loading an integer from an address
    *  in memory.
    */
-  public static final Prim load     = new Prim("load",     1, IMPURE); // load from memory
+  public static final Prim load     = new Prim("load",     1, IMPURE, false); // load from memory
 
   /** Represents a primitive for saving an integer value at an address
    *  in memory.
    */
-  public static final Prim store    = new Prim("store",    2, IMPURE); // store to memory
+  public static final Prim store    = new Prim("store",    2, IMPURE, false); // store to memory
 
   /** Represents a primitive for allocating a new array.
    */
-  public static final Prim newarray = new Prim("newarray", 1, IMPURE); // allocate bytes
+  public static final Prim newarray = new Prim("newarray", 1, IMPURE, false); // allocate bytes
+
+  // ------------------------------------------------------------------------------------
+  // Extra primitives required to handle the boolean and double types in Mini:
+
+  /** Represents a primtive for (strict) boolean and.
+   */
+  public static final Prim band = new Prim("band", 2, PURE, false);
+
+  /** Represents a primtive for (strict) boolean or.
+   */
+  public static final Prim bor  = new Prim("bor",  2, PURE, false);
+
+  /** Represents a primtive for boolean xor.
+   */
+  public static final Prim bxor = new Prim("bxor", 2, PURE, false);
+
+  /** Represents a primtive for boolean equality.
+   */
+  public static final Prim beq  = new Prim("beq",  2, PURE, false);
+
+  /** Represents a primtive for boolean inequality.
+   */
+  public static final Prim bneq = new Prim("bneq", 2, PURE, false);
+
+  /** Represents a primtive for double negation.
+   */
+  public static final Prim dneg = new Prim("dneg", 1, PURE, false);
+
+  /** Represents a primtive for double equality.
+   */
+  public static final Prim deq  = new Prim("deq",  2, PURE, false);
+
+  /** Represents a primtive for double inequality.
+   */
+  public static final Prim dneq = new Prim("dneq", 2, PURE, false);
+
+  /** Represents a primtive for double greater than.
+   */
+  public static final Prim dgt  = new Prim("dgt",  2, PURE, false);
+
+  /** Represents a primtive for double greater than or equal.
+   */
+  public static final Prim dgte = new Prim("dgte", 2, PURE, false);
+
+  /** Represents a primtive for double less than.
+   */
+  public static final Prim dlt  = new Prim("dlt",  2, PURE, false);
+
+  /** Represents a primtive for double less than or equal.
+   */
+  public static final Prim dlte = new Prim("dlte", 2, PURE, false);
+
+  /** Represents a primtive for double addition.
+   */
+  public static final Prim dadd = new Prim("dadd", 2, PURE, false);
+
+  /** Represents a primtive for double subtract.
+   */
+  public static final Prim dsub = new Prim("dsub", 2, PURE, false);
+
+  /** Represents a primtive for double multiply.
+   */
+  public static final Prim dmul = new Prim("dmul", 2, PURE, false);
+
+  /** Represents a primtive for double divide.
+   */
+  public static final Prim ddiv = new Prim("ddiv", 2, PURE, false);
 }
 
 class DataAlloc {
@@ -411,11 +478,16 @@ public Code compTail(final TailCont kt)
   }
  
   // Unary operators: --------------------------------
+  case LNot { // !exp
+      return exp.unary(Prim.bnot, kt);
+  }
   case BNot { // ~exp
-      return exp.unary(Prim.not, kt);
+      Prim op = at.equal(Type.INT) ? Prim.not : Prim.bnot;
+      return exp.unary(op, kt);
   }
   case UMinus { // -exp
-      return exp.unary(Prim.neg, kt);
+      Prim op = at.equal(Type.INT) ? Prim.neg : Prim.dneg;
+      return exp.unary(op, kt);
   }
   case UPlus { // +exp
       return exp.compTail(kt);
@@ -425,40 +497,55 @@ public Code compTail(final TailCont kt)
 
   // Arithmetic (integer): ---------------------------
   case Add { // left + right
-      return left.binary(Prim.add, right, kt);
+      Prim op = lt.equal(Type.INT) ? Prim.add : Prim.dadd;
+      return left.binary(op, right, kt);
   }
   case Sub { // left - right
-      return left.binary(Prim.sub, right, kt);
+      Prim op = lt.equal(Type.INT) ? Prim.sub : Prim.dsub;
+      return left.binary(op, right, kt);
   }
   case Mul { // left * right
-      return left.binary(Prim.mul, right, kt);
+      Prim op = lt.equal(Type.INT) ? Prim.mul : Prim.dmul;
+      return left.binary(op, right, kt);
   }
   case Div { // left / right
-      return left.binary(Prim.div, right, kt);
+      Prim op = lt.equal(Type.INT) ? Prim.div : Prim.ddiv;
+      return left.binary(op, right, kt);
   }
 
   // Comparisons: ------------------------------------
   case Lt  { // left < right
-      return left.binary(Prim.lt,  right, kt);
+      Prim op = lt.equal(Type.INT) ? Prim.lt : Prim.dlt;
+      return left.binary(op, right, kt);
   }
   case Lte { // left <= right
-      return left.binary(Prim.lte, right, kt);
+      Prim op = lt.equal(Type.INT) ? Prim.lte : Prim.dlte;
+      return left.binary(op,right, kt);
   }
   case Gt  { // left > right
-      return left.binary(Prim.gt,  right, kt);
+      Prim op = lt.equal(Type.INT) ? Prim.gt : Prim.dgt;
+      return left.binary(op, right, kt);
   }
   case Gte { // left >= right
-      return left.binary(Prim.gte, right, kt);
+      Prim op = lt.equal(Type.INT) ? Prim.gte : Prim.dgte;
+      return left.binary(op,right, kt);
   }
   case Eql { // left == right
-      return left.binary(Prim.eq,  right, kt);
+      Prim op = lt.equal(Type.BOOLEAN) ? Prim.beq:
+                lt.equal(Type.INT)     ? Prim.eq :
+                                         Prim.deq;
+      return left.binary(op, right, kt);
   }
   case Neq { // left != right
-      return left.binary(Prim.neq, right, kt);
+      Prim op = lt.equal(Type.BOOLEAN) ? Prim.bneq:
+                lt.equal(Type.INT)     ? Prim.neq :
+                                         Prim.dneq;
+      return left.binary(op, right, kt);
   }
 
   // Logical operators: ------------------------------
 
+  /* Replaced with bnot primitive:
   case LNot { // !exp
       return exp.compVar(new VarCont() {
           Code with(final Var v) {
@@ -470,7 +557,8 @@ public Code compTail(final TailCont kt)
            }
       });
   }
-  case LAnd { // left && right
+  */
+  case LAnd { // left && right; short circuit semantics, not the same as band
       return left.compVar(new VarCont() {
           Code with(final Var v) {
               final Temp  r    = new Temp();
@@ -485,7 +573,7 @@ public Code compTail(final TailCont kt)
           }
       });
   }
-  case LOr  { // left || right
+  case LOr  { // left || right; short circuit semantics, not the same as bor
       return left.compVar(new VarCont() {
           Code with(final Var v) {
               final Temp  r    = new Temp();
@@ -504,13 +592,16 @@ public Code compTail(final TailCont kt)
   // Bitwise operators: ------------------------------
 
   case BAnd { // left & right
+      Prim op = lt.equal(Type.INT) ? Prim.and : Prim.band;
       return left.binary(Prim.and, right, kt);
   }
   case BOr  { // left | right
-      return left.binary(Prim.or, right, kt);
+      Prim op = lt.equal(Type.INT) ? Prim.or : Prim.bor;
+      return left.binary(op, right, kt);
   }
   case BXor { // left ^ right
-      return left.binary(Prim.xor, right, kt);
+      Prim op = lt.equal(Type.INT) ? Prim.xor : Prim.bxor;
+      return left.binary(op, right, kt);
   }
 
 class Expr {
@@ -670,11 +761,9 @@ boolean computeLiveVars()
                   changed  = true;
               }
           }
-//System.out.println("Rec block " + this.getId() + "(" + Vars.toString(liveVars) + ")" + changed);
           return changed;
       } else {
           liveVars = vs;
-//System.out.println("Non rec block " + this.getId() + "(" + Vars.toString(vs) + ")");
           return false;
       }
   }
@@ -683,9 +772,6 @@ boolean computeLiveVars()
  */
 Vars liveVars()
     case Code abstract;
-    case Halt {
-        return null;
-    }
     case Done {
         return t.liveVars(null);
     }
@@ -724,7 +810,7 @@ Vars liveVars(Vars vs)
       return vs;
   }
   case BlockCall {
-      return Vars.add(b.getLiveVars(), vs);
+      return Vars.add(b.getLiveVars(), super.liveVars(vs));
   }
 
 /** Rewrite trailing block calls (i.e., block calls at the end of code
@@ -755,9 +841,6 @@ void fixTrailingBlockCalls()
       code.fixTrailingBlockCalls();
   }
   case Code abstract;
-  case Halt {
-      /* do nothing */
-  }
   case Done {
       t.fixTrailingBlockCalls();
   }

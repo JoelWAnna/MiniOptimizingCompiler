@@ -21,6 +21,7 @@ class BOr extends BinBitwiseExpr {
      *  to the specified continuation.
      */
     public Code compTail(final TailCont kt) { // left | right
-        return left.binary(Prim.or, right, kt);
+        Prim op = lt.equal(Type.INT) ? Prim.or : Prim.bor;
+        return left.binary(op, right, kt);
     }
 }
