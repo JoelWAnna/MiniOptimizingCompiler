@@ -99,4 +99,15 @@ public class Return extends Tail {
     Vars liveVars(Vars vs) {
         return a.add(vs);
     }
+
+    public Pairs gen(Pairs ins, Atom a) {
+        if (a != Wildcard.obj) {
+                Pair generated = new Pair(this, new Atoms(a, null));
+                if (ins != null) {
+                        return ins.gen(generated);
+                }
+                return new Pairs (generated, null);
+        }
+        return ins;
+}
 }

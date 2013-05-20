@@ -361,7 +361,9 @@ public class MILProgram {
                 }
                 for (DefnSCCs dsccs = sccs; dsccs!=null; dsccs=dsccs.next) {
                   for (Defns ds=dsccs.head.getBindings(); ds!=null; ds=ds.next) {
+                        ds.head.printInsOuts();
                         i = ds.head.dataflow();
+                        ds.head.printInsOuts();
                   }
                 }
                 for (DefnSCCs dsccs = sccs; dsccs!=null; dsccs=dsccs.next) {

@@ -254,4 +254,13 @@ public abstract class Tail {
     }
 
     public Pairs addIns(Pairs ins) { return null; }
+
+    public Pairs kill(Pairs ins, Atom a) {
+        if (ins != null) {
+                return ins.kill(a);
+        }
+        return null;
+        }
+
+    public abstract Pairs gen(Pairs ins, Atom a);
 }

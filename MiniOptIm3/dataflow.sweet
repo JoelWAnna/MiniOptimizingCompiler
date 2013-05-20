@@ -22,7 +22,9 @@ package mil;
 			}
 			for (DefnSCCs dsccs = sccs; dsccs!=null; dsccs=dsccs.next) {
 			  for (Defns ds=dsccs.head.getBindings(); ds!=null; ds=ds.next) {
+				ds.head.printInsOuts();
 				i = ds.head.dataflow();
+				ds.head.printInsOuts();
 			  }
 			}
 			for (DefnSCCs dsccs = sccs; dsccs!=null; dsccs=dsccs.next) {
@@ -50,7 +52,7 @@ package mil;
 		System.out.println("computeInMeets At block " + id);
 		boolean firstRound = true;
 		boolean union = true;
-		boolean mode = !union; // The interpretation of !union is intersection
+		boolean mode = union; // The interpretation of !union is intersection
 		Pairss insIter;
 		for (insIter = nextIns; insIter != null; insIter = insIter.next) {
 			Pairs caller =  insIter.head;
@@ -85,7 +87,7 @@ package mil;
 		nextOuts = code.outset(ins);
 		int oldlen = Pairs.length(outs);
 		if ((oldlen != Pairs.length(nextOuts) )
-			|| (oldlen != Pairs.length(Pairs.meets(nextOuts, outs, !union)))
+			|| (oldlen != Pairs.length(Pairs.meets(nextOuts, outs, union)))
 			){
 			return 1;
 		}	
@@ -102,6 +104,10 @@ package mil;
 	case Tail { return null; }
 	case TAlt {	 return bc.addIns(ins); }
 	case BlockCall {
+        for (int i=0; i<args.length; i++) {
+			Pair p = new Pair(new Return(args[i]), null);
+			ins.gen(p);
+		}
 		b.nextIns = new Pairss(ins, b.nextIns);
 		return b.outs;
 	}
@@ -117,7 +123,141 @@ package mil;
 				outs.print(false, id);
 			}
 		}
+
+	public Pairs kill(Pairs ins, Atom a)
+	case Tail  {
+		if (ins != null) {
+			return ins.kill(a);
+		}
+		return null;
+		}
+	// case Return // default
+	// case PrimCall //default
+	// case BlockCall  //TODO
+	// case ClosAlloc	//TODO
+	// case CompAlloc //TODO
+	// case Enter //TODO
+	// case Invoke //TODO
+	// case DataAlloc //TODO
+
+	public Pairs gen(Pairs ins, Atom a)
+	case Tail abstract;
+	case Return	{
+			if (a != Wildcard.obj) {
+				Pair generated = new Pair(this, new Atoms(a, null));
+				if (ins != null) {
+					return ins.gen(generated);
+				}
+				return new Pairs (generated, null);
+			}
+			return ins;
+		}
+	case PrimCall {
+			if (isPure()){
+				Pair generated = new Pair(this, new Atoms(a, null));
+				if (ins != null) {
+					return ins.gen(generated);
+				}
+				return new Pairs (generated, null);
+			}
+			return ins;
+		}
+	case BlockCall {
+		for (int i=0; i<args.length; i++) {
+			Pair p = new Pair(new Return(args[i]), null);
+			ins.gen(p);
+		}
+		b.nextIns = new Pairss(ins, b.nextIns);
+		return ins;}
+	case ClosAlloc { return ins; }
+	case CompAlloc { return ins; }
+	case Enter { return ins; }
+	case Invoke { return ins; }
+	case DataAlloc { return ins;}
+	
+	public Pairs kill(Pairs ins)
+	case Code { return ins; }
+	case Bind {
+		if (ins != null)
+			return ins.kill(v);
+		return ins;
+		}
+	case BlockCall { return ins; }
+	case TAlt { return bc.kill(ins); }
+
+	public Pairs gen(Pairs ins)
+/*	case Code {return ins;}
+	case Bind {
+		Pair d = new Pair(t, new Atoms(v, null));
+		if (ins != null) {
+			if (t.isPure())
+				return ins.gen(d);
+			return ins;
+		}
+		if (t.isPure())
+			return new Pairs(d, null);
+		return null;
+		}
+	case Done { 
+			Pairs outs = t.addIns(ins);	
+			return Pairs.meets(outs, ins, true); }
+	case Match {
+			Pairss outs = null;
+			if (def != null) {
+				
+				Pairs defOuts = def.addIns(ins);
+				
+				if (defOuts != null) {
+					outs = new Pairss(defOuts, outs);
+				}
+			}
+		    for (int i=0; i<alts.length; i++) {
+				Pairs altsOuts = alts[i].addIns(ins);
+				if (altsOuts != null) {
+					outs = new Pairss(altsOuts, outs);
+				}
+				
+			}
+			return ins;
+		}
+		*/
+	case BlockCall { return ins; }
+	case TAlt { return bc.gen(ins); }
+		
 	public Pairs outset(Pairs ins)
+	case Code abstract;
+	case Bind {
+		Pairs outs = t.kill(ins, v);
+		outs = t.gen(outs, v);
+		return c.outset(outs);
+		}
+	case Done {
+			Pairs outs = t.kill(ins, Wildcard.obj);
+			return t.gen(outs, Wildcard.obj);
+			}
+	case Match {
+			Pairss outs = null;
+			if (def != null) {
+				Pairs defOuts = def.kill(ins);
+				defOuts = def.gen(ins);
+				def.addIns(ins);
+				if (defOuts != null) {
+					outs = new Pairss(defOuts, outs);
+				}
+			}
+		    for (int i=0; i<alts.length; i++) {
+				Pairs altsOuts = alts[i].kill(ins);
+				altsOuts = alts[i].gen(ins);
+				if (altsOuts != null) {
+					outs = new Pairss(altsOuts, outs);
+				}
+				
+			}
+			//outs = Pairs.meets(outs, ins, true);
+			return null;//ins;
+			}
+
+	public Pairs outsetOLD(Pairs ins)
 	case Code abstract;
 	case Bind {
 		Pairs outs = null;
@@ -145,7 +285,9 @@ package mil;
 	case Match {
 			Pairss outs = null;
 			if (def != null) {
+				
 				Pairs defOuts = def.addIns(ins);
+				
 				if (defOuts != null) {
 					outs = new Pairss(defOuts, outs);
 				}

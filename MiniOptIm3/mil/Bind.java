@@ -371,7 +371,19 @@ return t.detectLoops(src, visited)
         c.fixTrailingBlockCalls();
     }
 
+    public Pairs kill(Pairs ins) {
+        if (ins != null)
+                return ins.kill(v);
+        return ins;
+        }
+
     public Pairs outset(Pairs ins) {
+        Pairs outs = t.kill(ins, v);
+        outs = t.gen(outs, v);
+        return c.outset(outs);
+        }
+
+    public Pairs outsetOLD(Pairs ins) {
         Pairs outs = null;
         Pair d = new Pair(t, new Atoms(v, null));
         if (ins == null) {

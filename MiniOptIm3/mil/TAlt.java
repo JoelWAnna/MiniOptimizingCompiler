@@ -232,4 +232,8 @@ public class TAlt {
     }
 
     public Pairs addIns(Pairs ins) {      return bc.addIns(ins); }
+
+    public Pairs kill(Pairs ins) { return bc.kill(ins); }
+
+    public Pairs gen(Pairs ins) { return bc.gen(ins); }
 }

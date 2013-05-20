@@ -434,7 +434,31 @@ public class Match extends Code {
     public Pairs outset(Pairs ins) {
         Pairss outs = null;
         if (def != null) {
+                Pairs defOuts = def.kill(ins);
+                defOuts = def.gen(ins);
+                def.addIns(ins);
+                if (defOuts != null) {
+                        outs = new Pairss(defOuts, outs);
+                }
+        }
+    for (int i=0; i<alts.length; i++) {
+                Pairs altsOuts = alts[i].kill(ins);
+                altsOuts = alts[i].gen(ins);
+                if (altsOuts != null) {
+                        outs = new Pairss(altsOuts, outs);
+                }
+                
+        }
+        //outs = Pairs.meets(outs, ins, true);
+        return null;//ins;
+        }
+
+    public Pairs outsetOLD(Pairs ins) {
+        Pairss outs = null;
+        if (def != null) {
+                
                 Pairs defOuts = def.addIns(ins);
+                
                 if (defOuts != null) {
                         outs = new Pairss(defOuts, outs);
                 }

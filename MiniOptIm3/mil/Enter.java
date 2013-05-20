@@ -128,4 +128,6 @@ public class Enter extends Tail {
     Vars liveVars(Vars vs) {
         return f.add(a.add(vs));
     }
+
+    public Pairs gen(Pairs ins, Atom a) { return ins; }
 }

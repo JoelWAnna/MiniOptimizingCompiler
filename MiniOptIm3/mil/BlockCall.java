@@ -262,7 +262,23 @@ public class BlockCall extends Call {
     }
 
     public Pairs addIns(Pairs ins) {
+        for (int i=0; i<args.length; i++) {
+                        Pair p = new Pair(new Return(args[i]), null);
+                        ins.gen(p);
+                }
+                b.nextIns = new Pairss(ins, b.nextIns);
+                return b.outs;
+        }
+
+    public Pairs gen(Pairs ins, Atom a) {
+        for (int i=0; i<args.length; i++) {
+                Pair p = new Pair(new Return(args[i]), null);
+                ins.gen(p);
+        }
         b.nextIns = new Pairss(ins, b.nextIns);
-        return b.outs;
-}
+        return ins;}
+
+    public Pairs kill(Pairs ins) { return ins; }
+
+    public Pairs gen(Pairs ins) { return ins; }
 }

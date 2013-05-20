@@ -706,7 +706,7 @@ public class Block extends Defn {
         System.out.println("computeInMeets At block " + id);
         boolean firstRound = true;
         boolean union = true;
-        boolean mode = !union; // The interpretation of !union is intersection
+        boolean mode = union; // The interpretation of !union is intersection
         Pairss insIter;
         for (insIter = nextIns; insIter != null; insIter = insIter.next) {
                 Pairs caller =  insIter.head;
@@ -740,7 +740,7 @@ public class Block extends Defn {
         nextOuts = code.outset(ins);
         int oldlen = Pairs.length(outs);
         if ((oldlen != Pairs.length(nextOuts) )
-                || (oldlen != Pairs.length(Pairs.meets(nextOuts, outs, !union)))
+                || (oldlen != Pairs.length(Pairs.meets(nextOuts, outs, union)))
                 ){
                 return 1;
         }       

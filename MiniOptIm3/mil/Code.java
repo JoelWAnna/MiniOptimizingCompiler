@@ -267,5 +267,9 @@ public abstract class Code {
      */
     abstract void fixTrailingBlockCalls();
 
+    public Pairs kill(Pairs ins) { return ins; }
+
     public abstract Pairs outset(Pairs ins);
+
+    public abstract Pairs outsetOLD(Pairs ins);
 }
