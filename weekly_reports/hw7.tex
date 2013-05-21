@@ -1,0 +1,18 @@
+\documentclass[14pt]{article}
+\author{Joel Anna<annajoel@pdx.edu>}
+\usepackage{fancyhdr}
+\usepackage{lastpage}
+\pagestyle{fancy}
+\lhead{\footnotesize \parbox{11cm}{Joel Anna} }
+%\lfoot{\footnotesize \parbox{11cm}{\textit{2}}}
+\cfoot{}
+\rhead{\footnotesize Week 7 Report:  }
+%\rfoot{\footnotesize Page \thepage\ of \pageref{LastPage}}
+\renewcommand{\headheight}{24pt}
+\begin{document}
+\paragraph{CS401 Optimization Week 7 report} 
+.\\
+I started this week thinking that my previous approach to data flow analysis may have been too abstract for me to identify all of the cases. I began reimplementing the algorithm by directly calling a kill/gen method on each tail object. Once I had a working version, it appeared that the results in general were very much the same as the old implementation, with the exception of differences in the case of BlockCalls.\\
+I began to think that a block call with the arguments b(2, 6, 8) for the block b(x, y, z) that it may be appropriate to generate return tails for these values to indicate that x is 2 and so on. Unfortunately, in my 'goto' test for initial thoughts, using intersection for meets, caused these generated tails to be discarded for recursive entries to the block.\\
+I have started to believe that the current tests may not be well suited for showing the advantages of calculating the data flow analysis for global optimizations, and that it would be beneficial to construct a more substantial test case for this algorithm.
+\end{document}

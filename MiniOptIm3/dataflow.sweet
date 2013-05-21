@@ -186,41 +186,6 @@ package mil;
 	case TAlt { return bc.kill(ins); }
 
 	public Pairs gen(Pairs ins)
-/*	case Code {return ins;}
-	case Bind {
-		Pair d = new Pair(t, new Atoms(v, null));
-		if (ins != null) {
-			if (t.isPure())
-				return ins.gen(d);
-			return ins;
-		}
-		if (t.isPure())
-			return new Pairs(d, null);
-		return null;
-		}
-	case Done { 
-			Pairs outs = t.addIns(ins);	
-			return Pairs.meets(outs, ins, true); }
-	case Match {
-			Pairss outs = null;
-			if (def != null) {
-				
-				Pairs defOuts = def.addIns(ins);
-				
-				if (defOuts != null) {
-					outs = new Pairss(defOuts, outs);
-				}
-			}
-		    for (int i=0; i<alts.length; i++) {
-				Pairs altsOuts = alts[i].addIns(ins);
-				if (altsOuts != null) {
-					outs = new Pairss(altsOuts, outs);
-				}
-				
-			}
-			return ins;
-		}
-		*/
 	case BlockCall { return ins; }
 	case TAlt { return bc.gen(ins); }
 		
@@ -257,50 +222,6 @@ package mil;
 			return null;//ins;
 			}
 
-	public Pairs outsetOLD(Pairs ins)
-	case Code abstract;
-	case Bind {
-		Pairs outs = null;
-		Pair d = new Pair(t, new Atoms(v, null));
-		if (ins == null) {
-			outs = new Pairs(d, null);
-		}
-		else {
-			outs = t.addIns(ins);
-			outs = Pairs.meets(outs, ins, true);
-			outs.kill(v);
-			outs.gen(d);
-		}
-        if (c == null) {
-        	System.out.println("unlinked bind call found!?!");
-        	return outs;
-        }
-		return c.outset(outs);
-		}
-	case Done { 
-			Pairs outs = t.addIns(ins);			
-			//if (ins != null) ins.print(false, "blaJ");
-			//if (outs != null)  outs.print(false, "blaJ");
-			return Pairs.meets(outs, ins, true); }
-	case Match {
-			Pairss outs = null;
-			if (def != null) {
-				
-				Pairs defOuts = def.addIns(ins);
-				
-				if (defOuts != null) {
-					outs = new Pairss(defOuts, outs);
-				}
-			}
-		    for (int i=0; i<alts.length; i++) {
-				Pairs altsOuts = alts[i].addIns(ins);
-				if (altsOuts != null) {
-					outs = new Pairss(altsOuts, outs);
-				}
-				
-			}
-			return ins;
-			}
 
 	public class Pair(public Tail t, public Atoms atoms) {
 	}

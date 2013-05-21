@@ -247,10 +247,4 @@ public class Done extends Code {
         Pairs outs = t.kill(ins, Wildcard.obj);
         return t.gen(outs, Wildcard.obj);
         }
-
-    public Pairs outsetOLD(Pairs ins) { 
-        Pairs outs = t.addIns(ins);                     
-        //if (ins != null) ins.print(false, "blaJ");
-        //if (outs != null)  outs.print(false, "blaJ");
-        return Pairs.meets(outs, ins, true); }
 }
