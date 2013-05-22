@@ -1,6 +1,6 @@
 package mil;
 
-public class Pair {
+public class G_Fact {
 
     public Tail t;
 
@@ -8,12 +8,12 @@ public class Pair {
 
     /** Default constructor.
      */
-    public Pair(Tail t, Atoms atoms) {
+    public G_Fact(Tail t, Atoms atoms) {
         this.t = t;
         this.atoms = atoms;
     }
 
-    public boolean equal(Pair other) {
+    public boolean equal(G_Fact other) {
         if (this.t.sameTail(other.t))
         {
                 return true;
@@ -28,7 +28,7 @@ public class Pair {
         }
 }
 
-    public boolean merge(Pair other) {
+    public boolean merge(G_Fact other) {
         if (this.equal(other)) {
                 Atoms current = other.atoms;
                 while (current != null)
@@ -51,11 +51,11 @@ public class Pair {
         return false;
 }
 
-    public Pair copy() {
-        return new Pair(t, atoms.copy());
+    public G_Fact copy() {
+        return new G_Fact(t, atoms.copy());
         }
 
-    public Pair copyWithSubst(Atom[] args, Var[] formals) {
-        return  new Pair(t.copyWithSubst(args, formals), atoms);        
+    public G_Fact copyWithSubst(Atom[] args, Var[] formals) {
+        return  new G_Fact(t.copyWithSubst(args, formals), atoms);      
                 }
 }

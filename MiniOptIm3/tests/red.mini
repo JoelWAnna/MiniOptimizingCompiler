@@ -1,0 +1,23 @@
+
+int f(int b, int c) {
+  int x;
+
+  if (b>c) {
+    x = b*c;
+    print 1;
+  } else {
+    x = b*c;
+    print 2;
+  }
+
+  print b*c;
+  print b*c;
+  print b*c;
+  print b*c;
+
+  return x;
+}
+
+void mini_main() {
+  print f(1,2);
+}

@@ -706,15 +706,15 @@ public class Block extends Defn {
         System.out.println("computeInMeets At block " + id);
         boolean firstRound = true;
         boolean union = true;
-        boolean mode = union; // The interpretation of !union is intersection
-        Pairss insIter;
-        for (insIter = nextIns; insIter != null; insIter = insIter.next) {
-                Pairs caller =  insIter.head;
+        boolean mode = !union; // The interpretation of !union is intersection
+        Sets insIter;
+        for (insIter = incoming_Sets; insIter != null; insIter = insIter.next) {
+                G_Facts caller =  insIter.head.a;
                 
                 if (firstRound) {
                         firstRound = false;
-                        nextIns = nextIns.next;
-                        if (nextIns == null) {
+                        incoming_Sets = incoming_Sets.next;
+                        if (incoming_Sets == null) {
                                 // only 1 caller to this block
                                 if (caller != null) {
                                         ins = caller.copy();
@@ -722,15 +722,15 @@ public class Block extends Defn {
                                 break;
                         }
                         else{   
-                                Pairs nextCaller =  nextIns.head;
-                                ins = Pairs.meets(caller, nextCaller, mode);
+                                G_Facts nextCaller =  incoming_Sets.head.a;
+                                ins = G_Facts.meets(caller, nextCaller, mode);
                         }
                 }
                 else {
-                        ins = Pairs.meets(ins, caller, mode);
+                        ins = G_Facts.meets(ins, caller, mode);
                 }
         }
-        nextIns = null;
+        incoming_Sets = null;
         }
 
     public int dataflow() {
@@ -738,9 +738,9 @@ public class Block extends Defn {
         boolean union = true;
 
         nextOuts = code.outset(ins);
-        int oldlen = Pairs.length(outs);
-        if ((oldlen != Pairs.length(nextOuts) )
-                || (oldlen != Pairs.length(Pairs.meets(nextOuts, outs, union)))
+        int oldlen = G_Facts.length(outs);
+        if ((oldlen != G_Facts.length(nextOuts) )
+                || (oldlen != G_Facts.length(G_Facts.meets(nextOuts, outs, !union)))
                 ){
                 return 1;
         }       
@@ -748,7 +748,7 @@ public class Block extends Defn {
         return 0;
         }
 
-    public void clearInsOuts() { nextIns = null; ins = outs = null; }
+    public void clearInsOuts() { incoming_Sets = null; ins = outs = null; }
 
     public void printInsOuts() {
         if (ins != null) {
@@ -759,11 +759,15 @@ public class Block extends Defn {
         }
 }
 
-    public Pairss nextIns;
+    public Sets incoming_Sets;
 
-    public Pairs ins;
+    public G_Facts ins;
 
-    public Pairs outs;
+    public G_Facts outs;
 
-    public Pairs nextOuts;
+    public G_Facts nextOuts;
+
+    public Var[] getFormals() {
+        return formals;
+    }
 }

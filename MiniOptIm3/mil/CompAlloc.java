@@ -112,6 +112,4 @@ public class CompAlloc extends Allocator {
     public void analyzeCalls() { m.thunked(); }
 
     public void analyzeTailCalls() { m.thunked(); }
-
-    public Pairs gen(Pairs ins, Atom a) { return ins; }
 }

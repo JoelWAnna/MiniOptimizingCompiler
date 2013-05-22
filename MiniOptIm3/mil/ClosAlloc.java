@@ -78,6 +78,4 @@ public class ClosAlloc extends Allocator {
     public void analyzeCalls() { k.thunked(); }
 
     public void analyzeTailCalls() { k.thunked(); }
-
-    public Pairs gen(Pairs ins, Atom a) { return ins; }
 }

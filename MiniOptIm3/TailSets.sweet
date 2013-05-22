@@ -1,174 +1,5 @@
-
 package mil;
-    public void optimize()
-    case MILProgram !  {
-		dataflow();
-		
-    }
-	void dataflow()
-	case MILProgram {
-		/*
-			for (DefnSCCs dsccs = sccs; dsccs!=null; dsccs=dsccs.next) {
-			  for (Defns ds=dsccs.head.getBindings(); ds!=null; ds=ds.next) {
-				ds.head.clearInsOuts();
-			  }
-			}
-		*/
-
-		for (int i = 1; i != 0;) {
-			for (DefnSCCs dsccs = sccs; dsccs!=null; dsccs=dsccs.next) {
-				for (Defns ds=dsccs.head.getBindings(); ds!=null; ds=ds.next) {
-					ds.head.computeInMeets();
-				}
-			}
-			for (DefnSCCs dsccs = sccs; dsccs!=null; dsccs=dsccs.next) {
-			  for (Defns ds=dsccs.head.getBindings(); ds!=null; ds=ds.next) {
-				i = ds.head.Calculate_Avail_Expr();
-			  }
-			}
-			for (DefnSCCs dsccs = sccs; dsccs!=null; dsccs=dsccs.next) {
-			  for (Defns ds=dsccs.head.getBindings(); ds!=null; ds=ds.next) {
-				ds.head.setNextOuts();
-			  }
-			}
-		}
-
-		for (DefnSCCs dsccs = sccs; dsccs!=null; dsccs=dsccs.next) {
-			for (Defns ds=dsccs.head.getBindings(); ds!=null; ds=ds.next) {
-				ds.head.printInsOuts();
-			}
-		}
-	}
-		
-	public void setNextOuts()	
-	case Defn {}
-	case Block {
-		avail_Out_Set = avail_Next_Out;
-		}
-	public void computeInMeets()
-	case Defn {}
-	case Block {
-		System.out.println("computeInMeets At block " + id);
-		boolean firstRound = true;
-		boolean union = true;
-		boolean mode = !union; // The interpretation of !union is intersection
-		Sets insIter;
-		for (insIter = incoming_Sets; insIter != null; insIter = insIter.next) {
-			G_Facts caller =  insIter.head.a;
-			
-			if (firstRound) {
-				firstRound = false;
-				incoming_Sets = incoming_Sets.next;
-				if (incoming_Sets == null) {
-					// only 1 caller to this block
-					if (caller != null) {
-						avail_In_Set = caller.copy();
-					}
-					break;
-				}
-				else{	
-					G_Facts nextCaller =  incoming_Sets.head.a;
-					avail_In_Set = G_Facts.meets(caller, nextCaller, mode);
-				}
-			}
-			else {
-				avail_In_Set = G_Facts.meets(avail_In_Set, caller, mode);
-			}
-		}
-		incoming_Sets = null;
-		}
-
-	public int Calculate_Avail_Expr()
-	case Block {
-		System.out.println("Calculate_Avail_Expr At block " + id);
-		boolean union = true;
-
-		avail_Next_Out = code.outset(avail_In_Set);
-		int oldlen = G_Facts.length(avail_Out_Set);
-		if ((oldlen != G_Facts.length(avail_Next_Out) )
-			|| (oldlen != G_Facts.length(G_Facts.meets(avail_Next_Out, avail_Out_Set, !union)))
-			){
-			return 1;
-		}	
-
-		return 0;
-		}
-	case Defn { return 0;}
-
-	public void clearInsOuts()
-	case Defn {}
-	case Block { incoming_Sets = null; avail_In_Set = avail_Out_Set = null; }
-	
-	public G_Facts addIns(G_Facts ins) 
-	case Tail { return null; }
-	case TAlt {	 return bc.addIns(ins); }
-	case BlockCall {
-		//G_Facts renamed = ins.copy();//WithSubst(args, b.getFormals());
-		G_Facts renamed = ins.copyWithSubst(args, b.getFormals());
-		b.incoming_Sets = new Sets(new Set(renamed), b.incoming_Sets);
-		return b.avail_Out_Set;
-	}
-	
-
-	public void printInsOuts()
-	case Defn {}
-	case Block {
-			if (avail_In_Set != null) {
-			avail_In_Set.print(true, id);
-			}
-			if (avail_Out_Set != null) {
-				avail_Out_Set.print(false, id);
-			}
-		}
-	public G_Facts outset(G_Facts ins)
-	case Code abstract;
-	case Bind {
-		G_Facts outs = null;
-		G_Fact d = new G_Fact(t, new Atoms(v, null));
-		if (ins == null) {
-			outs = new G_Facts(d, null);
-		}
-		else {
-			outs = t.addIns(ins);
-			outs = G_Facts.meets(outs, ins, true);
-			outs.kill(v);
-			outs.gen(d);
-		}
-        if (c == null) {
-        	System.out.println("unlinked bind call found!?!");
-        	return outs;
-        }
-		return c.outset(outs);
-		}
-	case Done { 
-			G_Facts outs = t.addIns(ins);			
-			//if (ins != null) ins.print(false, "blaJ");
-			//if (outs != null)  outs.print(false, "blaJ");
-			return G_Facts.meets(outs, ins, true); }
-	case Match {
-			Sets outs = null;
-			if (def != null) {
-				G_Facts defOuts = def.addIns(ins);
-				if (defOuts != null) {
-					outs = new Sets(new Set(defOuts), outs);
-				}
-			}
-		    for (int i=0; i<alts.length; i++) {
-				G_Facts altsOuts = alts[i].addIns(ins);
-				if (altsOuts != null) {
-					outs = new Sets(new Set(altsOuts), outs);
-				}
-				
-			}
-			return ins;
-			}
-
-
-	public class Block {
-		public Sets incoming_Sets;
-		public G_Facts avail_In_Set;
-		public G_Facts avail_Out_Set;
-		public G_Facts avail_Next_Out;
+	public class G_Fact(public Tail t, public Atoms atoms) {
 	}
 	
 
@@ -181,12 +12,13 @@ package mil;
 			else {
 				System.out.println("this");
 				t.display();
-				System.out.println("NEQ");
+				System.out.print(" NEQ ");
 				other.t.display();
-				System.out.println("that");
+				System.out.println("\nthat");
 				return false;
 			}
 		}
+
 	public boolean merge(G_Fact other) 
 	case G_Fact {
 			if (this.equal(other)) {
@@ -210,6 +42,7 @@ package mil;
 			}
 			return false;
 		}
+
 	public G_Fact copy()
 	case G_Fact {
 		return new G_Fact(t, atoms.copy());
@@ -231,6 +64,7 @@ package mil;
 		}
 		print();
 	}
+
 	public void print()
 	case G_Facts {
 		head.t.display();
@@ -249,10 +83,6 @@ package mil;
 		
 		
 	
-	public Var[] getFormals()
-	case Block{
-        return formals;
-    }
 	
 	public G_Facts copyWithSubst(Atom[] args, Var[] formals)
 	case G_Facts	{
@@ -261,10 +91,12 @@ package mil;
 			copy.next = next.copyWithSubst(args, formals);	
 		return copy;		
 	}	
+
 	public G_Fact copyWithSubst(Atom[] args, Var[] formals)
 	case G_Fact	{
 		return  new G_Fact(t.copyWithSubst(args, formals), atoms);	
 			}
+
 	public Tail copyWithSubst(Atom[] args, Var[] formals)
 	case Tail {
 		AtomSubst a = null;
@@ -283,6 +115,7 @@ package mil;
 			return new G_Facts(head.copy(), next.copy());	
 		return new G_Facts(head.copy(), next);		
 	}
+
 	public Atoms copy()
 	case Atoms	{
 		if (next != null)
@@ -308,6 +141,7 @@ package mil;
 			return new G_Facts(head, next.kill(v));
 		return new G_Facts(head, null);
 	}
+
 	public G_Facts gen(G_Fact p)
 	case G_Facts {
 		if (head.merge(p)) {

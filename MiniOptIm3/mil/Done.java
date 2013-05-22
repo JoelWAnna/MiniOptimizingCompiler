@@ -243,8 +243,9 @@ public class Done extends Code {
         t.fixTrailingBlockCalls();
     }
 
-    public Pairs outset(Pairs ins) {
-        Pairs outs = t.kill(ins, Wildcard.obj);
-        return t.gen(outs, Wildcard.obj);
-        }
+    public G_Facts outset(G_Facts ins) { 
+        G_Facts outs = t.addIns(ins);                   
+        //if (ins != null) ins.print(false, "blaJ");
+        //if (outs != null)  outs.print(false, "blaJ");
+        return G_Facts.meets(outs, ins, true); }
 }

@@ -831,15 +831,4 @@ public class PrimCall extends Call {
     /** Test two items for alpha equivalence.
      */
     boolean alphaPrimCall(Vars thisvars, PrimCall that, Vars thatvars) { return this.p==that.p && this.alphaArgs(thisvars, that, thatvars); }
-
-    public Pairs gen(Pairs ins, Atom a) {
-        if (isPure()){
-                Pair generated = new Pair(this, new Atoms(a, null));
-                if (ins != null) {
-                        return ins.gen(generated);
-                }
-                return new Pairs (generated, null);
-        }
-        return ins;
-}
 }

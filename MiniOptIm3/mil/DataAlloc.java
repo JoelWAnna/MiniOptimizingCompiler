@@ -95,6 +95,4 @@ public class DataAlloc extends Allocator {
     /** Test two items for alpha equivalence.
      */
     boolean alphaDataAlloc(Vars thisvars, DataAlloc that, Vars thatvars) { return this.c==that.c && this.alphaArgs(thisvars, that, thatvars); }
-
-    public Pairs gen(Pairs ins, Atom a) { return ins;}
 }

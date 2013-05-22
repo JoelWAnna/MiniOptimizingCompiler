@@ -1,21 +1,21 @@
 package mil;
 
-public class Pairs {
+public class G_Facts {
 
-    public Pair head;
+    public G_Fact head;
 
-    public Pairs next;
+    public G_Facts next;
 
     /** Default constructor.
      */
-    public Pairs(Pair head, Pairs next) {
+    public G_Facts(G_Fact head, G_Facts next) {
         this.head = head;
         this.next = next;
     }
 
     /** Return the length of a linked list of elements.
      */
-    public static int length(Pairs list) {
+    public static int length(G_Facts list) {
         int len = 0;
         for (; list!=null; list=list.next) {
             len++;
@@ -48,20 +48,20 @@ public class Pairs {
                 next.print();
 }
 
-    public Pairs copyWithSubst(Atom[] args, Var[] formals) {
-        Pairs copy = new Pairs(head.copyWithSubst(args, formals), null);
+    public G_Facts copyWithSubst(Atom[] args, Var[] formals) {
+        G_Facts copy = new G_Facts(head.copyWithSubst(args, formals), null);
         if (next != null)
                 copy.next = next.copyWithSubst(args, formals);  
         return copy;            
 }
 
-    public Pairs copy() {
+    public G_Facts copy() {
         if (next != null)
-                return new Pairs(head.copy(), next.copy());     
-        return new Pairs(head.copy(), next);            
+                return new G_Facts(head.copy(), next.copy());   
+        return new G_Facts(head.copy(), next);          
 }
 
-    public Pairs kill(Atom a) {
+    public G_Facts kill(Atom a) {
         Var v = a.isVar();
         if (v == null)
                 return this;
@@ -71,21 +71,21 @@ public class Pairs {
                 return null;
         }
         if (next != null)
-                return new Pairs(head, next.kill(v));
-        return new Pairs(head, null);
+                return new G_Facts(head, next.kill(v));
+        return new G_Facts(head, null);
 }
 
-    public Pairs gen(Pair p) {
+    public G_Facts gen(G_Fact p) {
         if (head.merge(p)) {
                 return this;
         }
         if (next != null) {
-                return new Pairs(head, next.gen(p));
+                return new G_Facts(head, next.gen(p));
         }
-        return new Pairs(p, null);
+        return new G_Facts(p, null);
 }
 
-    public static Pairs meets(Pairs toMeetA, Pairs toMeetB, boolean union) {
+    public static G_Facts meets(G_Facts toMeetA, G_Facts toMeetB, boolean union) {
         if (toMeetA == null) {
                 if (toMeetB == null || !union) {
                         return null;
@@ -99,14 +99,14 @@ public class Pairs {
                 return toMeetA.copy();
         }
         // toMeetA != null && toMeetB != null
-        Pairs met = null;
-        Pairs unionMet = null;
-        Pairs toMeetAHead = toMeetA = toMeetA.copy();
-        Pairs toMeetBHead = toMeetB = toMeetB.copy();
+        G_Facts met = null;
+        G_Facts unionMet = null;
+        G_Facts toMeetAHead = toMeetA = toMeetA.copy();
+        G_Facts toMeetBHead = toMeetB = toMeetB.copy();
         
         
-        Pairs previousA = null;
-        Pairs previousB = null;
+        G_Facts previousA = null;
+        G_Facts previousB = null;
 
         while (toMeetA != null)
         {
@@ -116,9 +116,9 @@ public class Pairs {
                 while (toMeetB != null)
                 {
                         if (toMeetA.head.equal(toMeetB.head)) {
-                                        Pair toInsert = toMeetA.head.copy();
+                                        G_Fact toInsert = toMeetA.head.copy();
                                         toInsert.merge(toMeetB.head);
-                                        met = new Pairs(toInsert, met);
+                                        met = new G_Facts(toInsert, met);
                                         found = true;
                                         if (previousA == null) {
                                                 toMeetAHead = toMeetA.next;
@@ -147,11 +147,11 @@ public class Pairs {
 
         if (union) {
                 while (toMeetAHead != null) {
-                        met = new Pairs(toMeetAHead.head.copy(), met);
+                        met = new G_Facts(toMeetAHead.head.copy(), met);
                         toMeetAHead = toMeetAHead.next;
                 }
                 while (toMeetBHead != null) {
-                        met = new Pairs(toMeetBHead.head.copy(), met);
+                        met = new G_Facts(toMeetBHead.head.copy(), met);
                         toMeetBHead = toMeetBHead.next;
                 }
                 

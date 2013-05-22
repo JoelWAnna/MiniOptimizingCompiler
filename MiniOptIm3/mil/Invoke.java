@@ -103,6 +103,4 @@ public class Invoke extends Tail {
     Vars liveVars(Vars vs) {
         return a.add(vs);
     }
-
-    public Pairs gen(Pairs ins, Atom a) { return ins; }
 }

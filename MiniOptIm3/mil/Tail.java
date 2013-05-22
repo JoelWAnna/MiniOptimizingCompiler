@@ -253,14 +253,14 @@ public abstract class Tail {
         /* do nothing */
     }
 
-    public Pairs addIns(Pairs ins) { return null; }
+    public G_Facts addIns(G_Facts ins) { return null; }
 
-    public Pairs kill(Pairs ins, Atom a) {
-        if (ins != null) {
-                return ins.kill(a);
+    public Tail copyWithSubst(Atom[] args, Var[] formals) {
+        AtomSubst a = null;
+        for (int i = 0; i < formals.length; i++) {
+                a = new AtomSubst(formals[i], args[i], a);
         }
-        return null;
-        }
-
-    public abstract Pairs gen(Pairs ins, Atom a);
+        apply(a);
+        return this;
+}
 }

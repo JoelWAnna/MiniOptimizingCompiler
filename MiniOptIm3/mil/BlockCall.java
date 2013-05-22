@@ -261,24 +261,10 @@ public class BlockCall extends Call {
         // else { debug.Internal.error("tail block call with non null arguments"); }
     }
 
-    public Pairs addIns(Pairs ins) {
-        for (int i=0; i<args.length; i++) {
-                        Pair p = new Pair(new Return(args[i]), null);
-                        ins.gen(p);
-                }
-                b.nextIns = new Pairss(ins, b.nextIns);
-                return b.outs;
-        }
-
-    public Pairs gen(Pairs ins, Atom a) {
-        for (int i=0; i<args.length; i++) {
-                Pair p = new Pair(new Return(args[i]), null);
-                ins.gen(p);
-        }
-        b.nextIns = new Pairss(ins, b.nextIns);
-        return ins;}
-
-    public Pairs kill(Pairs ins) { return ins; }
-
-    public Pairs gen(Pairs ins) { return ins; }
+    public G_Facts addIns(G_Facts ins) {
+        //G_Facts renamed = ins.copy();//WithSubst(args, b.getFormals());
+        G_Facts renamed = ins.copyWithSubst(args, b.getFormals());
+        b.incoming_Sets = new Sets(new Set(renamed), b.incoming_Sets);
+        return b.outs;
+}
 }

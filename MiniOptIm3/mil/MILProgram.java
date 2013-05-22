@@ -93,38 +93,8 @@ public class MILProgram {
     /** Run the optimizer on this program.
      */
     public void optimize() {
-        shake();
-        cfunSimplify();
-  
-        int totalCount = 0;
-        count          = 1;
-        for (int i=0; i<MAX_OPTIMIZE_PASSES && count>0; i++) {
-            debug.Log.println("-------------------------");
-  //!System.out.println("==================================================");
-  //!System.out.println("Step " + i);
-  //!System.out.println("==================================================");
-  //!display();
-  //!System.out.println("==================================================");
-            count = 0;
-            inlining();
-            debug.Log.println("Inlining pass finished, running shake.");
-            shake();
-            liftAllocators();  // TODO: Is this the right position for liftAllocators?
-            eliminateUnusedArgs();
-            flow();
-  //!       collapse();
-            debug.Log.println("Flow pass finished, running shake.");
-            shake();
-            debug.Log.println("Steps performed = " + count);
-            totalCount += count;
-        }
-        count = 0;
-        collapse(); // TODO: move inside loop?
-        shake();    // restore SCCs
-        totalCount += count;
-        debug.Log.println("TOTAL steps performed = " + totalCount);
-    
         dataflow();
+        
 }
 
     /** Apply constructor function simplifications to this program.
@@ -361,9 +331,7 @@ public class MILProgram {
                 }
                 for (DefnSCCs dsccs = sccs; dsccs!=null; dsccs=dsccs.next) {
                   for (Defns ds=dsccs.head.getBindings(); ds!=null; ds=ds.next) {
-                        ds.head.printInsOuts();
                         i = ds.head.dataflow();
-                        ds.head.printInsOuts();
                   }
                 }
                 for (DefnSCCs dsccs = sccs; dsccs!=null; dsccs=dsccs.next) {

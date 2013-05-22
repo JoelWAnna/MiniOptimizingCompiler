@@ -371,15 +371,22 @@ return t.detectLoops(src, visited)
         c.fixTrailingBlockCalls();
     }
 
-    public Pairs kill(Pairs ins) {
-        if (ins != null)
-                return ins.kill(v);
-        return ins;
+    public G_Facts outset(G_Facts ins) {
+        G_Facts outs = null;
+        G_Fact d = new G_Fact(t, new Atoms(v, null));
+        if (ins == null) {
+                outs = new G_Facts(d, null);
         }
-
-    public Pairs outset(Pairs ins) {
-        Pairs outs = t.kill(ins, v);
-        outs = t.gen(outs, v);
+        else {
+                outs = t.addIns(ins);
+                outs = G_Facts.meets(outs, ins, true);
+                outs.kill(v);
+                outs.gen(d);
+        }
+if (c == null) {
+        System.out.println("unlinked bind call found!?!");
+        return outs;
+}
         return c.outset(outs);
         }
 }

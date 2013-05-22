@@ -1,9 +1,8 @@
 
 package mil;
     public void optimize()
-    case MILProgram !  {
+    case MILProgram >  {
 		dataflow();
-		
     }
 	void dataflow()
 	case MILProgram {
@@ -23,7 +22,9 @@ package mil;
 			}
 			for (DefnSCCs dsccs = sccs; dsccs!=null; dsccs=dsccs.next) {
 			  for (Defns ds=dsccs.head.getBindings(); ds!=null; ds=ds.next) {
-				i = ds.head.Calculate_Avail_Expr();
+				ds.head.printInsOuts();
+				i = ds.head.dataflow();
+				ds.head.printInsOuts();
 			  }
 			}
 			for (DefnSCCs dsccs = sccs; dsccs!=null; dsccs=dsccs.next) {
@@ -43,7 +44,7 @@ package mil;
 	public void setNextOuts()	
 	case Defn {}
 	case Block {
-		avail_Out_Set = avail_Next_Out;
+		outs = nextOuts;
 		}
 	public void computeInMeets()
 	case Defn {}
@@ -51,42 +52,42 @@ package mil;
 		System.out.println("computeInMeets At block " + id);
 		boolean firstRound = true;
 		boolean union = true;
-		boolean mode = !union; // The interpretation of !union is intersection
-		Sets insIter;
-		for (insIter = incoming_Sets; insIter != null; insIter = insIter.next) {
-			G_Facts caller =  insIter.head.a;
+		boolean mode = union; // The interpretation of !union is intersection
+		Pairss insIter;
+		for (insIter = nextIns; insIter != null; insIter = insIter.next) {
+			Pairs caller =  insIter.head;
 			
 			if (firstRound) {
 				firstRound = false;
-				incoming_Sets = incoming_Sets.next;
-				if (incoming_Sets == null) {
+				nextIns = nextIns.next;
+				if (nextIns == null) {
 					// only 1 caller to this block
 					if (caller != null) {
-						avail_In_Set = caller.copy();
+						ins = caller.copy();
 					}
 					break;
 				}
 				else{	
-					G_Facts nextCaller =  incoming_Sets.head.a;
-					avail_In_Set = G_Facts.meets(caller, nextCaller, mode);
+					Pairs nextCaller =  nextIns.head;
+					ins = Pairs.meets(caller, nextCaller, mode);
 				}
 			}
 			else {
-				avail_In_Set = G_Facts.meets(avail_In_Set, caller, mode);
+				ins = Pairs.meets(ins, caller, mode);
 			}
 		}
-		incoming_Sets = null;
+		nextIns = null;
 		}
 
-	public int Calculate_Avail_Expr()
+	public int dataflow()
 	case Block {
-		System.out.println("Calculate_Avail_Expr At block " + id);
+		System.out.println("dataflow At block " + id);
 		boolean union = true;
 
-		avail_Next_Out = code.outset(avail_In_Set);
-		int oldlen = G_Facts.length(avail_Out_Set);
-		if ((oldlen != G_Facts.length(avail_Next_Out) )
-			|| (oldlen != G_Facts.length(G_Facts.meets(avail_Next_Out, avail_Out_Set, !union)))
+		nextOuts = code.outset(ins);
+		int oldlen = Pairs.length(outs);
+		if ((oldlen != Pairs.length(nextOuts) )
+			|| (oldlen != Pairs.length(Pairs.meets(nextOuts, outs, union)))
 			){
 			return 1;
 		}	
@@ -97,98 +98,151 @@ package mil;
 
 	public void clearInsOuts()
 	case Defn {}
-	case Block { incoming_Sets = null; avail_In_Set = avail_Out_Set = null; }
+	case Block { nextIns = null; ins = outs = null; }
 	
-	public G_Facts addIns(G_Facts ins) 
+	public Pairs addIns(Pairs ins) 
 	case Tail { return null; }
 	case TAlt {	 return bc.addIns(ins); }
 	case BlockCall {
-		//G_Facts renamed = ins.copy();//WithSubst(args, b.getFormals());
-		G_Facts renamed = ins.copyWithSubst(args, b.getFormals());
-		b.incoming_Sets = new Sets(new Set(renamed), b.incoming_Sets);
-		return b.avail_Out_Set;
+        for (int i=0; i<args.length; i++) {
+			Pair p = new Pair(new Return(args[i]), null);
+			ins.gen(p);
+		}
+		b.nextIns = new Pairss(ins, b.nextIns);
+		return b.outs;
 	}
 	
 
 	public void printInsOuts()
 	case Defn {}
 	case Block {
-			if (avail_In_Set != null) {
-			avail_In_Set.print(true, id);
+			if (ins != null) {
+			ins.print(true, id);
 			}
-			if (avail_Out_Set != null) {
-				avail_Out_Set.print(false, id);
+			if (outs != null) {
+				outs.print(false, id);
 			}
 		}
-	public G_Facts outset(G_Facts ins)
+
+	public Pairs kill(Pairs ins, Atom a)
+	case Tail  {
+		if (ins != null) {
+			return ins.kill(a);
+		}
+		return null;
+		}
+	// case Return // default
+	// case PrimCall //default
+	// case BlockCall  //TODO
+	// case ClosAlloc	//TODO
+	// case CompAlloc //TODO
+	// case Enter //TODO
+	// case Invoke //TODO
+	// case DataAlloc //TODO
+
+	public Pairs gen(Pairs ins, Atom a)
+	case Tail abstract;
+	case Return	{
+			if (a != Wildcard.obj) {
+				Pair generated = new Pair(this, new Atoms(a, null));
+				if (ins != null) {
+					return ins.gen(generated);
+				}
+				return new Pairs (generated, null);
+			}
+			return ins;
+		}
+	case PrimCall {
+			if (isPure()){
+				Pair generated = new Pair(this, new Atoms(a, null));
+				if (ins != null) {
+					return ins.gen(generated);
+				}
+				return new Pairs (generated, null);
+			}
+			return ins;
+		}
+	case BlockCall {
+		for (int i=0; i<args.length; i++) {
+			Pair p = new Pair(new Return(args[i]), null);
+			ins.gen(p);
+		}
+		b.nextIns = new Pairss(ins, b.nextIns);
+		return ins;}
+	case ClosAlloc { return ins; }
+	case CompAlloc { return ins; }
+	case Enter { return ins; }
+	case Invoke { return ins; }
+	case DataAlloc { return ins;}
+	
+	public Pairs kill(Pairs ins)
+	case Code { return ins; }
+	case Bind {
+		if (ins != null)
+			return ins.kill(v);
+		return ins;
+		}
+	case BlockCall { return ins; }
+	case TAlt { return bc.kill(ins); }
+
+	public Pairs gen(Pairs ins)
+	case BlockCall { return ins; }
+	case TAlt { return bc.gen(ins); }
+		
+	public Pairs outset(Pairs ins)
 	case Code abstract;
 	case Bind {
-		G_Facts outs = null;
-		G_Fact d = new G_Fact(t, new Atoms(v, null));
-		if (ins == null) {
-			outs = new G_Facts(d, null);
-		}
-		else {
-			outs = t.addIns(ins);
-			outs = G_Facts.meets(outs, ins, true);
-			outs.kill(v);
-			outs.gen(d);
-		}
-        if (c == null) {
-        	System.out.println("unlinked bind call found!?!");
-        	return outs;
-        }
+		Pairs outs = t.kill(ins, v);
+		outs = t.gen(outs, v);
 		return c.outset(outs);
 		}
-	case Done { 
-			G_Facts outs = t.addIns(ins);			
-			//if (ins != null) ins.print(false, "blaJ");
-			//if (outs != null)  outs.print(false, "blaJ");
-			return G_Facts.meets(outs, ins, true); }
+	case Done {
+			Pairs outs = t.kill(ins, Wildcard.obj);
+			return t.gen(outs, Wildcard.obj);
+			}
 	case Match {
-			Sets outs = null;
+			Pairss outs = null;
 			if (def != null) {
-				G_Facts defOuts = def.addIns(ins);
+				Pairs defOuts = def.kill(ins);
+				defOuts = def.gen(ins);
+				def.addIns(ins);
 				if (defOuts != null) {
-					outs = new Sets(new Set(defOuts), outs);
+					outs = new Pairss(defOuts, outs);
 				}
 			}
 		    for (int i=0; i<alts.length; i++) {
-				G_Facts altsOuts = alts[i].addIns(ins);
+				Pairs altsOuts = alts[i].kill(ins);
+				altsOuts = alts[i].gen(ins);
 				if (altsOuts != null) {
-					outs = new Sets(new Set(altsOuts), outs);
+					outs = new Pairss(altsOuts, outs);
 				}
 				
 			}
-			return ins;
+			//outs = Pairs.meets(outs, ins, true);
+			return null;//ins;
 			}
 
 
+	public class Pair(public Tail t, public Atoms atoms) {
+	}
 	public class Block {
-		public Sets incoming_Sets;
-		public G_Facts avail_In_Set;
-		public G_Facts avail_Out_Set;
-		public G_Facts avail_Next_Out;
+		public Pairss nextIns;
+		public Pairs ins;
+		public Pairs outs;
+		public Pairs nextOuts;
 	}
 	
 
-	public boolean equal(G_Fact other)
-	case G_Fact {
+	public boolean equal(Pair other)
+	case Pair {
 			if (this.t.sameTail(other.t))
 			{
 				return true;
 			}
-			else {
-				System.out.println("this");
-				t.display();
-				System.out.println("NEQ");
-				other.t.display();
-				System.out.println("that");
-				return false;
-			}
+			return false;
 		}
-	public boolean merge(G_Fact other) 
-	case G_Fact {
+	public boolean merge(Pair other) 
+	case Pair {
 			if (this.equal(other)) {
 				Atoms current = other.atoms;
 				while (current != null)
@@ -210,19 +264,18 @@ package mil;
 			}
 			return false;
 		}
-	public G_Fact copy()
-	case G_Fact {
-		return new G_Fact(t, atoms.copy());
+	public Pair copy()
+	case Pair {
+		return new Pair(t, atoms.copy());
 		}
 	
 
 	macro List(Atom)
-	macro List(G_Fact)
-	public class Set(public G_Facts a){}
-	macro List(Set)
-	macro AddLength(G_Facts) 
+	macro List(Pair)
+	macro List(Pairs)
+	macro AddLength(Pairs) 
 	public void print(boolean inset, String id)
-	case G_Facts {
+	case Pairs {
 		if (inset) {
 			System.out.println("Inset for block " + id);
 		}
@@ -232,7 +285,7 @@ package mil;
 		print();
 	}
 	public void print()
-	case G_Facts {
+	case Pairs {
 		head.t.display();
 		System.out.print("->");
 		Atoms current = head.atoms;
@@ -248,40 +301,16 @@ package mil;
 	}
 		
 		
-	
-	public Var[] getFormals()
-	case Block{
-        return formals;
-    }
-	
-	public G_Facts copyWithSubst(Atom[] args, Var[] formals)
-	case G_Facts	{
-		G_Facts copy = new G_Facts(head.copyWithSubst(args, formals), null);
-		if (next != null)
-			copy.next = next.copyWithSubst(args, formals);	
-		return copy;		
-	}	
-	public G_Fact copyWithSubst(Atom[] args, Var[] formals)
-	case G_Fact	{
-		return  new G_Fact(t.copyWithSubst(args, formals), atoms);	
-			}
-	public Tail copyWithSubst(Atom[] args, Var[] formals)
-	case Tail {
-		AtomSubst a = null;
-		for (int i = 0; i < formals.length; i++) {
-			a = new AtomSubst(formals[i], args[i], a);
-		}
-		apply(a);
-		return this;
-	}	
+		
+		
 	
 			
 	
-	public G_Facts copy()
-	case G_Facts	{
+	public Pairs copy()
+	case Pairs	{
 		if (next != null)
-			return new G_Facts(head.copy(), next.copy());	
-		return new G_Facts(head.copy(), next);		
+			return new Pairs(head.copy(), next.copy());	
+		return new Pairs(head.copy(), next);		
 	}
 	public Atoms copy()
 	case Atoms	{
@@ -294,8 +323,8 @@ package mil;
 	case Atom { return null; }
 	case Var { return this; }
 
-	public G_Facts kill(Atom a)
-	case G_Facts {
+	public Pairs kill(Atom a)
+	case Pairs {
 		Var v = a.isVar();
 		if (v == null)
 			return this;
@@ -305,22 +334,22 @@ package mil;
 			return null;
 		}
 		if (next != null)
-			return new G_Facts(head, next.kill(v));
-		return new G_Facts(head, null);
+			return new Pairs(head, next.kill(v));
+		return new Pairs(head, null);
 	}
-	public G_Facts gen(G_Fact p)
-	case G_Facts {
+	public Pairs gen(Pair p)
+	case Pairs {
 		if (head.merge(p)) {
 			return this;
 		}
 		if (next != null) {
-			return new G_Facts(head, next.gen(p));
+			return new Pairs(head, next.gen(p));
 		}
-		return new G_Facts(p, null);
+		return new Pairs(p, null);
 	}
 
-	public static G_Facts meets(G_Facts toMeetA, G_Facts toMeetB, boolean union)
-	case G_Facts {
+	public static Pairs meets(Pairs toMeetA, Pairs toMeetB, boolean union)
+	case Pairs {
 		if (toMeetA == null) {
 			if (toMeetB == null || !union) {
 				return null;
@@ -334,14 +363,14 @@ package mil;
 			return toMeetA.copy();
 		}
 		// toMeetA != null && toMeetB != null
-		G_Facts met = null;
-		G_Facts unionMet = null;
-		G_Facts toMeetAHead = toMeetA = toMeetA.copy();
-		G_Facts toMeetBHead = toMeetB = toMeetB.copy();
+		Pairs met = null;
+
+		Pairs toMeetAHead = toMeetA = toMeetA.copy();
+		Pairs toMeetBHead = toMeetB = toMeetB.copy();
 		
 		
-		G_Facts previousA = null;
-		G_Facts previousB = null;
+		Pairs previousA = null;
+		Pairs previousB = null;
 
 		while (toMeetA != null)
 		{
@@ -351,9 +380,9 @@ package mil;
 			while (toMeetB != null)
 			{
 				if (toMeetA.head.equal(toMeetB.head)) {
-						G_Fact toInsert = toMeetA.head.copy();
+						Pair toInsert = toMeetA.head.copy();
 						toInsert.merge(toMeetB.head);
-						met = new G_Facts(toInsert, met);
+						met = new Pairs(toInsert, met);
 						found = true;
 						if (previousA == null) {
 							toMeetAHead = toMeetA.next;
@@ -375,6 +404,9 @@ package mil;
 				toMeetB = toMeetB.next;
 			}
 			if (!found) {
+				if (union) {
+					met = new Pairs(toMeetA.head.copy(), met);
+				}
 				previousA = toMeetA;
 			}
 			toMeetA = toMeetA.next;
@@ -382,15 +414,13 @@ package mil;
 
 		if (union) {
 			while (toMeetAHead != null) {
-				met = new G_Facts(toMeetAHead.head.copy(), met);
+				met = new Pairs(toMeetAHead.head.copy(), met);
 				toMeetAHead = toMeetAHead.next;
 			}
 			while (toMeetBHead != null) {
-				met = new G_Facts(toMeetBHead.head.copy(), met);
+				met = new Pairs(toMeetBHead.head.copy(), met);
 				toMeetBHead = toMeetBHead.next;
 			}
-			
-			
 		}
 		return met;
 	}
