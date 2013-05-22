@@ -373,15 +373,21 @@ return t.detectLoops(src, visited)
 
     public G_Facts outset(G_Facts ins) {
         G_Facts outs = null;
-        G_Fact d = new G_Fact(t, new Atoms(v, null));
+        G_Fact d = null;
+        if (t.isPure()) {
+                d = new G_Fact(t, new Atoms(v, null));
+        }
         if (ins == null) {
-                outs = new G_Facts(d, null);
+                if (d != null) {                        
+                        outs = new G_Facts(d, null);
+                }
         }
         else {
                 outs = t.addIns(ins);
                 outs = G_Facts.meets(outs, ins, true);
                 outs.kill(v);
-                outs.gen(d);
+                if (d != null)
+                        outs.gen(d);
         }
 if (c == null) {
         System.out.println("unlinked bind call found!?!");

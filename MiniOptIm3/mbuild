@@ -19,7 +19,7 @@
  	   optimize.sweet \
 	   MilGen.sweet \
 	   ../TailSets.sweet \
-	   ../dataflow.sweet \	   
+	   ../dataflow.sweet \
 	 -o.. )
 
 javac compiler/*.java mini/*.java mil/*.java

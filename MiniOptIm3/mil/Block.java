@@ -699,7 +699,7 @@ public class Block extends Defn {
     }
 
     public void setNextOuts() {
-        outs = nextOuts;
+        avail_Out_Set = avail_Next_Out;
         }
 
     public void computeInMeets() {
@@ -717,30 +717,30 @@ public class Block extends Defn {
                         if (incoming_Sets == null) {
                                 // only 1 caller to this block
                                 if (caller != null) {
-                                        ins = caller.copy();
+                                        avail_In_Set = caller.copy();
                                 }
                                 break;
                         }
                         else{   
                                 G_Facts nextCaller =  incoming_Sets.head.a;
-                                ins = G_Facts.meets(caller, nextCaller, mode);
+                                avail_In_Set = G_Facts.meets(caller, nextCaller, mode);
                         }
                 }
                 else {
-                        ins = G_Facts.meets(ins, caller, mode);
+                        avail_In_Set = G_Facts.meets(avail_In_Set, caller, mode);
                 }
         }
         incoming_Sets = null;
         }
 
-    public int dataflow() {
-        System.out.println("dataflow At block " + id);
+    public int Calculate_Avail_Expr() {
+        System.out.println("Calculate_Avail_Expr At block " + id);
         boolean union = true;
 
-        nextOuts = code.outset(ins);
-        int oldlen = G_Facts.length(outs);
-        if ((oldlen != G_Facts.length(nextOuts) )
-                || (oldlen != G_Facts.length(G_Facts.meets(nextOuts, outs, !union)))
+        avail_Next_Out = code.outset(avail_In_Set);
+        int oldlen = G_Facts.length(avail_Out_Set);
+        if ((oldlen != G_Facts.length(avail_Next_Out) )
+                || (oldlen != G_Facts.length(G_Facts.meets(avail_Next_Out, avail_Out_Set, !union)))
                 ){
                 return 1;
         }       
@@ -748,24 +748,24 @@ public class Block extends Defn {
         return 0;
         }
 
-    public void clearInsOuts() { incoming_Sets = null; ins = outs = null; }
+    public void clearInsOuts() { incoming_Sets = null; avail_In_Set = avail_Out_Set = null; }
 
     public void printInsOuts() {
-        if (ins != null) {
-        ins.print(true, id);
+        if (avail_In_Set != null) {
+        avail_In_Set.print(true, id);
         }
-        if (outs != null) {
-                outs.print(false, id);
+        if (avail_Out_Set != null) {
+                avail_Out_Set.print(false, id);
         }
 }
 
     public Sets incoming_Sets;
 
-    public G_Facts ins;
+    public G_Facts avail_In_Set;
 
-    public G_Facts outs;
+    public G_Facts avail_Out_Set;
 
-    public G_Facts nextOuts;
+    public G_Facts avail_Next_Out;
 
     public Var[] getFormals() {
         return formals;

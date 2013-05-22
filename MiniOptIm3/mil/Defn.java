@@ -273,7 +273,7 @@ public abstract class Defn {
 
     public void computeInMeets() {}
 
-    public int dataflow() { return 0;}
+    public int Calculate_Avail_Expr() { return 0;}
 
     public void clearInsOuts() {}
 

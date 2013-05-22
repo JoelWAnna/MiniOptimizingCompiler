@@ -103,8 +103,12 @@ package mil;
 	case Tail { return null; }
 	case TAlt {	 return bc.addIns(ins); }
 	case BlockCall {
-		//G_Facts renamed = ins.copy();//WithSubst(args, b.getFormals());
-		G_Facts renamed = ins.copyWithSubst(args, b.getFormals());
+	
+		//G_Facts renamed = ins.copy();
+		G_Facts renamed = ins;
+		if (ins != null) {
+			renamed = ins.copyWithSubst(args, b.getFormals());
+		}
 		b.incoming_Sets = new Sets(new Set(renamed), b.incoming_Sets);
 		return b.avail_Out_Set;
 	}
@@ -124,15 +128,22 @@ package mil;
 	case Code abstract;
 	case Bind {
 		G_Facts outs = null;
-		G_Fact d = new G_Fact(t, new Atoms(v, null));
+		G_Fact d = null;
+		if (t.isPure()) {
+			d = new G_Fact(t, new Atoms(v, null));
+		}
+
 		if (ins == null) {
-			outs = new G_Facts(d, null);
+			if (d != null) {			
+				outs = new G_Facts(d, null);
+			}
 		}
 		else {
 			outs = t.addIns(ins);
 			outs = G_Facts.meets(outs, ins, true);
 			outs.kill(v);
-			outs.gen(d);
+			if (d != null)
+				outs.gen(d);
 		}
         if (c == null) {
         	System.out.println("unlinked bind call found!?!");
@@ -172,226 +183,9 @@ package mil;
 	}
 	
 
-	public boolean equal(G_Fact other)
-	case G_Fact {
-			if (this.t.sameTail(other.t))
-			{
-				return true;
-			}
-			else {
-				System.out.println("this");
-				t.display();
-				System.out.println("NEQ");
-				other.t.display();
-				System.out.println("that");
-				return false;
-			}
-		}
-	public boolean merge(G_Fact other) 
-	case G_Fact {
-			if (this.equal(other)) {
-				Atoms current = other.atoms;
-				while (current != null)
-				{
-					boolean found = false;
-					Atoms old = atoms;
-					while (old != null) {
-						if (old.head.sameAtom(current.head)) {
-							found = true;
-							break;
-						}
-						old = old.next;
-					}
-				if (!found)
-					atoms = new Atoms(current.head, atoms);
-				current = current.next;
-				}
-				return true;
-			}
-			return false;
-		}
-	public G_Fact copy()
-	case G_Fact {
-		return new G_Fact(t, atoms.copy());
-		}
-	
-
-	macro List(Atom)
-	macro List(G_Fact)
-	public class Set(public G_Facts a){}
-	macro List(Set)
-	macro AddLength(G_Facts) 
-	public void print(boolean inset, String id)
-	case G_Facts {
-		if (inset) {
-			System.out.println("Inset for block " + id);
-		}
-		else {
-			System.out.println("Outset for block " + id);
-		}
-		print();
-	}
-	public void print()
-	case G_Facts {
-		head.t.display();
-		System.out.print("->");
-		Atoms current = head.atoms;
-		System.out.print(current.head.toString());
-		current = current.next;
-		while (current != null) {
-			System.out.print("," + current.head.toString());
-			current = current.next;
-			}
-		System.out.println("");
-		if (next != null)
-			next.print();
-	}
-		
 		
 	
 	public Var[] getFormals()
 	case Block{
         return formals;
     }
-	
-	public G_Facts copyWithSubst(Atom[] args, Var[] formals)
-	case G_Facts	{
-		G_Facts copy = new G_Facts(head.copyWithSubst(args, formals), null);
-		if (next != null)
-			copy.next = next.copyWithSubst(args, formals);	
-		return copy;		
-	}	
-	public G_Fact copyWithSubst(Atom[] args, Var[] formals)
-	case G_Fact	{
-		return  new G_Fact(t.copyWithSubst(args, formals), atoms);	
-			}
-	public Tail copyWithSubst(Atom[] args, Var[] formals)
-	case Tail {
-		AtomSubst a = null;
-		for (int i = 0; i < formals.length; i++) {
-			a = new AtomSubst(formals[i], args[i], a);
-		}
-		apply(a);
-		return this;
-	}	
-	
-			
-	
-	public G_Facts copy()
-	case G_Facts	{
-		if (next != null)
-			return new G_Facts(head.copy(), next.copy());	
-		return new G_Facts(head.copy(), next);		
-	}
-	public Atoms copy()
-	case Atoms	{
-		if (next != null)
-			return new Atoms(head, next.copy());
-		return new Atoms(head, next);
-	}
-
-	public Var isVar() 
-	case Atom { return null; }
-	case Var { return this; }
-
-	public G_Facts kill(Atom a)
-	case G_Facts {
-		Var v = a.isVar();
-		if (v == null)
-			return this;
-		if (head.t.contains(v)) {
-			if (next != null)
-				return next.kill(v);
-			return null;
-		}
-		if (next != null)
-			return new G_Facts(head, next.kill(v));
-		return new G_Facts(head, null);
-	}
-	public G_Facts gen(G_Fact p)
-	case G_Facts {
-		if (head.merge(p)) {
-			return this;
-		}
-		if (next != null) {
-			return new G_Facts(head, next.gen(p));
-		}
-		return new G_Facts(p, null);
-	}
-
-	public static G_Facts meets(G_Facts toMeetA, G_Facts toMeetB, boolean union)
-	case G_Facts {
-		if (toMeetA == null) {
-			if (toMeetB == null || !union) {
-				return null;
-			}
-			return toMeetB.copy();
-		}
-		if (toMeetB == null) {
-			if (toMeetA == null || !union) {
-				return null;
-			}
-			return toMeetA.copy();
-		}
-		// toMeetA != null && toMeetB != null
-		G_Facts met = null;
-		G_Facts unionMet = null;
-		G_Facts toMeetAHead = toMeetA = toMeetA.copy();
-		G_Facts toMeetBHead = toMeetB = toMeetB.copy();
-		
-		
-		G_Facts previousA = null;
-		G_Facts previousB = null;
-
-		while (toMeetA != null)
-		{
-			toMeetB = toMeetBHead;
-			previousB = null;
-			boolean found = false;
-			while (toMeetB != null)
-			{
-				if (toMeetA.head.equal(toMeetB.head)) {
-						G_Fact toInsert = toMeetA.head.copy();
-						toInsert.merge(toMeetB.head);
-						met = new G_Facts(toInsert, met);
-						found = true;
-						if (previousA == null) {
-							toMeetAHead = toMeetA.next;
-						}
-						else {
-							previousA.next = toMeetA.next;
-						}
-						if (previousB == null) {
-							toMeetBHead = toMeetB.next;
-						}
-						else {
-							previousB.next = toMeetB.next;
-						}
-						break;
-				}
-				else {
-					previousB = toMeetB;
-				}
-				toMeetB = toMeetB.next;
-			}
-			if (!found) {
-				previousA = toMeetA;
-			}
-			toMeetA = toMeetA.next;
-		}
-
-		if (union) {
-			while (toMeetAHead != null) {
-				met = new G_Facts(toMeetAHead.head.copy(), met);
-				toMeetAHead = toMeetAHead.next;
-			}
-			while (toMeetBHead != null) {
-				met = new G_Facts(toMeetBHead.head.copy(), met);
-				toMeetBHead = toMeetBHead.next;
-			}
-			
-			
-		}
-		return met;
-	}
- 

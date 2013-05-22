@@ -253,14 +253,20 @@ public abstract class Tail {
         /* do nothing */
     }
 
-    public G_Facts addIns(G_Facts ins) { return null; }
-
     public Tail copyWithSubst(Atom[] args, Var[] formals) {
         AtomSubst a = null;
         for (int i = 0; i < formals.length; i++) {
                 a = new AtomSubst(formals[i], args[i], a);
         }
-        apply(a);
-        return this;
+        Tail foo = apply(a);
+        System.out.println("old");
+        displayln();
+        System.out.println("new");
+        foo.displayln();
+        System.out.println("wtf");
+        
+        return foo;
 }
+
+    public G_Facts addIns(G_Facts ins) { return null; }
 }

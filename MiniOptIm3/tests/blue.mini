@@ -29,7 +29,7 @@ int g(int b, int c) {
 
     print 2;
   }
-	foo(b,c);
+  foo(b,c);
   print b*c;
   print b*c;
   print b*c;
@@ -48,6 +48,6 @@ void foo(int a, int z)
 }
 void mini_main() {
   print f(1,2);
-  
+  print g(1,2);
   
 }
