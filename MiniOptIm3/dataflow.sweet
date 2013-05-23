@@ -82,8 +82,9 @@ package mil;
 	case Block {
 		System.out.println("Calculate_Avail_Expr At block " + id);
 		boolean union = true;
-
+		printInsOuts();
 		avail_Next_Out = code.outset(avail_In_Set);
+		printInsOuts();
 		int oldlen = G_Facts.length(avail_Out_Set);
 		if ((oldlen != G_Facts.length(avail_Next_Out) )
 			|| (oldlen != G_Facts.length(G_Facts.meets(avail_Next_Out, avail_Out_Set, !union)))
@@ -107,7 +108,7 @@ package mil;
 		//G_Facts renamed = ins.copy();
 		G_Facts renamed = ins;
 		if (ins != null) {
-			renamed = ins.copyWithSubst(args, b.getFormals());
+			renamed = ins.copy();//WithSubst(args, b.getFormals());
 		}
 		b.incoming_Sets = new Sets(new Set(renamed), b.incoming_Sets);
 		return b.avail_Out_Set;
@@ -129,9 +130,9 @@ package mil;
 	case Bind {
 		G_Facts outs = null;
 		G_Fact d = null;
-		if (t.isPure()) {
+		//if (t.isPure()) {
 			d = new G_Fact(t, new Atoms(v, null));
-		}
+		//}
 
 		if (ins == null) {
 			if (d != null) {			
@@ -152,11 +153,14 @@ package mil;
 		return c.outset(outs);
 		}
 	case Done { 
-			G_Facts outs = t.addIns(ins);			
-			//if (ins != null) ins.print(false, "blaJ");
-			//if (outs != null)  outs.print(false, "blaJ");
-			return G_Facts.meets(outs, ins, true); }
+			G_Facts outs = t.addIns(ins);
+			//if (t.isPure()) {
+				return G_Facts.meets(outs, ins, true);
+			///}
+			//return ins;
+		}
 	case Match {
+			// TODO? check purity
 			Sets outs = null;
 			if (def != null) {
 				G_Facts defOuts = def.addIns(ins);
