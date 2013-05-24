@@ -371,28 +371,67 @@ return t.detectLoops(src, visited)
         c.fixTrailingBlockCalls();
     }
 
-    public G_Facts outset(G_Facts ins) {
+    public G_Facts outset(G_Facts ins, String id) {
+        boolean DEBUGGING = debug.Log.enabled();
+        debug.Log.println("    BIND ENTRY: block: " + id);
+        if (DEBUGGING) {
+                t.displayln();
+                if (ins != null) ins.print();
+        }
+        
         G_Facts outs = null;
         G_Fact d = null;
         if (t.isPure()) {
+                debug.Log.println("t is pure:");
                 d = new G_Fact(t, new Atoms(v, null));
         }
+
         if (ins == null) {
-                if (d != null) {                        
+                if (d != null) {        
                         outs = new G_Facts(d, null);
+                        if (DEBUGGING) {
+                                outs.print();
+                        }
                 }
         }
         else {
+                debug.Log.println("    BIND: Ins not null");
+                if (DEBUGGING) {
+                        ins.print();
+                }
                 outs = t.addIns(ins);
                 outs = G_Facts.meets(outs, ins, true);
-                outs.kill(v);
-                if (d != null)
-                        outs.gen(d);
+                debug.Log.println("    BIND: outs before");
+                if (DEBUGGING) {
+                        if (outs != null) outs.print();
+                }
+                outs  = G_Facts.meets(outs, ins, true);
+                debug.Log.println("    BIND: outs after");
+                if (DEBUGGING) {
+                        outs.print();
+                }
+                debug.Log.println("    BIND: outs before kill");
+                if (DEBUGGING) {
+                        outs.print();
+                }
+                outs = outs.kill(v);
+                debug.Log.println("    BIND: outs after kill");
+                if (DEBUGGING) {
+                        outs.print();
+                }
+                if (d != null) {
+                        outs = outs.gen(d);
+                        debug.Log.println("    BIND: outs after gen");
+                        if (DEBUGGING) {
+                                outs.print();
+                        }
+                }
         }
 if (c == null) {
-        System.out.println("unlinked bind call found!?!");
+        debug.Log.println("unlinked bind call found!?!");
         return outs;
 }
-        return c.outset(outs);
+        debug.Log.println("    BIND EXIT: block: " + id);
+        return c.outset(outs, id);
         }
 }

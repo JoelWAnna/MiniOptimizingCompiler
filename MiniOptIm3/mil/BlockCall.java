@@ -266,7 +266,7 @@ public class BlockCall extends Call {
                 //G_Facts renamed = ins.copy();
                 G_Facts renamed = ins;
                 if (ins != null) {
-                        renamed = ins.copyWithSubst(args, b.getFormals());
+                        renamed = ins.copy();//WithSubst(args, b.getFormals());
                 }
                 b.incoming_Sets = new Sets(new Set(renamed), b.incoming_Sets);
                 return b.avail_Out_Set;

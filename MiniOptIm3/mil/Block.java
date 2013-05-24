@@ -703,7 +703,7 @@ public class Block extends Defn {
         }
 
     public void computeInMeets() {
-        System.out.println("computeInMeets At block " + id);
+        debug.Log.println("ComputeInMeets At block " + id);
         boolean firstRound = true;
         boolean union = true;
         boolean mode = !union; // The interpretation of !union is intersection
@@ -734,10 +734,11 @@ public class Block extends Defn {
         }
 
     public int Calculate_Avail_Expr() {
-        System.out.println("Calculate_Avail_Expr At block " + id);
+        debug.Log.println("Calculate_Avail_Expr At block " + id);
         boolean union = true;
-
-        avail_Next_Out = code.outset(avail_In_Set);
+        //printInsOuts();
+        avail_Next_Out = code.outset(avail_In_Set, id);
+        //printInsOuts();
         int oldlen = G_Facts.length(avail_Out_Set);
         if ((oldlen != G_Facts.length(avail_Next_Out) )
                 || (oldlen != G_Facts.length(G_Facts.meets(avail_Next_Out, avail_Out_Set, !union)))

@@ -93,6 +93,39 @@ public class MILProgram {
     /** Run the optimizer on this program.
      */
     public void optimize() {
+        shake();
+        cfunSimplify();
+  
+        int totalCount = 0;
+        count          = 1;
+        for (int i=0; i<MAX_OPTIMIZE_PASSES && count>0; i++) {
+            debug.Log.println("-------------------------");
+  //!System.out.println("==================================================");
+  //!System.out.println("Step " + i);
+  //!System.out.println("==================================================");
+  //!display();
+  //!System.out.println("==================================================");
+            count = 0;
+            inlining();
+            debug.Log.println("Inlining pass finished, running shake.");
+            shake();
+            liftAllocators();  // TODO: Is this the right position for liftAllocators?
+            eliminateUnusedArgs();
+            flow();
+  //!       collapse();
+            debug.Log.println("Flow pass finished, running shake.");
+            shake();
+            debug.Log.println("Steps performed = " + count);
+            totalCount += count;
+        }
+        count = 0;
+        collapse(); // TODO: move inside loop?
+        shake();    // restore SCCs
+        totalCount += count;
+        debug.Log.println("TOTAL steps performed = " + totalCount);
+    
+        debug.Log.off();
+        //debug.Log.on();
         dataflow();
         
 }
@@ -322,8 +355,10 @@ public class MILProgram {
                   }
                 }
         */
-
+        int mycount = 0;
         for (int i = 1; i != 0;) {
+        mycount++;
+        i=0;
                 for (DefnSCCs dsccs = sccs; dsccs!=null; dsccs=dsccs.next) {
                         for (Defns ds=dsccs.head.getBindings(); ds!=null; ds=ds.next) {
                                 ds.head.computeInMeets();
@@ -331,7 +366,7 @@ public class MILProgram {
                 }
                 for (DefnSCCs dsccs = sccs; dsccs!=null; dsccs=dsccs.next) {
                   for (Defns ds=dsccs.head.getBindings(); ds!=null; ds=ds.next) {
-                        i = ds.head.Calculate_Avail_Expr();
+                        i += ds.head.Calculate_Avail_Expr();
                   }
                 }
                 for (DefnSCCs dsccs = sccs; dsccs!=null; dsccs=dsccs.next) {
@@ -339,12 +374,16 @@ public class MILProgram {
                         ds.head.setNextOuts();
                   }
                 }
+                debug.Log.println("******************************************************Loop " +  mycount + " " + i + " changes");
         }
 
+        System.out.println("---Available Expressions-----------------------------------");
         for (DefnSCCs dsccs = sccs; dsccs!=null; dsccs=dsccs.next) {
                 for (Defns ds=dsccs.head.getBindings(); ds!=null; ds=ds.next) {
                         ds.head.printInsOuts();
                 }
         }
+        System.out.println("--------------------------------------");
+        
 }
 }

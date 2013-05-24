@@ -431,7 +431,8 @@ public class Match extends Code {
         }
     }
 
-    public G_Facts outset(G_Facts ins) {
+    public G_Facts outset(G_Facts ins, String id) {
+        // TODO? check purity
         Sets outs = null;
         if (def != null) {
                 G_Facts defOuts = def.addIns(ins);

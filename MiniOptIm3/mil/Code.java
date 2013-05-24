@@ -267,5 +267,5 @@ public abstract class Code {
      */
     abstract void fixTrailingBlockCalls();
 
-    public abstract G_Facts outset(G_Facts ins);
+    public abstract G_Facts outset(G_Facts ins, String id);
 }

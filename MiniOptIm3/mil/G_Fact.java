@@ -19,11 +19,11 @@ public class G_Fact {
                 return true;
         }
         else {
-        //      System.out.println("this");
-        //      t.display();
-        //      System.out.print(" NEQ ");
-        //      other.t.display();
-        //      System.out.println("\nthat");
+                System.out.println("this");
+                t.display();
+                System.out.print(" NEQ ");
+                other.t.display();
+                System.out.println("\nthat");
                 return false;
         }
 }

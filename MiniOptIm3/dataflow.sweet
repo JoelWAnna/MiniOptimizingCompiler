@@ -1,7 +1,12 @@
-
+package debug;
+	public static boolean enabled()
+	case Log { return out != null; } 
 package mil;
+
     public void optimize()
-    case MILProgram !  {
+    case MILProgram >  {
+		debug.Log.off();
+		//debug.Log.on();
 		dataflow();
 		
     }
@@ -14,8 +19,10 @@ package mil;
 			  }
 			}
 		*/
-
+		int mycount = 0;
 		for (int i = 1; i != 0;) {
+		mycount++;
+		i=0;
 			for (DefnSCCs dsccs = sccs; dsccs!=null; dsccs=dsccs.next) {
 				for (Defns ds=dsccs.head.getBindings(); ds!=null; ds=ds.next) {
 					ds.head.computeInMeets();
@@ -23,7 +30,7 @@ package mil;
 			}
 			for (DefnSCCs dsccs = sccs; dsccs!=null; dsccs=dsccs.next) {
 			  for (Defns ds=dsccs.head.getBindings(); ds!=null; ds=ds.next) {
-				i = ds.head.Calculate_Avail_Expr();
+				i += ds.head.Calculate_Avail_Expr();
 			  }
 			}
 			for (DefnSCCs dsccs = sccs; dsccs!=null; dsccs=dsccs.next) {
@@ -31,13 +38,17 @@ package mil;
 				ds.head.setNextOuts();
 			  }
 			}
+			debug.Log.println("******************************************************Loop " +  mycount + " " + i + " changes");
 		}
 
+		System.out.println("---Available Expressions-----------------------------------");
 		for (DefnSCCs dsccs = sccs; dsccs!=null; dsccs=dsccs.next) {
 			for (Defns ds=dsccs.head.getBindings(); ds!=null; ds=ds.next) {
 				ds.head.printInsOuts();
 			}
 		}
+		System.out.println("--------------------------------------");
+		
 	}
 		
 	public void setNextOuts()	
@@ -48,7 +59,7 @@ package mil;
 	public void computeInMeets()
 	case Defn {}
 	case Block {
-		System.out.println("computeInMeets At block " + id);
+		debug.Log.println("ComputeInMeets At block " + id);
 		boolean firstRound = true;
 		boolean union = true;
 		boolean mode = !union; // The interpretation of !union is intersection
@@ -80,11 +91,11 @@ package mil;
 
 	public int Calculate_Avail_Expr()
 	case Block {
-		System.out.println("Calculate_Avail_Expr At block " + id);
+		debug.Log.println("Calculate_Avail_Expr At block " + id);
 		boolean union = true;
-		printInsOuts();
-		avail_Next_Out = code.outset(avail_In_Set);
-		printInsOuts();
+		//printInsOuts();
+		avail_Next_Out = code.outset(avail_In_Set, id);
+		//printInsOuts();
 		int oldlen = G_Facts.length(avail_Out_Set);
 		if ((oldlen != G_Facts.length(avail_Next_Out) )
 			|| (oldlen != G_Facts.length(G_Facts.meets(avail_Next_Out, avail_Out_Set, !union)))
@@ -125,36 +136,87 @@ package mil;
 				avail_Out_Set.print(false, id);
 			}
 		}
-	public G_Facts outset(G_Facts ins)
+
+	
+	public G_Facts outset(G_Facts ins, String id)
 	case Code abstract;
 	case Bind {
+		boolean DEBUGGING = debug.Log.enabled();
+		debug.Log.println("    BIND ENTRY: block: " + id);
+		if (DEBUGGING) {
+			t.displayln();
+			if (ins != null) ins.print();
+		}
+		
 		G_Facts outs = null;
 		G_Fact d = null;
-		//if (t.isPure()) {
+		if (t.isPure()) {
+			debug.Log.println("t is pure:");
 			d = new G_Fact(t, new Atoms(v, null));
-		//}
+		}
 
 		if (ins == null) {
-			if (d != null) {			
+			if (d != null) {	
 				outs = new G_Facts(d, null);
+				if (DEBUGGING) {
+					outs.print();
+				}
 			}
 		}
 		else {
+			debug.Log.println("    BIND: Ins not null");
+			if (DEBUGGING) {
+				ins.print();
+			}
 			outs = t.addIns(ins);
 			outs = G_Facts.meets(outs, ins, true);
-			outs.kill(v);
-			if (d != null)
-				outs.gen(d);
+			debug.Log.println("    BIND: outs before");
+			if (DEBUGGING) {
+				if (outs != null) outs.print();
+			}
+			outs  = G_Facts.meets(outs, ins, true);
+			debug.Log.println("    BIND: outs after");
+			if (DEBUGGING) {
+				outs.print();
+			}
+			debug.Log.println("    BIND: outs before kill");
+			if (DEBUGGING) {
+				outs.print();
+			}
+			outs = outs.kill(v);
+			debug.Log.println("    BIND: outs after kill");
+			if (DEBUGGING) {
+				outs.print();
+			}
+			if (d != null) {
+				outs = outs.gen(d);
+				debug.Log.println("    BIND: outs after gen");
+				if (DEBUGGING) {
+					outs.print();
+				}
+			}
 		}
         if (c == null) {
-        	System.out.println("unlinked bind call found!?!");
+        	debug.Log.println("unlinked bind call found!?!");
         	return outs;
         }
-		return c.outset(outs);
+		debug.Log.println("    BIND EXIT: block: " + id);
+		return c.outset(outs, id);
 		}
 	case Done { 
+			boolean DEBUGGING = debug.Log.enabled();	
+		debug.Log.println("    DONE ENTRY: block: " + id);
+			if (DEBUGGING) {
+				t.display();
+				if (ins != null) ins.print();
+			}
 			G_Facts outs = t.addIns(ins);
+			if (DEBUGGING) {
+				if (outs != null) outs.print();
+			}
 			//if (t.isPure()) {
+			
+				debug.Log.println("    DONE EXIT: block: " + id);
 				return G_Facts.meets(outs, ins, true);
 			///}
 			//return ins;

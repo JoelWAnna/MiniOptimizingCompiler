@@ -32,4 +32,6 @@ public class Log {
           out.println();
         }
       }
+
+    public static boolean enabled() { return out != null; }
 }
