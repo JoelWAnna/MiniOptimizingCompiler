@@ -707,7 +707,7 @@ public class Block extends Defn {
         boolean firstRound = true;
         boolean union = true;
         boolean mode = !union; // The interpretation of !union is intersection
-        anticipated_In_set = G_Facts.meets(incomingOut_Sets, mode);
+        anticipated_Out_set = G_Facts.meets(incomingOut_Sets, mode);
         incomingOut_Sets = null;
 }
 
@@ -717,10 +717,13 @@ public class Block extends Defn {
         //printInsOuts();
         anticipated_Next_Ins = code.inset(anticipated_Out_set, id);
         //printInsOuts();
+        G_Facts merged = G_Facts.meets(anticipated_Next_Ins, anticipated_In_set, !union);
         int oldlen = G_Facts.length(anticipated_In_set);
         if ((oldlen != G_Facts.length(anticipated_Next_Ins) )
-                || (oldlen != G_Facts.length(G_Facts.meets(anticipated_Next_Ins, anticipated_In_set, !union)))
+                || (oldlen != G_Facts.length(merged))
                 ){
+                debug.Log.println("oldlen: " + oldlen + " newLength:" + G_Facts.length(anticipated_Next_Ins) + 
+                " mergedlen:" + G_Facts.length(merged));
                 return 1;
         }       
 
