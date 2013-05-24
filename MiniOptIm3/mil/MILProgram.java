@@ -125,7 +125,7 @@ public class MILProgram {
         debug.Log.println("TOTAL steps performed = " + totalCount);
     
         debug.Log.off();
-        //debug.Log.on();
+        debug.Log.on();
         anticipatedExpr();
         
 
@@ -380,6 +380,14 @@ public class MILProgram {
                   }
                 }
                 debug.Log.println("******************************************************Loop " +  mycount + " " + i + " changes");
+                                                        System.out.println("---Anticipated Expressions-----------------------------------");
+                        for (DefnSCCs dsccs = sccs; dsccs!=null; dsccs=dsccs.next) {
+                                for (Defns ds=dsccs.head.getBindings(); ds!=null; ds=ds.next) {
+                                        ds.head.printAnticipatedInsOuts();
+                                }
+                        }
+                        debug.Log.println("******************************************************done:");
+                
         }
 
         System.out.println("---Anticipated Expressions-----------------------------------");

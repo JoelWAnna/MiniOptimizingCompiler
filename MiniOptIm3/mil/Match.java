@@ -447,6 +447,9 @@ public class Match extends Code {
                 }
                 
         }
+        boolean union = false;
+        G_Facts met = G_Facts.meets(ins, !union);
+        outs = G_Facts.meets(met, outs, !union);
         return outs;
         }
 

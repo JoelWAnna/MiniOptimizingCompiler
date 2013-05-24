@@ -707,31 +707,9 @@ public class Block extends Defn {
         boolean firstRound = true;
         boolean union = true;
         boolean mode = !union; // The interpretation of !union is intersection
-        Sets insIter;
-        for (insIter = incomingOut_Sets; insIter != null; insIter = insIter.next) {
-                G_Facts caller =  insIter.head.a;
-                
-                if (firstRound) {
-                        firstRound = false;
-                        incomingOut_Sets = incomingOut_Sets.next;
-                        if (incomingOut_Sets == null) {
-                                // only 1 caller to this block
-                                if (caller != null) {
-                                        anticipated_Out_set = caller.copy();
-                                }
-                                break;
-                        }
-                        else{   
-                                G_Facts nextCaller =  incomingOut_Sets.head.a;
-                                anticipated_Out_set = G_Facts.meets(caller, nextCaller, mode);
-                        }
-                }
-                else {
-                        anticipated_Out_set = G_Facts.meets(anticipated_Out_set, caller, mode);
-                }
-        }
+        anticipated_In_set = G_Facts.meets(incomingOut_Sets, mode);
         incomingOut_Sets = null;
-        }
+}
 
     public int Calculate_Anticipated_Expr() {
         debug.Log.println("Calculate_Anticipated_Expr At block " + id);
@@ -753,10 +731,10 @@ public class Block extends Defn {
 
     public void printAnticipatedInsOuts() {
         if (anticipated_Out_set != null) {
-        anticipated_Out_set.print(true, id);
+        anticipated_Out_set.print(false, id);
         }
         if (anticipated_In_set != null) {
-                anticipated_In_set.print(false, id);
+                anticipated_In_set.print(true, id);
         }
 }
 
@@ -777,31 +755,9 @@ public class Block extends Defn {
         boolean firstRound = true;
         boolean union = true;
         boolean mode = !union; // The interpretation of !union is intersection
-        Sets insIter;
-        for (insIter = incoming_Sets; insIter != null; insIter = insIter.next) {
-                G_Facts caller =  insIter.head.a;
-                
-                if (firstRound) {
-                        firstRound = false;
-                        incoming_Sets = incoming_Sets.next;
-                        if (incoming_Sets == null) {
-                                // only 1 caller to this block
-                                if (caller != null) {
-                                        avail_In_Set = caller.copy();
-                                }
-                                break;
-                        }
-                        else{   
-                                G_Facts nextCaller =  incoming_Sets.head.a;
-                                avail_In_Set = G_Facts.meets(caller, nextCaller, mode);
-                        }
-                }
-                else {
-                        avail_In_Set = G_Facts.meets(avail_In_Set, caller, mode);
-                }
-        }
+        avail_In_Set = G_Facts.meets(incoming_Sets, mode);
         incoming_Sets = null;
-        }
+}
 
     public int Calculate_Avail_Expr() {
         debug.Log.println("Calculate_Avail_Expr At block " + id);

@@ -86,6 +86,36 @@ public class G_Facts {
         return new G_Facts(p, null);
 }
 
+    public static G_Facts meets(Sets toMeet, boolean mode) {
+        G_Facts met = null;
+        boolean firstRound = true;
+        // The interpretation of !mode is intersection
+        Sets setsIter;
+        for (setsIter = toMeet; setsIter != null; setsIter = setsIter.next) {
+                G_Facts setA =  setsIter.head.a;
+                
+                if (firstRound) {
+                        firstRound = false;
+                        toMeet = toMeet.next;
+                        if (toMeet == null) {
+                                // only 1 set
+                                if (setA != null) {
+                                        met = setA.copy();
+                                }
+                                break;
+                        }
+                        else{   
+                                G_Facts setB =  toMeet.head.a;
+                                met = G_Facts.meets(setA, setB, mode);
+                        }
+                }
+                else {
+                        met = G_Facts.meets(met, setA, mode);
+                }
+        }
+        return met;
+}
+
     public static G_Facts meets(G_Facts toMeetA, G_Facts toMeetB, boolean union) {
         if (toMeetA == null) {
                 if (toMeetB == null || !union) {

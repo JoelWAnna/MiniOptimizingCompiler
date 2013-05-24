@@ -3,7 +3,7 @@ package mil;
     public void optimize()
     case MILProgram >  {
 		debug.Log.off();
-		//debug.Log.on();
+		debug.Log.on();
 		anticipatedExpr();
 		
     }
@@ -36,6 +36,14 @@ package mil;
 			  }
 			}
 			debug.Log.println("******************************************************Loop " +  mycount + " " + i + " changes");
+								System.out.println("---Anticipated Expressions-----------------------------------");
+				for (DefnSCCs dsccs = sccs; dsccs!=null; dsccs=dsccs.next) {
+					for (Defns ds=dsccs.head.getBindings(); ds!=null; ds=ds.next) {
+						ds.head.printAnticipatedInsOuts();
+					}
+				}
+				debug.Log.println("******************************************************done:");
+			
 		}
 
 		System.out.println("---Anticipated Expressions-----------------------------------");
@@ -57,34 +65,12 @@ package mil;
 	public void computeAnticipatedInMeets()
 	case Defn {}
 	case Block {
-		debug.Log.println("computeAnticipatedInMeets At block " + id);
-		boolean firstRound = true;
-		boolean union = true;
-		boolean mode = !union; // The interpretation of !union is intersection
-		Sets insIter;
-		for (insIter = incomingOut_Sets; insIter != null; insIter = insIter.next) {
-			G_Facts caller =  insIter.head.a;
-			
-			if (firstRound) {
-				firstRound = false;
-				incomingOut_Sets = incomingOut_Sets.next;
-				if (incomingOut_Sets == null) {
-					// only 1 caller to this block
-					if (caller != null) {
-						anticipated_Out_set = caller.copy();
-					}
-					break;
-				}
-				else{	
-					G_Facts nextCaller =  incomingOut_Sets.head.a;
-					anticipated_Out_set = G_Facts.meets(caller, nextCaller, mode);
-				}
-			}
-			else {
-				anticipated_Out_set = G_Facts.meets(anticipated_Out_set, caller, mode);
-			}
-		}
-		incomingOut_Sets = null;
+			debug.Log.println("computeAnticipatedInMeets At block " + id);
+			boolean firstRound = true;
+			boolean union = true;
+			boolean mode = !union; // The interpretation of !union is intersection
+			anticipated_In_set = G_Facts.meets(incomingOut_Sets, mode);
+			incomingOut_Sets = null;
 		}
 
 	public int Calculate_Anticipated_Expr()
@@ -128,10 +114,10 @@ package mil;
 	case Defn {}
 	case Block {
 			if (anticipated_Out_set != null) {
-			anticipated_Out_set.print(true, id);
+			anticipated_Out_set.print(false, id);
 			}
 			if (anticipated_In_set != null) {
-				anticipated_In_set.print(false, id);
+				anticipated_In_set.print(true, id);
 			}
 		}
 
@@ -237,6 +223,9 @@ package mil;
 				}
 				
 			}
+			boolean union = false;
+			G_Facts met = G_Facts.meets(ins, !union);
+			outs = G_Facts.meets(met, outs, !union);
 			return outs;
 			}
 
