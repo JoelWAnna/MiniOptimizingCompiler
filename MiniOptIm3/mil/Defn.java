@@ -269,6 +269,16 @@ public abstract class Defn {
         /* do nothing */
     }
 
+    public void setNextAnticipatedIns() {}
+
+    public void computeAnticipatedInMeets() {}
+
+    public int Calculate_Anticipated_Expr() { return 0;}
+
+    public void clearAnticipatedInsOuts() {}
+
+    public void printAnticipatedInsOuts() {}
+
     public void setNextOuts() {}
 
     public void computeInMeets() {}

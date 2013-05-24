@@ -431,6 +431,25 @@ public class Match extends Code {
         }
     }
 
+    public G_Facts inset(G_Facts outs, String id) {
+        // TODO? check purity
+        Sets ins = null;
+        if (def != null) {
+                G_Facts defIns = def.addOuts(outs);
+                if (defIns != null) {
+                        ins = new Sets(new Set(defIns), ins);
+                }
+        }
+    for (int i=0; i<alts.length; i++) {
+                G_Facts altsIns = alts[i].addOuts(outs);
+                if (altsIns != null) {
+                        ins = new Sets(new Set(altsIns), ins);
+                }
+                
+        }
+        return outs;
+        }
+
     public G_Facts outset(G_Facts ins, String id) {
         // TODO? check purity
         Sets outs = null;

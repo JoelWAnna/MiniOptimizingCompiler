@@ -261,6 +261,17 @@ public class BlockCall extends Call {
         // else { debug.Internal.error("tail block call with non null arguments"); }
     }
 
+    public G_Facts addOuts(G_Facts outs) {
+        
+                //G_Facts renamed = outs.copy();
+                G_Facts renamed = outs;
+                if (outs != null) {
+                        renamed = outs.copy();//WithSubst(args, b.getFormals());
+                }
+                b.incomingOut_Sets = new Sets(new Set(renamed), b.incomingOut_Sets);
+                return b.anticipated_In_set;
+        }
+
     public G_Facts addIns(G_Facts ins) {
         
                 //G_Facts renamed = ins.copy();

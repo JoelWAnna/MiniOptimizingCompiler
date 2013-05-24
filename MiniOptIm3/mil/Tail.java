@@ -268,5 +268,7 @@ public abstract class Tail {
         return foo;
 }
 
+    public G_Facts addOuts(G_Facts outs) { return null; }
+
     public G_Facts addIns(G_Facts ins) { return null; }
 }

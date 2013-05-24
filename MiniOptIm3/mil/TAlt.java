@@ -231,5 +231,7 @@ public class TAlt {
         bc.fixTrailingBlockCalls();
     }
 
+    public G_Facts addOuts(G_Facts outs) {      return bc.addOuts(outs); }
+
     public G_Facts addIns(G_Facts ins) {      return bc.addIns(ins); }
 }

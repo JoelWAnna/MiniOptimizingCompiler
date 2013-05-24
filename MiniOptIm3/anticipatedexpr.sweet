@@ -1,0 +1,250 @@
+package mil;
+
+    public void optimize()
+    case MILProgram >  {
+		debug.Log.off();
+		//debug.Log.on();
+		anticipatedExpr();
+		
+    }
+	void anticipatedExpr()
+	case MILProgram {
+		/*
+			for (DefnSCCs dsccs = sccs; dsccs!=null; dsccs=dsccs.next) {
+			  for (Defns ds=dsccs.head.getBindings(); ds!=null; ds=ds.next) {
+				ds.head.clearAnticipatedInsOuts();
+			  }
+			}
+		*/
+		int mycount = 0;
+		for (int i = 1; i != 0;) {
+		mycount++;
+		i=0;
+			for (DefnSCCs dsccs = sccs; dsccs!=null; dsccs=dsccs.next) {
+				for (Defns ds=dsccs.head.getBindings(); ds!=null; ds=ds.next) {
+					ds.head.computeAnticipatedInMeets();
+				}
+			}
+			for (DefnSCCs dsccs = sccs; dsccs!=null; dsccs=dsccs.next) {
+			  for (Defns ds=dsccs.head.getBindings(); ds!=null; ds=ds.next) {
+				i += ds.head.Calculate_Anticipated_Expr();
+			  }
+			}
+			for (DefnSCCs dsccs = sccs; dsccs!=null; dsccs=dsccs.next) {
+			  for (Defns ds=dsccs.head.getBindings(); ds!=null; ds=ds.next) {
+				ds.head.setNextAnticipatedIns();
+			  }
+			}
+			debug.Log.println("******************************************************Loop " +  mycount + " " + i + " changes");
+		}
+
+		System.out.println("---Anticipated Expressions-----------------------------------");
+		for (DefnSCCs dsccs = sccs; dsccs!=null; dsccs=dsccs.next) {
+			for (Defns ds=dsccs.head.getBindings(); ds!=null; ds=ds.next) {
+				ds.head.printAnticipatedInsOuts();
+			}
+		}
+		System.out.println("--------------------------------------");
+		
+	}
+		
+	public void setNextAnticipatedIns()	
+	case Defn {}
+	case Block {
+		anticipated_In_set = anticipated_Next_Ins;
+		}
+
+	public void computeAnticipatedInMeets()
+	case Defn {}
+	case Block {
+		debug.Log.println("computeAnticipatedInMeets At block " + id);
+		boolean firstRound = true;
+		boolean union = true;
+		boolean mode = !union; // The interpretation of !union is intersection
+		Sets insIter;
+		for (insIter = incomingOut_Sets; insIter != null; insIter = insIter.next) {
+			G_Facts caller =  insIter.head.a;
+			
+			if (firstRound) {
+				firstRound = false;
+				incomingOut_Sets = incomingOut_Sets.next;
+				if (incomingOut_Sets == null) {
+					// only 1 caller to this block
+					if (caller != null) {
+						anticipated_Out_set = caller.copy();
+					}
+					break;
+				}
+				else{	
+					G_Facts nextCaller =  incomingOut_Sets.head.a;
+					anticipated_Out_set = G_Facts.meets(caller, nextCaller, mode);
+				}
+			}
+			else {
+				anticipated_Out_set = G_Facts.meets(anticipated_Out_set, caller, mode);
+			}
+		}
+		incomingOut_Sets = null;
+		}
+
+	public int Calculate_Anticipated_Expr()
+	case Block {
+		debug.Log.println("Calculate_Anticipated_Expr At block " + id);
+		boolean union = true;
+		//printInsOuts();
+		anticipated_Next_Ins = code.inset(anticipated_Out_set, id);
+		//printInsOuts();
+		int oldlen = G_Facts.length(anticipated_In_set);
+		if ((oldlen != G_Facts.length(anticipated_Next_Ins) )
+			|| (oldlen != G_Facts.length(G_Facts.meets(anticipated_Next_Ins, anticipated_In_set, !union)))
+			){
+			return 1;
+		}	
+
+		return 0;
+		}
+	case Defn { return 0;}
+
+	public void clearAnticipatedInsOuts()
+	case Defn {}
+	case Block { incomingOut_Sets = null; anticipated_Out_set = anticipated_In_set = null; }
+	
+	public G_Facts addOuts(G_Facts outs) 
+	case Tail { return null; }
+	case TAlt {	 return bc.addOuts(outs); }
+	case BlockCall {
+	
+		//G_Facts renamed = outs.copy();
+		G_Facts renamed = outs;
+		if (outs != null) {
+			renamed = outs.copy();//WithSubst(args, b.getFormals());
+		}
+		b.incomingOut_Sets = new Sets(new Set(renamed), b.incomingOut_Sets);
+		return b.anticipated_In_set;
+	}
+	
+
+	public void printAnticipatedInsOuts()
+	case Defn {}
+	case Block {
+			if (anticipated_Out_set != null) {
+			anticipated_Out_set.print(true, id);
+			}
+			if (anticipated_In_set != null) {
+				anticipated_In_set.print(false, id);
+			}
+		}
+
+	
+	public G_Facts inset(G_Facts outs, String id)
+	case Code abstract;
+	case Bind {
+		G_Facts ins = null;
+		
+        if (c == null) {
+        	debug.Log.println("unlinked bind call found!?!");
+        }
+		else {
+			ins = c.inset(outs, id);
+		}
+		debug.Log.println("    BIND ENTRY: block: " + id);
+		boolean DEBUGGING = debug.Log.enabled();
+		if (DEBUGGING) {
+			t.displayln();
+			if (outs != null) outs.print();
+		}
+		
+		G_Fact d = null;
+		if (t.isPure()) {
+			debug.Log.println("t is pure:");
+			d = new G_Fact(t, new Atoms(v, null));
+		}
+
+		if (outs == null) {
+			if (d != null) {	
+				ins = new G_Facts(d, null);
+				if (DEBUGGING) {
+					ins.print();
+				}
+			}
+		}
+		else {
+			debug.Log.println("    BIND: Outs not null");
+			if (DEBUGGING) {
+				outs.print();
+			}
+			ins = t.addOuts(outs);
+			debug.Log.println("    BIND: ins before");
+			if (DEBUGGING) {
+				if (ins != null) ins.print();
+			}
+			ins = G_Facts.meets(outs, ins, true);
+			debug.Log.println("    BIND: ins after");
+			if (DEBUGGING) {
+				ins.print();
+			}
+			debug.Log.println("    BIND: ins before kill");
+			if (DEBUGGING) {
+				ins.print();
+			}
+			ins = ins.kill(v);
+			debug.Log.println("    BIND: ins after kill");
+			if (DEBUGGING) {
+				ins.print();
+			}
+			if (d != null) {
+				ins = ins.gen(d);
+				debug.Log.println("    BIND: ins after gen");
+				if (DEBUGGING) {
+					ins.print();
+				}
+			}
+		}
+		debug.Log.println("    BIND EXIT: block: " + id);
+		return ins;
+		}
+	case Done { 
+			boolean DEBUGGING = debug.Log.enabled();	
+		debug.Log.println("    DONE ENTRY: block: " + id);
+			if (DEBUGGING) {
+				t.display();
+				if (outs != null) outs.print();
+			}
+			G_Facts ins = t.addOuts(outs);
+			if (DEBUGGING) {
+				if (ins != null) ins.print();
+			}
+			//if (t.isPure()) {
+			
+				debug.Log.println("    DONE EXIT: block: " + id);
+				return G_Facts.meets(outs, ins, true);
+			///}
+			//return ins;
+		}
+	case Match {
+			// TODO? check purity
+			Sets ins = null;
+			if (def != null) {
+				G_Facts defIns = def.addOuts(outs);
+				if (defIns != null) {
+					ins = new Sets(new Set(defIns), ins);
+				}
+			}
+		    for (int i=0; i<alts.length; i++) {
+				G_Facts altsIns = alts[i].addOuts(outs);
+				if (altsIns != null) {
+					ins = new Sets(new Set(altsIns), ins);
+				}
+				
+			}
+			return outs;
+			}
+
+
+	public class Block {
+		public Sets incomingOut_Sets;
+		public G_Facts anticipated_Out_set;
+		public G_Facts anticipated_In_set;
+		public G_Facts anticipated_Next_Ins;
+	}
+

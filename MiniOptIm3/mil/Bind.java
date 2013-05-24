@@ -371,6 +371,72 @@ return t.detectLoops(src, visited)
         c.fixTrailingBlockCalls();
     }
 
+    public G_Facts inset(G_Facts outs, String id) {
+        G_Facts ins = null;
+        
+if (c == null) {
+        debug.Log.println("unlinked bind call found!?!");
+}
+        else {
+                ins = c.inset(outs, id);
+        }
+        debug.Log.println("    BIND ENTRY: block: " + id);
+        boolean DEBUGGING = debug.Log.enabled();
+        if (DEBUGGING) {
+                t.displayln();
+                if (outs != null) outs.print();
+        }
+        
+        G_Fact d = null;
+        if (t.isPure()) {
+                debug.Log.println("t is pure:");
+                d = new G_Fact(t, new Atoms(v, null));
+        }
+
+        if (outs == null) {
+                if (d != null) {        
+                        ins = new G_Facts(d, null);
+                        if (DEBUGGING) {
+                                ins.print();
+                        }
+                }
+        }
+        else {
+                debug.Log.println("    BIND: Outs not null");
+                if (DEBUGGING) {
+                        outs.print();
+                }
+                ins = t.addOuts(outs);
+                debug.Log.println("    BIND: ins before");
+                if (DEBUGGING) {
+                        if (ins != null) ins.print();
+                }
+                ins = G_Facts.meets(outs, ins, true);
+                debug.Log.println("    BIND: ins after");
+                if (DEBUGGING) {
+                        ins.print();
+                }
+                debug.Log.println("    BIND: ins before kill");
+                if (DEBUGGING) {
+                        ins.print();
+                }
+                ins = ins.kill(v);
+                debug.Log.println("    BIND: ins after kill");
+                if (DEBUGGING) {
+                        ins.print();
+                }
+                if (d != null) {
+                        ins = ins.gen(d);
+                        debug.Log.println("    BIND: ins after gen");
+                        if (DEBUGGING) {
+                                ins.print();
+                        }
+                }
+        }
+        debug.Log.println("    BIND EXIT: block: " + id);
+        return ins;
+        }
+
     public G_Facts outset(G_Facts ins, String id) {
         boolean DEBUGGING = debug.Log.enabled();
         debug.Log.println("    BIND ENTRY: block: " + id);

@@ -126,6 +126,11 @@ public class MILProgram {
     
         debug.Log.off();
         //debug.Log.on();
+        anticipatedExpr();
+        
+
+        debug.Log.off();
+        //debug.Log.on();
         dataflow();
         
 }
@@ -346,6 +351,46 @@ public class MILProgram {
             dsccs.head.fixTrailingBlockCalls();
         }
     }
+
+    void anticipatedExpr() {
+        /*
+                for (DefnSCCs dsccs = sccs; dsccs!=null; dsccs=dsccs.next) {
+                  for (Defns ds=dsccs.head.getBindings(); ds!=null; ds=ds.next) {
+                        ds.head.clearAnticipatedInsOuts();
+                  }
+                }
+        */
+        int mycount = 0;
+        for (int i = 1; i != 0;) {
+        mycount++;
+        i=0;
+                for (DefnSCCs dsccs = sccs; dsccs!=null; dsccs=dsccs.next) {
+                        for (Defns ds=dsccs.head.getBindings(); ds!=null; ds=ds.next) {
+                                ds.head.computeAnticipatedInMeets();
+                        }
+                }
+                for (DefnSCCs dsccs = sccs; dsccs!=null; dsccs=dsccs.next) {
+                  for (Defns ds=dsccs.head.getBindings(); ds!=null; ds=ds.next) {
+                        i += ds.head.Calculate_Anticipated_Expr();
+                  }
+                }
+                for (DefnSCCs dsccs = sccs; dsccs!=null; dsccs=dsccs.next) {
+                  for (Defns ds=dsccs.head.getBindings(); ds!=null; ds=ds.next) {
+                        ds.head.setNextAnticipatedIns();
+                  }
+                }
+                debug.Log.println("******************************************************Loop " +  mycount + " " + i + " changes");
+        }
+
+        System.out.println("---Anticipated Expressions-----------------------------------");
+        for (DefnSCCs dsccs = sccs; dsccs!=null; dsccs=dsccs.next) {
+                for (Defns ds=dsccs.head.getBindings(); ds!=null; ds=ds.next) {
+                        ds.head.printAnticipatedInsOuts();
+                }
+        }
+        System.out.println("--------------------------------------");
+        
+}
 
     void dataflow() {
         /*

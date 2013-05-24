@@ -698,6 +698,76 @@ public class Block extends Defn {
         return args;
     }
 
+    public void setNextAnticipatedIns() {
+        anticipated_In_set = anticipated_Next_Ins;
+        }
+
+    public void computeAnticipatedInMeets() {
+        debug.Log.println("computeAnticipatedInMeets At block " + id);
+        boolean firstRound = true;
+        boolean union = true;
+        boolean mode = !union; // The interpretation of !union is intersection
+        Sets insIter;
+        for (insIter = incomingOut_Sets; insIter != null; insIter = insIter.next) {
+                G_Facts caller =  insIter.head.a;
+                
+                if (firstRound) {
+                        firstRound = false;
+                        incomingOut_Sets = incomingOut_Sets.next;
+                        if (incomingOut_Sets == null) {
+                                // only 1 caller to this block
+                                if (caller != null) {
+                                        anticipated_Out_set = caller.copy();
+                                }
+                                break;
+                        }
+                        else{   
+                                G_Facts nextCaller =  incomingOut_Sets.head.a;
+                                anticipated_Out_set = G_Facts.meets(caller, nextCaller, mode);
+                        }
+                }
+                else {
+                        anticipated_Out_set = G_Facts.meets(anticipated_Out_set, caller, mode);
+                }
+        }
+        incomingOut_Sets = null;
+        }
+
+    public int Calculate_Anticipated_Expr() {
+        debug.Log.println("Calculate_Anticipated_Expr At block " + id);
+        boolean union = true;
+        //printInsOuts();
+        anticipated_Next_Ins = code.inset(anticipated_Out_set, id);
+        //printInsOuts();
+        int oldlen = G_Facts.length(anticipated_In_set);
+        if ((oldlen != G_Facts.length(anticipated_Next_Ins) )
+                || (oldlen != G_Facts.length(G_Facts.meets(anticipated_Next_Ins, anticipated_In_set, !union)))
+                ){
+                return 1;
+        }       
+
+        return 0;
+        }
+
+    public void clearAnticipatedInsOuts() { incomingOut_Sets = null; anticipated_Out_set = anticipated_In_set = null; }
+
+    public void printAnticipatedInsOuts() {
+        if (anticipated_Out_set != null) {
+        anticipated_Out_set.print(true, id);
+        }
+        if (anticipated_In_set != null) {
+                anticipated_In_set.print(false, id);
+        }
+}
+
+    public Sets incomingOut_Sets;
+
+    public G_Facts anticipated_Out_set;
+
+    public G_Facts anticipated_In_set;
+
+    public G_Facts anticipated_Next_Ins;
+
     public void setNextOuts() {
         avail_Out_Set = avail_Next_Out;
         }
