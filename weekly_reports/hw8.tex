@@ -1,0 +1,20 @@
+\documentclass[14pt]{article}
+\author{Joel Anna<annajoel@pdx.edu>}
+\usepackage{fancyhdr}
+\usepackage{lastpage}
+\pagestyle{fancy}
+\lhead{\footnotesize \parbox{11cm}{Joel Anna} }
+%\lfoot{\footnotesize \parbox{11cm}{\textit{2}}}
+\cfoot{}
+\rhead{\footnotesize Week 8 Report:  }
+%\rfoot{\footnotesize Page \thepage\ of \pageref{LastPage}}
+\renewcommand{\headheight}{24pt}
+\begin{document}
+\paragraph{CS401 Optimization Week 8 report} 
+.\\
+Starting off this week I fixed the union ``meets'' operation, which had resulted from adding the same tails twice to the returned value. Additionally, I added a check to verify purity of a tail before adding it to the available expressions with my work from week 6, as well as apply a transformation when a BlockCall is encountered, renaming the tails to use the variable names for the block that is called.\\
+I fixed the logic error in my main loop which was ending the loop as soon as the last block was unchanged, instead of no blocks changing. After changing this a new bug was occurring, incorrectly removing tails from the results, which I also found and corrected.
+\\
+For the remainder of the week I wrote a preliminary approach for anticipated expressions, using largely the same control flow as the available expressions, but using a recursive descent flow as it is an analysis from end to start. Unfortunately, I was unable to finish a first version, and the analysis only finds the anticipated expressions in set for each block, and the outset is incorrectly empty.\\
+I created two test files in addition to the red(undant).mini file, which I called blue, green. I am not certain they are the minimal test files for what I am using them to test, the renaming of variables in tails that (should) intersect for the in/out set of the available, anticipated expressions.
+\end{document}
