@@ -243,7 +243,7 @@ public class Done extends Code {
         t.fixTrailingBlockCalls();
     }
 
-    public G_Facts inset(G_Facts outs, String id) { 
+    public G_Facts inset(G_Facts outs, String id, Block container) { 
         boolean DEBUGGING = debug.Log.enabled();        
 debug.Log.println("    DONE ENTRY: block: " + id);
         if (DEBUGGING) {
@@ -257,7 +257,9 @@ debug.Log.println("    DONE ENTRY: block: " + id);
         //if (t.isPure()) {
         
                 debug.Log.println("    DONE EXIT: block: " + id);
-                return G_Facts.meets(outs, ins, true);
+                ins = G_Facts.meets(outs, ins, true);
+                container.incomingOut_Sets = new Sets(new Set(ins), null);
+                return ins;
         ///}
         //return ins;
 }

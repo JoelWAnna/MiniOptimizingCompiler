@@ -253,17 +253,19 @@ public abstract class Tail {
         /* do nothing */
     }
 
-    public Tail copyWithSubst(Atom[] args, Var[] formals) {
+    public Tail copyWithSubst(Atom[] args, Atom[] formals) {
         AtomSubst a = null;
         for (int i = 0; i < formals.length; i++) {
-                a = new AtomSubst(formals[i], args[i], a);
+                Var v = formals[i].isVar();
+                if (v == null) continue;
+                a = new AtomSubst(v, args[i], a);
         }
         Tail foo = apply(a);
-        System.out.println("old");
-        displayln();
-        System.out.println("new");
-        foo.displayln();
-        System.out.println("wtf");
+        //System.out.println("old");
+//      displayln();
+//      System.out.println("new");
+        //foo.displayln();
+        
         
         return foo;
 }

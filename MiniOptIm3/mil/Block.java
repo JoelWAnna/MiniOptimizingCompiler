@@ -715,7 +715,7 @@ public class Block extends Defn {
         debug.Log.println("Calculate_Anticipated_Expr At block " + id);
         boolean union = true;
         //printInsOuts();
-        anticipated_Next_Ins = code.inset(anticipated_Out_set, id);
+        anticipated_Next_Ins = code.inset(anticipated_Out_set, id, this);
         //printInsOuts();
         G_Facts merged = G_Facts.meets(anticipated_Next_Ins, anticipated_In_set, !union);
         int oldlen = G_Facts.length(anticipated_In_set);

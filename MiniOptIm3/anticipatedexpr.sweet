@@ -20,14 +20,11 @@ package mil;
 		for (int i = 1; i != 0;) {
 		mycount++;
 		i=0;
-			for (DefnSCCs dsccs = sccs; dsccs!=null; dsccs=dsccs.next) {
-				for (Defns ds=dsccs.head.getBindings(); ds!=null; ds=ds.next) {
-					ds.head.computeAnticipatedInMeets();
-				}
-			}
+
 			for (DefnSCCs dsccs = sccs; dsccs!=null; dsccs=dsccs.next) {
 			  for (Defns ds=dsccs.head.getBindings(); ds!=null; ds=ds.next) {
 				i += ds.head.Calculate_Anticipated_Expr();
+					ds.head.computeAnticipatedInMeets();
 			  }
 			}
 			for (DefnSCCs dsccs = sccs; dsccs!=null; dsccs=dsccs.next) {
@@ -78,7 +75,7 @@ package mil;
 		debug.Log.println("Calculate_Anticipated_Expr At block " + id);
 		boolean union = true;
 		//printInsOuts();
-		anticipated_Next_Ins = code.inset(anticipated_Out_set, id);
+		anticipated_Next_Ins = code.inset(null, id, this);
 		//printInsOuts();
 		G_Facts merged = G_Facts.meets(anticipated_Next_Ins, anticipated_In_set, !union);
 		int oldlen = G_Facts.length(anticipated_In_set);
@@ -106,10 +103,12 @@ package mil;
 		//G_Facts renamed = outs.copy();
 		G_Facts renamed = outs;
 		if (outs != null) {
-			renamed = outs.copy();//WithSubst(args, b.getFormals());
+			renamed = outs.copyWithSubst(args, b.getFormals());
 		}
 		b.incomingOut_Sets = new Sets(new Set(renamed), b.incomingOut_Sets);
-		return b.anticipated_In_set;
+		if (b.anticipated_In_set != null)
+			return b.anticipated_In_set.copyWithSubst(b.getFormals(), args);
+		return outs;
 	}
 	
 
@@ -125,7 +124,7 @@ package mil;
 		}
 
 	
-	public G_Facts inset(G_Facts outs, String id)
+	public G_Facts inset(G_Facts outs, String id, Block container)
 	case Code abstract;
 	case Bind {
 		G_Facts ins = null;
@@ -134,7 +133,7 @@ package mil;
         	debug.Log.println("unlinked bind call found!?!");
         }
 		else {
-			ins = c.inset(outs, id);
+			ins = c.inset(outs, id, container);
 		}
 		debug.Log.println("    BIND ENTRY: block: " + id);
 		boolean DEBUGGING = debug.Log.enabled();
@@ -149,7 +148,7 @@ package mil;
 			d = new G_Fact(t, new Atoms(v, null));
 		}
 
-		if (outs == null) {
+		if (ins == null) {
 			if (d != null) {	
 				ins = new G_Facts(d, null);
 				if (DEBUGGING) {
@@ -158,31 +157,32 @@ package mil;
 			}
 		}
 		else {
-			debug.Log.println("    BIND: Outs not null");
+			debug.Log.println("    BIND: Ins not null");
 			if (DEBUGGING) {
-				outs.print();
+				ins.print();
 			}
-			ins = t.addOuts(outs);
+			G_Facts tailins = t.addOuts(ins);
 			debug.Log.println("    BIND: ins before");
 			if (DEBUGGING) {
 				if (ins != null) ins.print();
 			}
-			ins = G_Facts.meets(outs, ins, true);
+			ins = G_Facts.meets(tailins, ins, true);
 			debug.Log.println("    BIND: ins after");
 			if (DEBUGGING) {
-				ins.print();
+				if (ins != null) ins.print();
 			}
 			debug.Log.println("    BIND: ins before kill");
 			if (DEBUGGING) {
-				ins.print();
+				if (ins != null) ins.print();
 			}
-			ins = ins.kill(v);
+			if (ins != null) ins = ins.kill(v);
 			debug.Log.println("    BIND: ins after kill");
 			if (DEBUGGING) {
-				ins.print();
+				if (ins != null) ins.print();
 			}
 			if (d != null) {
-				ins = ins.gen(d);
+			if (ins != null) ins = ins.gen(d);
+				else ins = new G_Facts(d, null);
 				debug.Log.println("    BIND: ins after gen");
 				if (DEBUGGING) {
 					ins.print();
@@ -206,7 +206,9 @@ package mil;
 			//if (t.isPure()) {
 			
 				debug.Log.println("    DONE EXIT: block: " + id);
-				return G_Facts.meets(outs, ins, true);
+				ins = G_Facts.meets(outs, ins, true);
+				container.incomingOut_Sets = new Sets(new Set(ins), null);
+				return ins;
 			///}
 			//return ins;
 		}
@@ -226,9 +228,27 @@ package mil;
 				}
 				
 			}
-			boolean union = false;
+			boolean union = true;
+			if (ins != null) {
+				ins.print();
+				
+			}
+			
+			container.incomingOut_Sets = ins;
 			G_Facts met = G_Facts.meets(ins, !union);
-			outs = G_Facts.meets(met, outs, !union);
+			if (met != null) {
+				System.out.println("Block :" + id); 
+				met.print();
+				//System.exit(0);
+				
+			}
+			outs = G_Facts.meets(met, outs, union);
+			if (outs != null) {
+				System.out.println("Block :" + id); 
+				outs.print();
+				//System.exit(0);
+				
+			}
 			return outs;
 			}
 

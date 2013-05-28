@@ -12,4 +12,16 @@ public class Sets {
         this.head = head;
         this.next = next;
     }
+
+    public void print() {
+        int i = 0;
+        print(i);
+}
+
+    public void print(int i) {
+        System.out.println("Set index :" + i);
+        head.a.print();
+        if (next != null)
+                next.print(i+1);
+        }
 }

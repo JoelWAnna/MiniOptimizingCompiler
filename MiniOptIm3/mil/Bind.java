@@ -371,14 +371,14 @@ return t.detectLoops(src, visited)
         c.fixTrailingBlockCalls();
     }
 
-    public G_Facts inset(G_Facts outs, String id) {
+    public G_Facts inset(G_Facts outs, String id, Block container) {
         G_Facts ins = null;
         
 if (c == null) {
         debug.Log.println("unlinked bind call found!?!");
 }
         else {
-                ins = c.inset(outs, id);
+                ins = c.inset(outs, id, container);
         }
         debug.Log.println("    BIND ENTRY: block: " + id);
         boolean DEBUGGING = debug.Log.enabled();
@@ -393,7 +393,7 @@ if (c == null) {
                 d = new G_Fact(t, new Atoms(v, null));
         }
 
-        if (outs == null) {
+        if (ins == null) {
                 if (d != null) {        
                         ins = new G_Facts(d, null);
                         if (DEBUGGING) {
@@ -402,31 +402,32 @@ if (c == null) {
                 }
         }
         else {
-                debug.Log.println("    BIND: Outs not null");
+                debug.Log.println("    BIND: Ins not null");
                 if (DEBUGGING) {
-                        outs.print();
+                        ins.print();
                 }
-                ins = t.addOuts(outs);
+                G_Facts tailins = t.addOuts(ins);
                 debug.Log.println("    BIND: ins before");
                 if (DEBUGGING) {
                         if (ins != null) ins.print();
                 }
-                ins = G_Facts.meets(outs, ins, true);
+                ins = G_Facts.meets(tailins, ins, true);
                 debug.Log.println("    BIND: ins after");
                 if (DEBUGGING) {
-                        ins.print();
+                        if (ins != null) ins.print();
                 }
                 debug.Log.println("    BIND: ins before kill");
                 if (DEBUGGING) {
-                        ins.print();
+                        if (ins != null) ins.print();
                 }
-                ins = ins.kill(v);
+                if (ins != null) ins = ins.kill(v);
                 debug.Log.println("    BIND: ins after kill");
                 if (DEBUGGING) {
-                        ins.print();
+                        if (ins != null) ins.print();
                 }
                 if (d != null) {
-                        ins = ins.gen(d);
+                if (ins != null) ins = ins.gen(d);
+                        else ins = new G_Facts(d, null);
                         debug.Log.println("    BIND: ins after gen");
                         if (DEBUGGING) {
                                 ins.print();

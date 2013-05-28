@@ -80,36 +80,50 @@ package mil;
 		if (next != null)
 			next.print();
 	}
-		
+	case Sets {
+		int i = 0;
+		print(i);
+	}
+	
+	public void print(int i)
+	case Sets {
+		System.out.println("Set index :" + i);
+		head.a.print();
+		if (next != null)
+			next.print(i+1);
+		}
+	
 		
 	
 	
-	public G_Facts copyWithSubst(Atom[] args, Var[] formals)
+	public G_Facts copyWithSubst(Atom[] args, Atom[] formals)
 	case G_Facts	{
-		if (args == null) return this;
+		if (args == null || formals == null) return this;
 		G_Facts copy = new G_Facts(head.copyWithSubst(args, formals), null);
 		if (next != null)
 			copy.next = next.copyWithSubst(args, formals);	
 		return copy;		
 	}	
 
-	public G_Fact copyWithSubst(Atom[] args, Var[] formals)
+	public G_Fact copyWithSubst(Atom[] args, Atom[] formals)
 	case G_Fact	{
 		return  new G_Fact(t.copyWithSubst(args, formals), atoms);	
 			}
 
-	public Tail copyWithSubst(Atom[] args, Var[] formals)
+	public Tail copyWithSubst(Atom[] args, Atom[] formals)
 	case Tail {
 		AtomSubst a = null;
 		for (int i = 0; i < formals.length; i++) {
-			a = new AtomSubst(formals[i], args[i], a);
+			Var v = formals[i].isVar();
+			if (v == null) continue;
+			a = new AtomSubst(v, args[i], a);
 		}
 		Tail foo = apply(a);
-		System.out.println("old");
-		displayln();
-		System.out.println("new");
-		foo.displayln();
-		System.out.println("wtf");
+		//System.out.println("old");
+	//	displayln();
+	//	System.out.println("new");
+		//foo.displayln();
+		
 		
 		return foo;
 	}	

@@ -266,10 +266,12 @@ public class BlockCall extends Call {
                 //G_Facts renamed = outs.copy();
                 G_Facts renamed = outs;
                 if (outs != null) {
-                        renamed = outs.copy();//WithSubst(args, b.getFormals());
+                        renamed = outs.copyWithSubst(args, b.getFormals());
                 }
                 b.incomingOut_Sets = new Sets(new Set(renamed), b.incomingOut_Sets);
-                return b.anticipated_In_set;
+                if (b.anticipated_In_set != null)
+                        return b.anticipated_In_set.copyWithSubst(b.getFormals(), args);
+                return outs;
         }
 
     public G_Facts addIns(G_Facts ins) {

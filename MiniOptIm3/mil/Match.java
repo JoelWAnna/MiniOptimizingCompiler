@@ -431,7 +431,7 @@ public class Match extends Code {
         }
     }
 
-    public G_Facts inset(G_Facts outs, String id) {
+    public G_Facts inset(G_Facts outs, String id, Block container) {
         // TODO? check purity
         Sets ins = null;
         if (def != null) {
@@ -447,9 +447,27 @@ public class Match extends Code {
                 }
                 
         }
-        boolean union = false;
+        boolean union = true;
+        if (ins != null) {
+                ins.print();
+                
+        }
+        
+        container.incomingOut_Sets = ins;
         G_Facts met = G_Facts.meets(ins, !union);
-        outs = G_Facts.meets(met, outs, !union);
+        if (met != null) {
+                System.out.println("Block :" + id); 
+                met.print();
+                //System.exit(0);
+                
+        }
+        outs = G_Facts.meets(met, outs, union);
+        if (outs != null) {
+                System.out.println("Block :" + id); 
+                outs.print();
+                //System.exit(0);
+                
+        }
         return outs;
         }
 

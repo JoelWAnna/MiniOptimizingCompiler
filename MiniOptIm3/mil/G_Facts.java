@@ -48,8 +48,8 @@ public class G_Facts {
                 next.print();
 }
 
-    public G_Facts copyWithSubst(Atom[] args, Var[] formals) {
-        if (args == null) return this;
+    public G_Facts copyWithSubst(Atom[] args, Atom[] formals) {
+        if (args == null || formals == null) return this;
         G_Facts copy = new G_Facts(head.copyWithSubst(args, formals), null);
         if (next != null)
                 copy.next = next.copyWithSubst(args, formals);  

@@ -55,7 +55,7 @@ public class G_Fact {
         return new G_Fact(t, atoms.copy());
         }
 
-    public G_Fact copyWithSubst(Atom[] args, Var[] formals) {
+    public G_Fact copyWithSubst(Atom[] args, Atom[] formals) {
         return  new G_Fact(t.copyWithSubst(args, formals), atoms);      
                 }
 }
