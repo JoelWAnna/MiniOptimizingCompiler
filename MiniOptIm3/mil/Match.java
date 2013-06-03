@@ -454,6 +454,8 @@ public class Match extends Code {
         }
         
         container.incomingOut_Sets = ins;
+        
+        System.out.println("Block :" + id + "before meets"); 
         G_Facts met = G_Facts.meets(ins, !union);
         if (met != null) {
                 System.out.println("Block :" + id); 

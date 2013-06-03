@@ -260,14 +260,8 @@ public abstract class Tail {
                 if (v == null) continue;
                 a = new AtomSubst(v, args[i], a);
         }
-        Tail foo = apply(a);
-        //System.out.println("old");
-//      displayln();
-//      System.out.println("new");
-        //foo.displayln();
         
-        
-        return foo;
+        return apply(a);
 }
 
     public G_Facts addOuts(G_Facts outs) { return null; }

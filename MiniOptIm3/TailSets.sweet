@@ -118,14 +118,8 @@ package mil;
 			if (v == null) continue;
 			a = new AtomSubst(v, args[i], a);
 		}
-		Tail foo = apply(a);
-		//System.out.println("old");
-	//	displayln();
-	//	System.out.println("new");
-		//foo.displayln();
 		
-		
-		return foo;
+		return apply(a);
 	}	
 	
 			
@@ -171,7 +165,8 @@ package mil;
 		if (next != null) {
 			return new G_Facts(head, next.gen(p));
 		}
-		return new G_Facts(p, null);
+		next = new G_Facts(p, null);
+		return this;
 	}
 
 	public static G_Facts meets(Sets toMeet, boolean mode)

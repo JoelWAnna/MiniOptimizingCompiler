@@ -364,14 +364,11 @@ public class MILProgram {
         for (int i = 1; i != 0;) {
         mycount++;
         i=0;
-                for (DefnSCCs dsccs = sccs; dsccs!=null; dsccs=dsccs.next) {
-                        for (Defns ds=dsccs.head.getBindings(); ds!=null; ds=ds.next) {
-                                ds.head.computeAnticipatedInMeets();
-                        }
-                }
+
                 for (DefnSCCs dsccs = sccs; dsccs!=null; dsccs=dsccs.next) {
                   for (Defns ds=dsccs.head.getBindings(); ds!=null; ds=ds.next) {
                         i += ds.head.Calculate_Anticipated_Expr();
+                                ds.head.computeAnticipatedInMeets();
                   }
                 }
                 for (DefnSCCs dsccs = sccs; dsccs!=null; dsccs=dsccs.next) {
