@@ -433,6 +433,9 @@ public class Match extends Code {
 
     public G_Facts inset(G_Facts outs, String id, Block container) {
         // TODO? check purity
+        
+        boolean DEBUGGING = debug.Log.enabled();
+
         Sets ins = null;
         if (def != null) {
                 G_Facts defIns = def.addOuts(outs);
@@ -448,24 +451,24 @@ public class Match extends Code {
                 
         }
         boolean union = true;
-        if (ins != null) {
+        if (debug.Log.enabled() && ins != null) {
                 ins.print();
                 
         }
         
         container.incomingOut_Sets = ins;
         
-        System.out.println("Block :" + id + "before meets"); 
+        debug.Log.println("Block :" + id + "before meets"); 
         G_Facts met = G_Facts.meets(ins, !union);
-        if (met != null) {
-                System.out.println("Block :" + id); 
+        if (DEBUGGING && met != null) {
+                debug.Log.println("Block :" + id); 
+                
                 met.print();
-                //System.exit(0);
                 
         }
         outs = G_Facts.meets(met, outs, union);
-        if (outs != null) {
-                System.out.println("Block :" + id); 
+        if (DEBUGGING && outs != null) {
+                debug.Log.println("Block :" + id); 
                 outs.print();
                 //System.exit(0);
                 

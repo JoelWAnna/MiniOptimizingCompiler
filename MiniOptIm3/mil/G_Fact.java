@@ -18,12 +18,13 @@ public class G_Fact {
         {
                 return true;
         }
-        else {
+        else {/* DEBUG CODE
                 System.out.println("this");
                 t.display();
                 System.out.print(" NEQ ");
                 other.t.display();
                 System.out.println("\nthat");
+                */
                 return false;
         }
 }

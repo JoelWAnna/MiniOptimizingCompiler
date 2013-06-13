@@ -3,7 +3,7 @@ package mil;
     public void optimize()
     case MILProgram >  {
 		debug.Log.off();
-		debug.Log.on();
+		//debug.Log.on();
 		anticipatedExpr();
 		
     }
@@ -32,6 +32,8 @@ package mil;
 				ds.head.setNextAnticipatedIns();
 			  }
 			}
+/*
+	//debug code
 			debug.Log.println("******************************************************Loop " +  mycount + " " + i + " changes");
 								System.out.println("---Anticipated Expressions-----------------------------------");
 				for (DefnSCCs dsccs = sccs; dsccs!=null; dsccs=dsccs.next) {
@@ -40,7 +42,7 @@ package mil;
 					}
 				}
 				debug.Log.println("******************************************************done:");
-			
+*/			
 		}
 
 		System.out.println("---Anticipated Expressions-----------------------------------");
@@ -49,7 +51,7 @@ package mil;
 				ds.head.printAnticipatedInsOuts();
 			}
 		}
-		System.out.println("--------------------------------------");
+	//	System.out.println("--------------------------------------");
 		
 	}
 		
@@ -214,6 +216,9 @@ package mil;
 		}
 	case Match {
 			// TODO? check purity
+			
+			boolean DEBUGGING = debug.Log.enabled();
+		
 			Sets ins = null;
 			if (def != null) {
 				G_Facts defIns = def.addOuts(outs);
@@ -229,24 +234,24 @@ package mil;
 				
 			}
 			boolean union = true;
-			if (ins != null) {
+			if (debug.Log.enabled() && ins != null) {
 				ins.print();
 				
 			}
 			
 			container.incomingOut_Sets = ins;
 			
-			System.out.println("Block :" + id + "before meets"); 
+			debug.Log.println("Block :" + id + "before meets"); 
 			G_Facts met = G_Facts.meets(ins, !union);
-			if (met != null) {
-				System.out.println("Block :" + id); 
+			if (DEBUGGING && met != null) {
+				debug.Log.println("Block :" + id); 
+				
 				met.print();
-				//System.exit(0);
 				
 			}
 			outs = G_Facts.meets(met, outs, union);
-			if (outs != null) {
-				System.out.println("Block :" + id); 
+			if (DEBUGGING && outs != null) {
+				debug.Log.println("Block :" + id); 
 				outs.print();
 				//System.exit(0);
 				

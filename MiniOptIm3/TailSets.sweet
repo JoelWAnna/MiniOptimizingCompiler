@@ -9,12 +9,13 @@ package mil;
 			{
 				return true;
 			}
-			else {
+			else {/* DEBUG CODE
 				System.out.println("this");
 				t.display();
 				System.out.print(" NEQ ");
 				other.t.display();
 				System.out.println("\nthat");
+				*/
 				return false;
 			}
 		}
@@ -63,6 +64,7 @@ package mil;
 			System.out.println("Outset for block " + id);
 		}
 		print();
+		System.out.println("");
 	}
 
 	public void print()
@@ -275,5 +277,5 @@ package mil;
 		}
 		return met;
 	}
-	
- 
+
+

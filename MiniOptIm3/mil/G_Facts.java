@@ -31,6 +31,7 @@ public class G_Facts {
                 System.out.println("Outset for block " + id);
         }
         print();
+        System.out.println("");
 }
 
     public void print() {
@@ -83,7 +84,8 @@ public class G_Facts {
         if (next != null) {
                 return new G_Facts(head, next.gen(p));
         }
-        return new G_Facts(p, null);
+        next = new G_Facts(p, null);
+        return this;
 }
 
     public static G_Facts meets(Sets toMeet, boolean mode) {
