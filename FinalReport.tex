@@ -1,0 +1,28 @@
+\documentclass[14pt]{article}
+\author{Joel Anna<annajoel@pdx.edu>}
+\usepackage{fancyhdr}
+\usepackage{lastpage}
+\pagestyle{fancy}
+\lhead{\footnotesize \parbox{11cm}{Joel Anna} }
+%\lfoot{\footnotesize \parbox{11cm}{\textit{2}}}
+\cfoot{}
+\rhead{\footnotesize Final Report:Page \thepage\ of \pageref{LastPage}}  
+%\rfoot{\footnotesize Page \thepage\ of \pageref{LastPage}}
+\renewcommand{\headheight}{24pt}
+\begin{document}
+\paragraph{CS401 Optimization Final report} 
+.\\
+I started off the term having just finished the CS321-322 Compilers sequence working with the mini compiler. The task at hand was to learn about global optimizations, by extending the MIL optimizer to optimize across block boundaries.
+\paragraph{}
+I began by reading the optimizations chapter of Mogensen's Basics of Compiler Design. I took the information from this and designed and implemented global constant propagation. The high level overview of global constant propagation is to create a lattice structure for each block parameter, and for every parameter that has a small number of constant values for it, replace the block call with a derived block using the constant value for that parameter.\\
+\paragraph{Details of the Global Constant Propagation}
+To retrieve the information about callers to a block, I created a data flow path that runs through the code objects for each block, returning a linked list of block calls to the current block. Once a list is retrieved, there are two cases to look at, if the calls are recursive or not. For the recursive case, each parameter is checked by dataflow to see if it is modified, as well as checked to determine if the same parameters are used in the block call. In the non-recursive case the block call arguments are checked, if a parameter is constant it is added to the lattice for that parameter, if the set of constants is too large the lattice gets set to the NAC value, otherwise the lattice is a set of constants used for that parameter.
+Once the lattice information is complete any constants found are used to create a derived block with that parameter replaced by the constant, with a hardcoded limit of 3 levels of derivation.\\
+%\pagebreak
+\paragraph{Reflections of the Global Constant Propagation Algorithm} Looking back at the code for Global Constant Propagation, and thinking about it after completing the Available and Anticipated Expressions, if I were to rework the code, a better approach would have been taking the information about all parameters together; if (x,y) are always constants paired together, derive a block with both of them replaced together, which would remove the case of creating 4 blocks if the two pairs of constants used were (0,1) and (1,0). As it is currently implemented, each of these cases would be specialized into b(x/0) b(x/1) b(y/0) b(y/1)
+\paragraph{Dataflow Analysis}
+Available expressions was the first dataflow analysis that I wrote, using the algorithm presented in the ``Dragon Book''. This algorithm uses intersection of the 'OUT' sets of the preceding blocks to form the 'IN' set of a block, the IN set is passed through each code segment, facts are removed from this set by the variables that are assigned to by a Bind object, and facts are added to by Bind and Done objects. Learning about the transfer functions, gen/kill functions, and meets functions really gave me a better perspective into how compilers arrive at the information necessary to perform optimizations that cross block boundaries, prior to reading about and implementing this algorithm, I was able to look at a piece of IL / ASM code and point out optimizations, but unable to generalize it in a algorithmic way.
+\paragraph{}
+Much of the work on the dataflow analysis algorithms was in choosing the best representation of the IN/OUT sets. In my readings, a specific choice was not presented and it was left as an exercise for the user. Professor Jones explained to me how in many compilers a bitfield is used to represent them by assigning every expression to a particular bit, which would have required a mapping function that always maps the same expression to the same bit. Instead of this manner, I chose instead to use a linked list for the set representation. Each node in the linked list is a G\_Fact object, denoting GlobalFact, with each G\_Fact object holding a Tail object and a linked list of atoms that the value of the expression is stored in.\\My Familiarity with linked lists was beneficial in writing the meets functions, but did not preclude bugs.
+
+\end{document}
