@@ -1,0 +1,917 @@
+package mil;
+
+class Prim {
+  /** Represents a primitive for printing an integer argument.
+   */
+  public static final Prim print    = new Prim("print",    1, IMPURE, false);
+
+  /** Represents a primitive for loading an integer from an address
+   *  in memory.
+   */
+  public static final Prim load     = new Prim("load",     1, IMPURE, false); // load from memory
+
+  /** Represents a primitive for saving an integer value at an address
+   *  in memory.
+   */
+  public static final Prim store    = new Prim("store",    2, IMPURE, false); // store to memory
+
+  /** Represents a primitive for allocating a new array.
+   */
+  public static final Prim newarray = new Prim("newarray", 1, IMPURE, false); // allocate bytes
+
+  // ------------------------------------------------------------------------------------
+  // Extra primitives required to handle the boolean and double types in Mini:
+
+  /** Represents a primtive for (strict) boolean and.
+   */
+  public static final Prim band = new Prim("band", 2, PURE, false);
+
+  /** Represents a primtive for (strict) boolean or.
+   */
+  public static final Prim bor  = new Prim("bor",  2, PURE, false);
+
+  /** Represents a primtive for boolean xor.
+   */
+  public static final Prim bxor = new Prim("bxor", 2, PURE, false);
+
+  /** Represents a primtive for boolean equality.
+   */
+  public static final Prim beq  = new Prim("beq",  2, PURE, false);
+
+  /** Represents a primtive for boolean inequality.
+   */
+  public static final Prim bneq = new Prim("bneq", 2, PURE, false);
+
+  /** Represents a primtive for double negation.
+   */
+  public static final Prim dneg = new Prim("dneg", 1, PURE, false);
+
+  /** Represents a primtive for double equality.
+   */
+  public static final Prim deq  = new Prim("deq",  2, PURE, false);
+
+  /** Represents a primtive for double inequality.
+   */
+  public static final Prim dneq = new Prim("dneq", 2, PURE, false);
+
+  /** Represents a primtive for double greater than.
+   */
+  public static final Prim dgt  = new Prim("dgt",  2, PURE, false);
+
+  /** Represents a primtive for double greater than or equal.
+   */
+  public static final Prim dgte = new Prim("dgte", 2, PURE, false);
+
+  /** Represents a primtive for double less than.
+   */
+  public static final Prim dlt  = new Prim("dlt",  2, PURE, false);
+
+  /** Represents a primtive for double less than or equal.
+   */
+  public static final Prim dlte = new Prim("dlte", 2, PURE, false);
+
+  /** Represents a primtive for double addition.
+   */
+  public static final Prim dadd = new Prim("dadd", 2, PURE, false);
+
+  /** Represents a primtive for double subtract.
+   */
+  public static final Prim dsub = new Prim("dsub", 2, PURE, false);
+
+  /** Represents a primtive for double multiply.
+   */
+  public static final Prim dmul = new Prim("dmul", 2, PURE, false);
+
+  /** Represents a primtive for double divide.
+   */
+  public static final Prim ddiv = new Prim("ddiv", 2, PURE, false);
+}
+
+class DataAlloc {
+  /* Provides a representation for the boolean data value True.
+  public static final DataAlloc True  = new DataAlloc(Cfun.True);
+   */
+
+  /* Provides a representation for the boolean data value False.
+  public static final DataAlloc False = new DataAlloc(Cfun.False);
+   */
+}
+
+class Block {
+  /** Allocate a block without any initial code.  This allows us to
+   *  create looping structures between blocks, assuming that the code
+   *  for this particular block will be filled in later by using the
+   *  setCode() method.
+   */
+  public Block() { this(null); }
+
+  /** Provide a way to set the code for a Block that was initialized
+   *  without specifying what code sequence it should contain.
+   */
+  public setter code;
+
+  public void setFormals(Var[] formals) < {} // Add public access
+
+  /** Generate a code sequence that makes a tail call to this block.
+   */
+  public Code toCode() {
+      return new Done(new BlockCall(this));
+  }
+}
+
+/** Generate a new block that contains this code sequence and return
+ *  a BlockCall that can be used to call the new block.
+ */
+public BlockCall makeBlockCall()
+  case Code {
+      return new BlockCall(new Block(this));
+  }
+
+package mini;
+
+import mil.*;
+
+class Fundefs {
+  /** Generate code for a list of functions.
+   */
+  static void compile(Fundefs defs) {
+      // Generate MIL code for each function definition.
+      for (; defs!=null; defs=defs.next) {
+          defs.def.compile();
+      }
+  }
+}
+
+macro AddLength(Args)
+macro AddLength(Formals)
+
+class Fundef {
+  /** The entry point to each function is represented by a block in MIL.
+   */
+  private mil.Block entry = new mil.Block();
+
+  /** Code sequence representing the return from a void function.
+   *  TODO: it would be good to eliminate even the 0 here ...
+   */
+  public static final Code retvoid
+     = new Done(new mil.Return(Wildcard.obj));
+
+  /** Compile the body of this function in to MIL code.
+   */
+  void compile() {
+      // Count the number of formal parameters:
+      Var[] vs = new Var[Formals.length(formals)];
+      int   i  = 0;
+      for (Formals fs=formals; fs!=null; fs=fs.getNext()) {
+          vs[i++] = fs.getFormal().getParam();
+      }
+      entry.setFormals(vs);
+
+      // Compile the body:
+      if (body!=null) {
+          System.out.println("Function " + fun + " implemented by " + entry.getId());
+          entry.setCode(body.compStmt(retvoid, null, null));
+      } else {
+          // TODO: figure out if this is an appropriate way to handle extern functions
+          entry.setCode(retvoid);
+      }
+  }
+
+  /** Construct a MIL program with this function as its entry point.
+   */
+  MILProgram entryToMIL() {
+      MILProgram prog = new MILProgram();
+      prog.addEntry(entry);
+      // Initial reachability test
+      prog.shake();
+      // Perform a data flow analysis to compute the correct set of
+      // parameters for every block.
+      prog.computeLiveVars();
+      // Rewrite each of the blocks and any trailing calls (i.e., gotos)
+      // to use the newly computed argument lists.
+      prog.fixTrailingBlockCalls();
+      return prog;
+  }
+}
+
+/** Represents a continuation that takes a variable containing the
+ *  result of a previous calculation and returns a code sequence that
+ *  uses that variable to complete a computation.
+ */
+abstract class VarCont {        // Var -> M Code continuation
+    abstract Code with(final Var v);
+}
+
+/** Represents a continuation that takes a Tail that will produce the
+ *  final result of a previous calculation and returns a code sequence
+ *  that uses the Tail to complete a computation.
+ */
+abstract class TailCont {       // Tail -> M Code continuation
+    abstract Code with(final Tail t);
+}
+
+/** Produce code for an if-then-else.  Generated code will execute the
+ *  first code sequence if the variable is True, but otherwise will default
+ *  to the second.
+ */
+protected static Code ifthenelse(Var v, Code tc, Code fc)
+  case Stmt {
+      TAlt tbranch = new TAlt(Cfun.True, Var.noVars, tc.makeBlockCall());
+      return new Match(v, new TAlt[] { tbranch }, fc.makeBlockCall());
+  }
+
+/** Generate code that will execute this statement and then continue
+ *  with the code specified by the andThen argument.
+ */
+Code compStmt(final Code andThen, final mil.Block breakBlock, final mil.Block contBlock)
+  case Stmt abstract;
+
+  case Empty {
+      return andThen;
+  }
+
+  case ExprStmt {  // exp;
+      return exp.compTail(new TailCont() {
+          Code with(final Tail t)  {
+              return new Bind(Wildcard.obj, t, andThen);
+          }
+      });
+  }
+
+  case Break {    // BREAK;
+      return breakBlock.toCode();
+  }
+
+  case Continue { // CONTINUE;
+      return contBlock.toCode();
+  }
+
+  case For {      // FOR (init; test; step) body
+      final mil.Block btest = new mil.Block();
+      final mil.Block bdone = new mil.Block(andThen);
+      final mil.Block bstep = (step==null)
+                            ? btest
+                            : new mil.Block(step.compTail(new TailCont() {
+                                  Code with(Tail t) {
+                                      return new Bind(Wildcard.obj, t, btest.toCode());
+                                  }
+                              }));
+      final mil.Code  bcode = body.compStmt(bstep.toCode(), bdone, bstep);
+      btest.setCode((test==null)
+                   ? bcode
+                   : test.compVar(new VarCont() {
+                         Code with(final Var tv) {
+                             return ifthenelse(tv, bcode, bdone.toCode());
+                         }
+                     }));
+      return init.compInit(btest.toCode());
+  }
+
+  case DoWhile {   // DO body WHILE (test);
+      final mil.Block btest  = new mil.Block();
+      final mil.Block bdone  = new mil.Block(andThen);
+      final mil.Block bstart = new mil.Block(body.compStmt(btest.toCode(), bdone, btest));
+      btest.setCode(test.compVar(new VarCont() {
+          Code with(final Var tv) {
+              return ifthenelse(tv, bstart.toCode(), bdone.toCode());
+          }
+      }));
+      return bstart.toCode();
+  }
+
+  case While {     // WHILE (test) body
+      final mil.Block bstart = new mil.Block();
+      final mil.Block bdone  = new mil.Block(andThen);
+      Code            start  = test.compVar(new VarCont() {
+          Code with(final Var tv) {
+              return ifthenelse(tv,
+                                body.compStmt(bstart.toCode(), bdone, bstart),
+                                andThen);
+          }
+      });
+      bstart.setCode(start);
+      return bstart.toCode();
+  }
+
+  case If {        // IF test THEN ifTrue ELSE ifFalse
+      return test.compVar(new VarCont() {
+          Code with(final Var tv) {
+              mil.Block join = new mil.Block(andThen);
+              return ifthenelse(tv, ifTrue .compStmt(join.toCode(), breakBlock, contBlock),
+                                    ifFalse.compStmt(join.toCode(), breakBlock, contBlock));
+          }
+      });
+
+  }
+
+  case Print {     // PRINT exp
+      return exp.compVar(new VarCont() {
+          Code with(final Var pv)  {
+              return new Bind(Wildcard.obj, new PrimCall(Prim.print, pv),
+                     andThen);
+          }
+      });
+  }
+
+  case Return {    // RETURN [expr];
+      if (expr==null) {
+          return Fundef.retvoid;
+      } else {
+          return expr.compVar(new VarCont() {
+              Code with(final Var rv)  {
+                  return new Done(new mil.Return(rv));
+              }
+          });
+      }
+  }
+
+  case VarDecl {   // type intros;
+      Code code = andThen;  // can't use andThen because it is final
+      for (int i=used; i>0; ) {  // run backwards through intros
+         code = intros[--i].compStmt(code, null, null);
+      }
+      return code;
+  }
+
+  case VarIntro { // var   (initialize to 0 to ensure that var is in scope)
+      return new Bind(ve.getVar(), new mil.Return(Wildcard.obj), andThen);
+  }
+
+  case InitVarIntro {  // var = init
+      return init.compTail(new TailCont() {
+          Code with(final Tail t)  {
+              return new Bind(ve.getVar(), t, andThen);
+          }
+      });
+  }
+
+  case Block {     // { stmts }
+      return stmts.compStmt(andThen, breakBlock, contBlock);
+  }
+
+  case Stmts {     // stmt[0] ; ... ; stmt[used-1]
+      Code code = andThen;  // can't use andThen because it is final
+      for (int i=used; i>0; ) {  // run backwards through stmts
+          code = stmts[--i].compStmt(code, breakBlock, contBlock);
+      }
+      return code;
+  }
+
+/** Generate code that will execute this initializer and then continue
+ *  with the code specified by the andThen argument.
+ */
+Code compInit(final Code andThen)
+  case ForInit abstract;
+  case NoInit {
+      return andThen;
+  }
+  case ExprInit {
+      return expr.compTail(new TailCont() {
+          Code with(Tail t) {
+              return new Bind(Wildcard.obj, t, andThen);
+          }
+      });
+  }
+  case VarDeclInit {
+      return decl.compStmt(andThen, null, null);
+  }
+
+/** Compile an expression into a variable that is passed as an argument to
+ *  the specified continuation.
+ */
+public Code compVar(final VarCont kv)
+  case Id   { return kv.with(ve.getVar()); } // id
+  case Expr { return compTail(new TailCont() {
+                  Code with(final Tail t) {
+                      Var v = new Temp();
+                      return new Bind(v, t, kv.with(v));
+                  }
+              });
+            }
+
+class Call {
+    /** Generate code for a function call.
+     */
+    Code compileCall(final Args args, final Atom[] milargs, final int i, final TailCont kt) {
+        if (args==null) {
+            return kt.with(def.makeCall(milargs));
+        } else {
+            return args.getArg().compVar(new VarCont() {
+                       Code with(final Var v) {
+                           milargs[i] = v;
+                           return compileCall(args.getNext(), milargs, i+1, kt);
+                       }
+                   });
+        }
+    }
+}
+
+class Fundef {
+   /** Construct a call to the function defined here with a
+    *  given set of arguments.
+    */
+   Tail makeCall(Atom[] args) {
+      return new BlockCall(entry).withArgs(args);
+   }
+}
+
+class Id {
+    /** Generate code for an assignment, saving the result produced by
+     *  the specified tail in this identifier, and passing a copy of
+     *  that value on to the given continuation.
+     */
+    Code assign(Tail t, TailCont kt) {
+        Var v = ve.getVar();
+        return new Bind(v, t, kt.with(new mil.Return(v)));
+    }
+}
+
+/** Compile an expression into a tail that is passed as an argument
+ *  to the specified continuation.
+ */
+public Code compTail(final TailCont kt)
+  case Expr abstract;
+  case Id {
+      return kt.with(new mil.Return(ve.getVar()));
+  }
+  case Call { // f(a1,...,an)
+      return compileCall(args, new Atom[Args.length(args)], 0, kt);
+  }
+  case Assign { // lhs = rhs
+      return rhs.compTail(new TailCont() {
+          Code with(final Tail t) {
+              return lhs.assign(t, kt);
+          }
+      });
+  }
+  case ArrayAccess { // arr[idx]
+      return arr.elemAddress(idx, new VarCont() {
+                 Code with(final Var m) {
+                     return kt.with(new PrimCall(Prim.load, m));
+                 }
+             });
+  }
+  case ArrayAssign { // arr[idx] = rhs
+      return arr.elemAddress(idx, new VarCont() {
+          Code with(final Var m) {
+             return rhs.compVar(new VarCont() {
+                 Code with(final Var v) {
+                     return new Bind(Wildcard.obj,
+                                     new PrimCall(Prim.store, m, v),
+                                     kt.with(new mil.Return(v)));
+                 }
+             });
+         }
+     });
+  }
+  case NewArray { // NEW type[size]
+      return size.compVar(new VarCont() {
+          Code with(final Var s) {
+              Var bytes = new Temp();
+              return new Bind(bytes, new PrimCall(Prim.mul, new Const(4), s),
+                     kt.with(new PrimCall(Prim.newarray, bytes)));
+          }
+      });
+  }
+  case IntLit {   // num
+      return kt.with(new mil.Return(new Const(Integer.parseInt(num))));
+  }
+ 
+  // Unary operators: --------------------------------
+  case LNot { // !exp
+      return exp.unary(Prim.bnot, kt);
+  }
+  case BNot { // ~exp
+      Prim op = at.equal(Type.INT) ? Prim.not : Prim.bnot;
+      return exp.unary(op, kt);
+  }
+  case UMinus { // -exp
+      Prim op = at.equal(Type.INT) ? Prim.neg : Prim.dneg;
+      return exp.unary(op, kt);
+  }
+  case UPlus { // +exp
+      return exp.compTail(kt);
+  }
+
+  // Binary operators: -------------------------------
+
+  // Arithmetic (integer): ---------------------------
+  case Add { // left + right
+      Prim op = lt.equal(Type.INT) ? Prim.add : Prim.dadd;
+      return left.binary(op, right, kt);
+  }
+  case Sub { // left - right
+      Prim op = lt.equal(Type.INT) ? Prim.sub : Prim.dsub;
+      return left.binary(op, right, kt);
+  }
+  case Mul { // left * right
+      Prim op = lt.equal(Type.INT) ? Prim.mul : Prim.dmul;
+      return left.binary(op, right, kt);
+  }
+  case Div { // left / right
+      Prim op = lt.equal(Type.INT) ? Prim.div : Prim.ddiv;
+      return left.binary(op, right, kt);
+  }
+
+  // Comparisons: ------------------------------------
+  case Lt  { // left < right
+      Prim op = lt.equal(Type.INT) ? Prim.lt : Prim.dlt;
+      return left.binary(op, right, kt);
+  }
+  case Lte { // left <= right
+      Prim op = lt.equal(Type.INT) ? Prim.lte : Prim.dlte;
+      return left.binary(op,right, kt);
+  }
+  case Gt  { // left > right
+      Prim op = lt.equal(Type.INT) ? Prim.gt : Prim.dgt;
+      return left.binary(op, right, kt);
+  }
+  case Gte { // left >= right
+      Prim op = lt.equal(Type.INT) ? Prim.gte : Prim.dgte;
+      return left.binary(op,right, kt);
+  }
+  case Eql { // left == right
+      Prim op = lt.equal(Type.BOOLEAN) ? Prim.beq:
+                lt.equal(Type.INT)     ? Prim.eq :
+                                         Prim.deq;
+      return left.binary(op, right, kt);
+  }
+  case Neq { // left != right
+      Prim op = lt.equal(Type.BOOLEAN) ? Prim.bneq:
+                lt.equal(Type.INT)     ? Prim.neq :
+                                         Prim.dneq;
+      return left.binary(op, right, kt);
+  }
+
+  // Logical operators: ------------------------------
+
+  /* Replaced with bnot primitive:
+  case LNot { // !exp
+      return exp.compVar(new VarCont() {
+          Code with(final Var v) {
+              Temp  r    = new Temp();
+              mil.Block join = new mil.Block(kt.with(new mil.Return(r)));
+              return Stmt.ifthenelse(v,
+                  new Bind(r, DataAlloc.False, join.toCode()),
+                  new Bind(r, DataAlloc.True,  join.toCode()));
+           }
+      });
+  }
+  */
+  case LAnd { // left && right; short circuit semantics, not the same as band
+      return left.compVar(new VarCont() {
+          Code with(final Var v) {
+              final Temp  r    = new Temp();
+              final mil.Block join = new mil.Block(kt.with(new mil.Return(r)));
+              return Stmt.ifthenelse(v,
+                  right.compTail(new TailCont() {
+                      Code with(final Tail t) {
+                          return new Bind(r, t, join.toCode());
+                      }
+                  }),
+                  new Bind(r, DataAlloc.False,  join.toCode()));
+          }
+      });
+  }
+  case LOr  { // left || right; short circuit semantics, not the same as bor
+      return left.compVar(new VarCont() {
+          Code with(final Var v) {
+              final Temp  r    = new Temp();
+              final mil.Block join = new mil.Block(kt.with(new mil.Return(r)));
+              return Stmt.ifthenelse(v,
+                  new Bind(r, DataAlloc.True,  join.toCode()),
+                  right.compTail(new TailCont() {
+                      Code with(final Tail t) {
+                          return new Bind(r, t, join.toCode());
+                      }
+                  }));
+          }
+      });
+  }
+
+  // Bitwise operators: ------------------------------
+
+  case BAnd { // left & right
+      Prim op = lt.equal(Type.INT) ? Prim.and : Prim.band;
+      return left.binary(Prim.and, right, kt);
+  }
+  case BOr  { // left | right
+      Prim op = lt.equal(Type.INT) ? Prim.or : Prim.bor;
+      return left.binary(op, right, kt);
+  }
+  case BXor { // left ^ right
+      Prim op = lt.equal(Type.INT) ? Prim.xor : Prim.bxor;
+      return left.binary(op, right, kt);
+  }
+
+class Expr {
+  /** Compilation rule for a unary operator; calculate the value of the
+   *  argument (in a variable) and then call the appropriate primitive.
+   */
+  protected Code unary(final Prim op, final TailCont kt) {
+      return this.compVar(new VarCont() {
+          Code with(final Var v) {
+              return kt.with(new PrimCall(op, v));
+          }
+      });
+  }
+
+  /** Compilation rule for a binary operator; calculate the values of the
+   *  two arguments (in variables) and then call the appropriate primitive.
+   */
+  protected Code binary(final Prim op, final Expr that, final TailCont kt) {
+      return this.compVar(new VarCont() {
+          Code with(final Var l) {
+              return that.compVar(new VarCont() {
+                  Code with(final Var r) {
+                      return kt.with(new PrimCall(op, l, r));
+                  }
+              });
+          }
+      });
+  }
+
+  /** Compilation rule to find the address of the idx'th element of this
+   *  (array) expression.
+   */
+  protected Code elemAddress(final Expr idx, final VarCont kv) {
+      return this.compVar(new VarCont() {
+          Code with(final Var a) {
+              return idx.compVar(new VarCont() {
+                  Code with(final Var i) {
+                      Var o = new Temp();
+                      Var m = new Temp();
+                      return new Bind(o, new PrimCall(Prim.mul, new Const(4), i),
+                             new Bind(m, new PrimCall(Prim.add, a, o),
+                             kv.with(m)));
+                  }
+              });
+          }
+      });
+   }
+}
+
+/** A simple program for testing the Mini lexer, parser, static
+ *  analysis, and MIL code generation phases.
+ */
+public class MilGen {
+  import compiler.*;
+
+  public static void main(String[] args) {
+      if (args.length!=1) {
+          System.out.println("Program requires exactly one argument");
+      } else {
+          Handler handler = new SimpleHandler();
+          try {
+              MiniLexer lexer
+                = new MiniLexer(new java.io.FileReader(args[0]), handler);
+              MiniParser parser
+                = new MiniParser(handler, lexer);
+              Fundefs defs = parser.getProgram();
+
+              if (defs!=null) {                       // Did parser succeed?
+                  Fundef mainFun = Fundefs.check(new Context(handler, defs), defs);
+                  if (handler.getNumFailures()==0) {  // Static analysis ok?
+                      System.out.println("Program appears to be valid!");
+                      Fundefs.compile(defs);
+                      System.out.println("Compilation to MIL complete");
+                      MILProgram prog = mainFun.entryToMIL();
+                      System.out.println("Resulting program is:");
+                      prog.display();
+                      prog.toDot("before.dot");
+                      debug.Log.on();
+                      System.out.println("Running optimizer ...");
+                      prog.optimize();
+                      System.out.println("Results ...");
+                      prog.shake();
+                      prog.display();
+                      prog.toDot("after.dot");
+                      System.out.println("Done ...");
+                  }
+              }
+          } catch (Failure f) {
+              handler.report(f);
+          } catch (Exception e) {
+              handler.report(new Failure("Exception: " + e));
+          }
+          System.out.println("Total failures found: "
+                               + handler.getNumFailures());
+      }
+  }
+}
+
+package mil;
+
+// TODO: We don't need a full dependency graph here; calls in the middle of a block
+// will not impact the computation of live variables.  But the algorithm we're using
+// right now does not distinguish between loops and recursive function calls.
+
+class Block {
+  /** Records the set of live variables at the top of this block.
+   */
+  private Vars liveVars = null;
+
+  /** Return the set variables that are live at the top of this block.
+   */
+  getter liveVars;
+}
+
+/** Perform a live variable analysis on this program to determine the
+ *  correct formal and actual parameter lists for each block.  In this
+ *  analysis, we are relying on the fact that the only trailing/tail
+ *  BlockCalls in the generated MIL code are for in-function control flow,
+ *  and that none of the actual function calls in the original source have
+ *  been migrated in to tail position.
+ */
+public void computeLiveVars()
+  case MILProgram {
+      for (DefnSCCs dsccs = sccs; dsccs!=null; dsccs=dsccs.next) {
+        dsccs.head.computeLiveVars();
+      }
+  }
+
+/** Compute the live variables for each of the definitions in this SCC,
+ *  iterating, in classic dataflow style, until we reach a fixed point.
+ */
+void computeLiveVars()
+  case DefnSCC {
+      boolean changed;
+      do {
+          changed  = false;
+          for (Defns ds = bindings; ds!=null; ds=ds.next) {
+              changed |= ds.head.computeLiveVars();
+          }
+      } while (changed);
+  }
+
+/** Calculate the set of live variables for the code in a block,
+ *  returning true if the block is recursive and new variables have
+ *  been added to the liveVars list for the block during this call.
+ *  For any other type of Defn, we just return false.
+ */
+boolean computeLiveVars()
+  case Defn { return false; }
+  case Block {
+      Vars vs = code.liveVars();
+      if (getScc().isRecursive()) {
+          boolean changed = false;
+          for (; vs!=null; vs=vs.next) {
+              if (!Vars.isIn(vs.head, liveVars)) {
+                  liveVars = new Vars(vs.head, liveVars);
+                  changed  = true;
+              }
+          }
+          return changed;
+      } else {
+          liveVars = vs;
+          return false;
+      }
+  }
+
+/** Compute the set of live variables in this code sequence.
+ */
+Vars liveVars()
+    case Code abstract;
+    case Done {
+        return t.liveVars(null);
+    }
+    case Bind {
+        return t.liveVars(Vars.remove(v, c.liveVars()));
+    }
+    case Match {
+        Vars vs = (def==null) ? null : def.liveVars(null);
+        for (int i=0; i<alts.length; i++) {
+            vs = Vars.add(alts[i].liveVars(), vs);
+        }
+        return a.add(vs);
+    }
+    case TAlt {
+        return Vars.remove(args, bc.liveVars(null));
+    }
+
+/** Compute the set of live variables that appear in this Tail, adding
+ *  each one to the list that is passed in as a parameter if it is not
+ *  already included.
+ */
+Vars liveVars(Vars vs)
+  case Tail abstract;
+  case Return, Invoke {
+      return a.add(vs);
+  }
+  case Enter {
+      return f.add(a.add(vs));
+  }
+  case Call {
+      if (args!=null) {
+          for (int i=0; i<args.length; i++) {
+              vs = args[i].add(vs);
+          }
+      }
+      return vs;
+  }
+  case BlockCall {
+      return Vars.add(b.getLiveVars(), super.liveVars(vs));
+  }
+
+/** Rewrite trailing block calls (i.e., block calls at the end of code
+ *  sequences) to use the lists of arguments that have previously been
+ *  computed by the live variables analysis.
+ */
+public void fixTrailingBlockCalls()
+  case MILProgram {
+      for (DefnSCCs dsccs = sccs; dsccs!=null; dsccs=dsccs.next) {
+          dsccs.head.fixTrailingBlockCalls();
+      }
+  }
+
+/** Rewrite trailing block calls (i.e., block calls at the end of code
+ *  sequences) to use the lists of arguments that have previously been
+ *  computed by the live variables analysis.
+ */
+void fixTrailingBlockCalls()
+  case DefnSCC {
+      for (Defns ds = bindings; ds!=null; ds=ds.next) {
+          ds.head.fixTrailingBlockCalls();
+      }
+  }
+  case Defn {
+      /* do nothing */
+  }
+  case Block {
+      code.fixTrailingBlockCalls();
+  }
+  case Code abstract;
+  case Done {
+      t.fixTrailingBlockCalls();
+  }
+  case Bind {
+      c.fixTrailingBlockCalls();
+  }
+  case Match {
+      if (def!=null) {
+          def.fixTrailingBlockCalls();
+      }
+      for (int i=0; i<alts.length; i++) {
+        alts[i].fixTrailingBlockCalls();
+      }
+  }
+  case TAlt {
+      bc.fixTrailingBlockCalls();
+  }
+  case Tail {
+      /* do nothing */
+  }
+  case BlockCall {
+      if (args==null) {
+          withArgs(b.formalsToArgs());
+      }
+      // else { debug.Internal.error("tail block call with non null arguments"); }
+  }
+
+
+/** Calculate a list of arguments for entering this block at the end of
+ *  a code sequence, possibly setting the formals for the block from the
+ *  set of live variables that were computed by the preceding liveness
+ *  analysis.
+ */
+Atom[] formalsToArgs()
+  case Block {
+      if (formals==null) {
+          // No formals?  Then initialize from computed live variables
+          formals = new Var[Vars.length(liveVars)];
+          for (int i=0; liveVars!=null; liveVars=liveVars.next) {
+              formals[i++] = liveVars.head;
+          }
+      } else if (liveVars!=null) {
+          // Formals already?  Check that they cover all of the inferred
+          // live variables!
+          for (; liveVars!=null; liveVars=liveVars.next) {
+              if (!Var.isIn(liveVars.head, formals)) {
+                  debug.Internal.error("Free variable " + liveVars.head
+                                          + " is not included in formals");
+              }
+          }
+      }
+
+      // Make a fresh copy of the formals as a list of atoms, suitable
+      // for use in a BlockCall:
+      Atom[] args = new Atom[formals.length];
+      for (int i=0; i<formals.length; i++) {
+          args[i] = formals[i];
+      }
+      return args;
+  }
+
+/** Test for membership in an array.
+ *  TODO: make a macro for this?
+ */
+public static boolean isIn(Var val, Var[] vals)
+  case Var {
+      for (int i=0; i<vals.length; i++) {
+          if (vals[i]==val) {
+              return true;
+          }
+      }
+      return false;
+  }
+

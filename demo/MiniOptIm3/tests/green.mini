@@ -1,0 +1,51 @@
+
+int f(int b, int c) {
+  int x;
+
+  if (b>c) {
+    x = b*c;
+    print 1;
+  } else {
+    x = b*c;
+    print 2;
+  }
+
+  print b*c;
+  print b*c;
+  print b*c;
+  y(b,c);
+  print b*c;
+
+  return x;
+}
+
+int g(int a, int z) {
+  int q;
+
+  if (a>z) {
+    q = a*z;
+    print 1;
+  } else {
+   	q = a*z;
+    print 2;
+  }
+
+  print a*z;
+  print a*z;
+  y(a,z);
+  print a*z;
+  print a*z;
+
+  return q;
+}
+
+void y(int e4, int e5) {
+	print (e4*e5);
+	print (e4*e5);
+	print (e4*e5);
+}
+
+void mini_main() {
+  print g(1,2);	 
+  print f(1,2);
+}

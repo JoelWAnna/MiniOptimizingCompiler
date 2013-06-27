@@ -1,0 +1,13 @@
+cp src/library.sweet src/mil.sweet src/optimize.sweet doc
+cd doc
+runhugs sweet2tex.hs mil.sweet optimize.sweet library.sweet
+pdflatex doc
+bibtex doc
+pdflatex doc
+pdflatex doc
+rm mil.sweet optimize.sweet library.sweet
+rm mil.tex   optimize.tex   library.tex
+rm mil.aux   optimize.aux   library.aux
+rm *.bbl *.blg *.log *.toc
+cd ..
+

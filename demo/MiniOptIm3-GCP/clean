@@ -1,0 +1,17 @@
+# remove all class files:
+find . -name '*.class' -exec rm {} \;
+
+# remove Java source files from mil/*:
+rm mil/*.java
+
+# remove temporary files
+rm -r tmp
+
+# remove dot files:
+rm before.dot after.dot
+
+# remove documentation temporaries:
+rm doc/mil.sweet doc/optimize.sweet doc/library.sweet
+rm doc/mil.tex   doc/optimize.tex   doc/library.tex
+rm doc/*.bbl doc/*.blg doc/*.log doc/*.toc doc/*.aux doc/*.sweet doc/*.pdf
+

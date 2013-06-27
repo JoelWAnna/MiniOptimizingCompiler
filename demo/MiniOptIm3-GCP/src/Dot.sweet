@@ -1,0 +1,264 @@
+// Functions for generating dot output for mini programs.
+// Requires/depends on Output.sweet.
+package mini;
+
+/** Represents an output phase for producing textual output of
+ *  abstract syntax trees in dot format, suitable for the AT&T
+ *  Graphviz tools.
+ */
+public class DotOutput(private java.io.PrintStream out) {
+    /** Create a dot graph on the specified output stream to
+     *  describe the program for a specific source program.
+     */
+    public void toDot(Fundefs defs) {
+        out.println("digraph AST {");
+        out.println("node [shape=box];");
+        Fundefs.toDot(defs, this, 0);
+        out.println("}");
+    }
+
+    /** Output a description of a particular node in the
+     *  dot description of an AST.  The label specifies the
+     *  "friendly" description of the node that will be used
+     *  in the output, while the nodeNo is an integer value
+     *  that uniquely identifies this particular node.  We
+     *  return nodeNo+1 at the end of this function, indicating
+     *  the next available node number.
+     */
+    public int node(String label, int nodeNo) {
+        out.println(nodeNo + "[label=\"" + label + "\"];");
+        return nodeNo+1;
+    }
+
+    /** A variant of node() that uses a different background
+     *  color to signal a root node.
+     */
+    public int root(String label, int nodeNo) {
+        out.println(nodeNo + "[style=\"filled\", fillcolor=\"lightblue\", label=\"" + label + "\"];");
+        return nodeNo+1;
+    }
+
+    /** Output an edge between the specified pair of AST nodes
+     *  in the appropriate format for the dot tools.
+     */
+    public void join(int from, int to) {
+        out.println(from + " -> " + to + ";");
+    }
+}
+
+/** Output a description of this node (with id n), including a
+ *  link to its parent node (with id p) and returning the next
+ *  available node id.
+ */
+public int toDot(DotOutput dot, int p, int n)
+    case Stmt, Expr, VarIntro, ForInit {
+        dot.join(p, n);
+        return toDot(dot, n);
+    }
+    case Stmts {
+        dot.join(p,n);
+        p = n;
+        n = dot.node("Stmts", n);
+        for (int i=0; i<used; i++) {
+            n = stmts[i].toDot(dot, p, n);
+        }
+        return n;
+    }
+    case VarDecl {
+        dot.join(p,n);
+        p = n;
+        n = dot.node("VarDecl: " + type, n);
+        for (int i=0; i<intros.length; i++) {
+            n = intros[i].toDot(dot, p, n);
+        }
+        return n;
+    }
+
+/** Output a description of the structure of this program in the
+ *  dot format that is used by the AT&T GraphViz tools.
+ */
+public static void toDot(Fundefs defs, DotOutput dot, int n)
+    case Fundefs {
+        for (; defs!=null; defs=defs.next) {
+            n = defs.def.toDot(dot, n);
+        }
+    }
+
+/** Output a description of this node (with id n), returning the
+ *  next available node id after this node and all of its children
+ *  have been output.
+ */
+public int toDot(DotOutput dot, int n)
+    case Fundef {
+      int f = dot.root((type==null ? "void" : type.toString())
+                          + " " + fun + "(..)", n);
+      dot.join(n, f);
+      int c = dot.node("Formals", f);
+      for (Formals fs=formals; fs!=null; fs=fs.getNext()) {
+         dot.join(f, c);
+         c = fs.getFormal().toDot(dot, c);
+      }
+      return body.toDot(dot, n, c);
+    }
+    case Formal {
+        return dot.node(type + " " + name, n);
+    }
+
+    case Stmt abstract;
+    case Empty {
+        return dot.node("Empty", n);
+    }
+    case ExprStmt {
+        return exp.toDot(dot, n,
+               dot.node("ExprStmt", n));
+    }
+    case Break {
+        return dot.node("Break", n);
+    }
+    case Continue {
+        return dot.node("Continue", n);
+    }
+    case For {
+        int c = init.toDot(dot, n, dot.node("For", n));
+        if (test==null) {
+            dot.join(n, c);
+            c = dot.node("No test", c);
+        } else {
+            c = test.toDot(dot, n, c);
+        }
+
+        if (step==null) {
+            dot.join(n, c);
+            c = dot.node("No step", c);
+        } else {
+            c = step.toDot(dot, n, c);
+        }
+
+        return body.toDot(dot, n, c);
+    }
+    case DoWhile {
+        return test.toDot(dot, n,
+               body.toDot(dot, n,
+               dot.node("DoWhile", n)));
+    }
+    case While {
+        return body.toDot(dot, n,
+               test.toDot(dot, n,
+               dot.node("While", n)));
+    }
+    case If {
+        return ifFalse.toDot(dot, n,
+               ifTrue.toDot(dot, n,
+               test.toDot(dot, n,
+               dot.node("If", n))));
+    }
+    case Print {
+        return exp.toDot(dot, n,
+               dot.node("Print", n));
+    }
+    case Return {
+        int c = dot.node("Return", n);
+        return (expr==null) ? c : expr.toDot(dot, n, c);
+    }
+    case Block {
+        return stmts.toDot(dot, n,
+               dot.node("Block", n));
+    }
+
+    case Stmts {
+        return toDot(dot, n, dot.node("Stmts", n));
+    }
+
+    case VarDecl {
+        return toDot(dot, n, dot.node("VarDecl "+type, n));
+    }
+    case VarIntro {
+        return dot.node("VarIntro: " + id, n);
+    }
+    case InitVarIntro {
+        return init.toDot(dot, n,
+               dot.node("InitVarIntro: " + id, n));
+    }
+
+    case ForInit abstract;
+    case NoInit {
+        return dot.node("NoInit", n);
+    }
+    case ExprInit {
+        return expr.toDot(dot, n,
+               dot.node("ExprInit", n));
+    }
+    case VarDeclInit {
+        return decl.toDot(dot, n,
+               dot.node("VarDeclInit", n));
+    }
+
+    case Expr abstract;
+    case Id {
+        return dot.node("Id, " + name, n);
+    }
+    case Call {
+        int c = dot.node("Call " + name + "(..)", n);
+        for (Args as=args; as!=null; as=as.getNext()) {
+           c = as.getArg().toDot(dot, n, c);
+        }
+        return c;
+    }
+    case Assign {
+        return rhs.toDot(dot, n,
+               lhs.toDot(dot, n,
+               dot.node("Assign", n)));
+    }
+    case IntLit {
+        return dot.node("IntLit: " + num, n);
+    }
+    case UnExpr {
+        return exp.toDot(dot, n,
+               dot.node(label(), n));
+    }
+    case BinExpr {
+        return right.toDot(dot, n,
+               left.toDot(dot, n,
+               dot.node(label(), n)));
+    }
+    case ArrayAccess {
+        return idx.toDot(dot, n,
+               arr.toDot(dot, n,
+               dot.node("ArrayAccess", n)));
+    }
+    case ArrayAssign {
+        return rhs.toDot(dot, n,
+               idx.toDot(dot, n,
+               arr.toDot(dot, n,
+               dot.node("ArrayAssign", n))));
+    }
+    case NewArray {
+        return size.toDot(dot, n,
+               dot.node("NewArray of " + type, n));
+    }
+
+/** A simple program for testing the Mini lexer, parser, and
+ *  DotOutput phases.
+ */
+public class DotTest {
+  import compiler.*;
+
+  public static void main(String[] args) {
+      if (args.length!=1) {
+          System.out.println("Program requires exactly one argument");
+      } else {
+          Handler handler = new SimpleHandler();
+          try {
+              MiniLexer  lexer  = new MiniLexer(new java.io.FileReader(args[0]), handler);
+              MiniParser parser = new MiniParser(handler, lexer);
+              Fundefs    defs   = parser.getProgram();
+              if (defs!=null) {
+                  new DotOutput(System.out).toDot(defs);
+              }
+          } catch (Exception e) {
+              handler.report(new Failure("Exception: " + e));
+          }
+      }
+  }
+}
+

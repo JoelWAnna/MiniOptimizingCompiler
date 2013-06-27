@@ -1,0 +1,8 @@
+digraph Arrs2Ater {
+  b0;
+  b0 -> b11;
+  b11 -> b11;
+  b11 -> b13;
+  b13 -> b13;
+  b13 -> b6;
+}

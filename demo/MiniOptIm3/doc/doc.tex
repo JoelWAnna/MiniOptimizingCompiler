@@ -1,0 +1,27 @@
+%------------------------------------------------------------------------------
+%\documentclass[12pt]{report}
+\documentclass{report}
+%\usepackage{fullpage}
+%\usepackage{palatino}
+\parskip 2mm
+\parindent 0mm
+\def\codesize{\scriptsize}
+
+\begin{document}
+%------------------------------------------------------------------------------
+\title{Monadic Intermediate Language Documentation}
+\author{Mark P Jones}
+\maketitle
+\tableofcontents
+
+\include{mil}
+\include{optimize}
+
+\appendix
+\include{library}
+
+\bibliographystyle{plain}
+\bibliography{refs}
+
+\end{document}
+%------------------------------------------------------------------------------

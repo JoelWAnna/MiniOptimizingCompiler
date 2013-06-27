@@ -1,0 +1,53 @@
+
+int f(int b, int c) {
+  int x;
+
+  if (b>c) {
+    x = b*c;
+    print 1;
+  } else {
+    x = b*c;
+
+    print 2;
+  }
+	foo(b,c);
+  print b*c;
+  print b*c;
+  print b*c;
+  print b*c;
+
+  return x;
+}
+int g(int b, int c) {
+  int x;
+
+  if (b<c) {
+    x = b*c;
+    print 1;
+  } else {
+    x = b*c;
+
+    print 2;
+  }
+  foo(b,c);
+  print b*c;
+  print b*c;
+  print b*c;
+  print b*c;
+
+  return x;
+}
+void foo(int a, int z)
+{
+	
+	print a*z;
+	print a*z;
+	z = a;
+	print a*z;
+	print a*z;
+}
+void mini_main() {
+  print f(1,2);
+  print g(1,2);
+  
+}

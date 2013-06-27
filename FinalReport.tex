@@ -3,7 +3,7 @@
 \usepackage{fancyhdr}
 \usepackage{lastpage}
 \pagestyle{fancy}
-\lhead{\footnotesize \parbox{11cm}{Joel Anna} }
+\lhead{\footnotesize \parbox{11cm}{Joel Anna $<$annajoel@pdx.edu$>$} }
 %\lfoot{\footnotesize \parbox{11cm}{\textit{2}}}
 \cfoot{}
 \rhead{\footnotesize Final Report:Page \thepage\ of \pageref{LastPage}}  
@@ -14,11 +14,10 @@
 .\\
 I started off the term having just finished the CS321-322 Compilers sequence working with the mini compiler. The task at hand was to learn about global optimizations, by extending the MIL optimizer to optimize across block boundaries.
 \paragraph{}
-I began by reading the optimizations chapter of Mogensen's Basics of Compiler Design. I took the information from this and designed and implemented global constant propagation. The high level overview of global constant propagation is to create a lattice structure for each block parameter, and for every parameter that has a small number of constant values for it, replace the block call with a derived block using the constant value for that parameter.\\
+I began by reading the optimizations chapter of Mogensen's Basics of Compiler Design. I took the information from this and designed and implemented global constant propagation. The high level overview of global constant propagation is to create a lattice structure for each block parameter, and for every parameter that has a small number of constant values for it, replace the block call with a derived block using the constant value for that parameter.\\ Later I constructed the data flow algorithms for Available and Anticipated Expressions, two of the four data flow passes needed for lazy code motion.
 \paragraph{Details of the Global Constant Propagation}
 To retrieve the information about callers to a block, I created a data flow path that runs through the code objects for each block, returning a linked list of block calls to the current block.
-\begin{verbatim}
-    /** getBlockCall 
+\begin{verbatim}    /** getBlockCall 
      *  @param id The id of the Block which you want block calls to.
      *    @return a list of BlockCall objects which call id
      *
@@ -34,8 +33,7 @@ To retrieve the information about callers to a block, I created a data flow path
     case Bind {
         BlockCall thisCall = null;
         BlockCall bc = t.isBlockCall();
-        if (bc instanceof BlockCall)
-        {
+        if (bc instanceof BlockCall) {
             if (bc.callsBlock(id)) {
                 thisCall = bc;
             }
@@ -262,7 +260,9 @@ b0() =
   b9(2, a)
 \end{verbatim}
 %\pagebreak
-\paragraph{Reflections of the Global Constant Propagation Algorithm} Looking back at the code for Global Constant Propagation, and thinking about it after completing the Available and Anticipated Expressions, if I were to rework the code, a better approach would have been taking the information about all parameters together; if (x,y) are always constants paired together, derive a block with both of them replaced together, which would remove the case of creating 4 blocks if the two pairs of constants used were (0,1) and (1,0). As it is currently implemented, each of these cases would be specialized into b(x/0) b(x/1) b(y/0) b(y/1)
+\paragraph{Reflections of the Global Constant Propagation Algorithm} Looking back at the code for Global Constant Propagation, and thinking about it after completing the Available and Anticipated Expressions, if I were to rework the code, a better approach would have been taking the information about all parameters together; if (x,y) are always constants paired together, derive a block with both of them replaced together, which would remove the case of creating 4 blocks if the two pairs of constants used were (0,1) and (1,0). As it is currently implemented, each of these cases would be specialized into b(x/0) b(x/1) b(y/0) b(y/1).\\
+An alternative approach to this optimization could possibly be achieved during the construction of the abstract syntax tree, by keeping a count of assignments to each Id object, if the number of assignments is one at the end of this construction this information could possibly be used during MIL code generation and replacing the Id with its only assigned value.
+
 \paragraph{Dataflow Analysis}
 Available expressions was the first dataflow analysis that I wrote, using the algorithm presented in the ``Dragon Book''. This algorithm uses intersection of the 'OUT' sets of the preceding blocks to form the 'IN' set of a block, the IN set is passed through each code segment, facts are removed from this set by the variables that are assigned to by a Bind object, and facts are added to by Bind and Done objects. Learning about the transfer functions, gen/kill functions, and meets functions really gave me a better perspective into how compilers arrive at the information necessary to perform optimizations that cross block boundaries, prior to reading about and implementing this algorithm, I was able to look at a piece of IL / ASM code and point out optimizations, but unable to generalize it in a algorithmic way.
 \paragraph{}
@@ -286,7 +286,6 @@ The pass through the data is listed below, the flow of the algorithm begins at t
 The code objects within the block create the outset from the inset using the method outset, using the generate and kill set operations.
 \begin{verbatim}
 public G_Facts outset(G_Facts ins, String id)
-    case Code abstract;
     case Bind {
         G_Facts outs = null;
         G_Fact d = null;
@@ -335,11 +334,15 @@ public G_Facts outset(G_Facts ins, String id)
             return ins;
             }
 \end{verbatim}
+\paragraph{Reflections of Available Expressions}
+Work on the Available Expressions began as I was beginning to be quite comfortable with the original MIL objects and the local optimizations. I realize after the fact that I would have been better able to find bugs in the linked list and set code if I had written them either with unit tests or another type of correctness verifications, several hours of debugging would have been saved by writing the tests first. \\
+I am satisfied with the clarity of the final code, but a potential improvement would be to replace the set of tail objects with a specific bitfield assigned to each possible expression in the program.
 \paragraph{}
-Anticipated Expressions was the final dataflow pass that I wrote. It consisted of a recursive descent algorithm that takes the intersection of the IN sets from successor blocks and adds to it and removes from in much in the same was as Available Expressions, but flowing through the block in reverse. It reuses many of the set operations that were implemented for Available expressions, and presented the challenge of understanding where it is appropriate to check if the IN sets have been changed since the last pass, as opposed to the forward data flow analysis that Available Expressions used, rather than computing the set before running through each of the blocks, it is needed to compute them after running the data flow through the blocks. After discovering this it seems natural that a reverse flow would be opposite the forwards analysis, but this was not apparent when I initially wrote the algorithm.
+Anticipated Expressions was the final dataflow pass that I wrote. It consisted of a recursive descent algorithm that takes the intersection of the IN sets from successor blocks and adds to it and removes from in much in the same was as Available Expressions, but flowing through the block in reverse. It reuses many of the set operations that were implemented for Available expressions, and presented the challenge of understanding where it is appropriate to check if the IN sets have been changed since the last pass, as opposed to the forward data flow analysis that Available Expressions used, rather than computing the set before running through each of the blocks, it is needed to compute them after running the data flow through the blocks. After discovering this it seems natural that a reverse flow would be opposite the forwards analysis, but this was not apparent when I initially wrote the algorithm.\pagebreak
 \paragraph{}
 Challenges: Working with a Monadic Intermediary Language presented me with the challenge of becoming familiar with the concept of Monads, and the way in which the Monad Laws relate to the typical applications of compiler optimizations. It was challenging to navigate through the code initially, but I found that working with the Sweet code directly allowed me to concentrate only on the code flow, and not be distracted by jumping from file to file modifying or adding new functions. The use of a new temporary for each operation as well as the listing of needed parameters on each block presented the challenge of understanding how to achieve an intersection from the OUT sets of two blocks to accurately be able to test the available and anticipated expressions functions.
 \paragraph{}
-The next task will be to clear up the remaining bug of renaming the variables used in the sets for after they enter (for a forward analysis) or leave (reverse) the start of a block. Once that is complete, the Postponable expressions pass should be a straightforward implementation, by writing the code for set difference, and applying the same pattern of a forward dataflow analysis as the available expressions. 
+Overall I feel that I have learned quite a bit about how algorithmically compilers can perform optimizations across block boundaries.\\
+The next task will be to clear up the remaining bug of renaming the variables used in the sets for after they enter (for a forward analysis) or leave (reverse) the start of a block. Once that is complete, the Postponable expressions pass should be a straightforward implementation, by writing the code for set difference, and applying the same pattern of a forward dataflow analysis as the available expressions. Finishing up with the Used Expressions pass with a similar approach to the reverse flow of Anticipated Expressions. \\
 
 \end{document}

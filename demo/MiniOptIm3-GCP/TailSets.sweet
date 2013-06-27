@@ -1,0 +1,279 @@
+package mil;
+	public class G_Fact(public Tail t, public Atoms atoms) {
+	}
+	
+
+	public boolean equal(G_Fact other)
+	case G_Fact {
+			if (this.t.sameTail(other.t))
+			{
+				return true;
+			}
+			else {
+				System.out.println("this");
+				t.display();
+				System.out.print(" NEQ ");
+				other.t.display();
+				System.out.println("\nthat");
+				return false;
+			}
+		}
+
+	public boolean merge(G_Fact other) 
+	case G_Fact {
+			if (this.equal(other)) {
+				Atoms current = other.atoms;
+				while (current != null)
+				{
+					boolean found = false;
+					Atoms old = atoms;
+					while (old != null) {
+						if (old.head.sameAtom(current.head)) {
+							found = true;
+							break;
+						}
+						old = old.next;
+					}
+				if (!found)
+					atoms = new Atoms(current.head, atoms);
+				current = current.next;
+				}
+				return true;
+			}
+			return false;
+		}
+
+	public G_Fact copy()
+	case G_Fact {
+		return new G_Fact(t, atoms.copy());
+		}
+	
+
+	macro List(Atom)
+	macro List(G_Fact)
+	public class Set(public G_Facts a){}
+	macro List(Set)
+	macro AddLength(G_Facts) 
+	public void print(boolean inset, String id)
+	case G_Facts {
+		if (inset) {
+			System.out.println("Inset for block " + id);
+		}
+		else {
+			System.out.println("Outset for block " + id);
+		}
+		print();
+	}
+
+	public void print()
+	case G_Facts {
+		head.t.display();
+		System.out.print("->");
+		Atoms current = head.atoms;
+		System.out.print(current.head.toString());
+		current = current.next;
+		while (current != null) {
+			System.out.print("," + current.head.toString());
+			current = current.next;
+			}
+		System.out.println("");
+		if (next != null)
+			next.print();
+	}
+	case Sets {
+		int i = 0;
+		print(i);
+	}
+	
+	public void print(int i)
+	case Sets {
+		System.out.println("Set index :" + i);
+		head.a.print();
+		if (next != null)
+			next.print(i+1);
+		}
+	
+		
+	
+	
+	public G_Facts copyWithSubst(Atom[] args, Atom[] formals)
+	case G_Facts	{
+		if (args == null || formals == null) return this;
+		G_Facts copy = new G_Facts(head.copyWithSubst(args, formals), null);
+		if (next != null)
+			copy.next = next.copyWithSubst(args, formals);	
+		return copy;		
+	}	
+
+	public G_Fact copyWithSubst(Atom[] args, Atom[] formals)
+	case G_Fact	{
+		return  new G_Fact(t.copyWithSubst(args, formals), atoms);	
+			}
+
+	public Tail copyWithSubst(Atom[] args, Atom[] formals)
+	case Tail {
+		AtomSubst a = null;
+		for (int i = 0; i < formals.length; i++) {
+			Var v = formals[i].isVar();
+			if (v == null) continue;
+			a = new AtomSubst(v, args[i], a);
+		}
+		
+		return apply(a);
+	}	
+	
+			
+	
+	public G_Facts copy()
+	case G_Facts	{
+		if (next != null)
+			return new G_Facts(head.copy(), next.copy());	
+		return new G_Facts(head.copy(), next);		
+	}
+
+	public Atoms copy()
+	case Atoms	{
+		if (next != null)
+			return new Atoms(head, next.copy());
+		return new Atoms(head, next);
+	}
+
+	public Var isVar() 
+	case Atom { return null; }
+	case Var { return this; }
+
+	public G_Facts kill(Atom a)
+	case G_Facts {
+		Var v = a.isVar();
+		if (v == null)
+			return this;
+		if (head.t.contains(v)) {
+			if (next != null)
+				return next.kill(v);
+			return null;
+		}
+		if (next != null)
+			return new G_Facts(head, next.kill(v));
+		return new G_Facts(head, null);
+	}
+
+	public G_Facts gen(G_Fact p)
+	case G_Facts {
+		if (head.merge(p)) {
+			return this;
+		}
+		if (next != null) {
+			return new G_Facts(head, next.gen(p));
+		}
+		next = new G_Facts(p, null);
+		return this;
+	}
+
+	public static G_Facts meets(Sets toMeet, boolean mode)
+	case G_Facts {
+		G_Facts met = null;
+		boolean firstRound = true;
+		// The interpretation of !mode is intersection
+		Sets setsIter;
+		for (setsIter = toMeet; setsIter != null; setsIter = setsIter.next) {
+			G_Facts setA =  setsIter.head.a;
+			
+			if (firstRound) {
+				firstRound = false;
+				toMeet = toMeet.next;
+				if (toMeet == null) {
+					// only 1 set
+					if (setA != null) {
+						met = setA.copy();
+					}
+					break;
+				}
+				else{	
+					G_Facts setB =  toMeet.head.a;
+					met = G_Facts.meets(setA, setB, mode);
+				}
+			}
+			else {
+				met = G_Facts.meets(met, setA, mode);
+			}
+		}
+		return met;
+	}
+
+	public static G_Facts meets(G_Facts toMeetA, G_Facts toMeetB, boolean union)
+	case G_Facts {
+		if (toMeetA == null) {
+			if (toMeetB == null || !union) {
+				return null;
+			}
+			return toMeetB.copy();
+		}
+		if (toMeetB == null) {
+			if (toMeetA == null || !union) {
+				return null;
+			}
+			return toMeetA.copy();
+		}
+		// toMeetA != null && toMeetB != null
+		G_Facts met = null;
+		G_Facts unionMet = null;
+		G_Facts toMeetAHead = toMeetA = toMeetA.copy();
+		G_Facts toMeetBHead = toMeetB = toMeetB.copy();
+		
+		
+		G_Facts previousA = null;
+		G_Facts previousB = null;
+
+		while (toMeetA != null)
+		{
+			toMeetB = toMeetBHead;
+			previousB = null;
+			boolean found = false;
+			while (toMeetB != null)
+			{
+				if (toMeetA.head.equal(toMeetB.head)) {
+						G_Fact toInsert = toMeetA.head.copy();
+						toInsert.merge(toMeetB.head);
+						met = new G_Facts(toInsert, met);
+						found = true;
+						if (previousA == null) {
+							toMeetAHead = toMeetA.next;
+						}
+						else {
+							previousA.next = toMeetA.next;
+						}
+						if (previousB == null) {
+							toMeetBHead = toMeetB.next;
+						}
+						else {
+							previousB.next = toMeetB.next;
+						}
+						break;
+				}
+				else {
+					previousB = toMeetB;
+				}
+				toMeetB = toMeetB.next;
+			}
+			if (!found) {
+				previousA = toMeetA;
+			}
+			toMeetA = toMeetA.next;
+		}
+
+		if (union) {
+			while (toMeetAHead != null) {
+				met = new G_Facts(toMeetAHead.head.copy(), met);
+				toMeetAHead = toMeetAHead.next;
+			}
+			while (toMeetBHead != null) {
+				met = new G_Facts(toMeetBHead.head.copy(), met);
+				toMeetBHead = toMeetBHead.next;
+			}
+			
+			
+		}
+		return met;
+	}
+
+

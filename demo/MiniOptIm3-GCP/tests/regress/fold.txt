@@ -1,0 +1,90 @@
+void mini_main() {
+  print plus(times(plus(3,4), plus(times(2,2),1)), plus(3,4));
+}
+
+int plus(int x, int y) {
+   return x + y;
+}
+
+int times(int x, int y) {
+   return x * y;
+}
+Program appears to be valid!
+Function times implemented by b2
+Function plus implemented by b1
+Function mini_main implemented by b0
+Compilation to MIL complete
+Resulting program is:
+--------------------------------------
+not recursive
+b1(x, y) =
+  t1 <- add((x, y))
+  return t1
+--------------------------------------
+not recursive
+b2(x, y) =
+  t0 <- mul((x, y))
+  return t0
+--------------------------------------
+not recursive
+b0() =
+  t2 <- return 3
+  t3 <- return 4
+  t4 <- b1(t2, t3)
+  t5 <- return 2
+  t6 <- return 2
+  t7 <- b2(t5, t6)
+  t8 <- return 1
+  t9 <- b1(t7, t8)
+  t10 <- b2(t4, t9)
+  t11 <- return 3
+  t12 <- return 4
+  t13 <- b1(t11, t12)
+  t14 <- b1(t10, t13)
+  _ <- print((t14))
+  return _
+Running optimizer ...
+-------------------------
+applied right monad law in b1
+applied right monad law in b2
+applied right monad law in b0
+prefixInline succeeded for call to block b1 from block b0
+prefixInline succeeded for call to block b2 from block b0
+prefixInline succeeded for call to block b1 from block b0
+prefixInline succeeded for call to block b2 from block b0
+prefixInline succeeded for call to block b1 from block b0
+prefixInline succeeded for call to block b1 from block b0
+Inlining pass finished, running shake.
+applied left monad law for t2 <- return 3
+applied left monad law for t3 <- return 4
+constant folding for add
+applied left monad law for t4 <- return 7
+applied left monad law for t5 <- return 2
+applied left monad law for t6 <- return 2
+constant folding for mul
+applied left monad law for t7 <- return 4
+applied left monad law for t8 <- return 1
+constant folding for add
+applied left monad law for t9 <- return 5
+constant folding for mul
+applied left monad law for t10 <- return 35
+applied left monad law for t11 <- return 3
+applied left monad law for t12 <- return 4
+constant folding for add
+applied left monad law for t13 <- return 7
+constant folding for add
+applied left monad law for t14 <- return 42
+Flow pass finished, running shake.
+Steps performed = 28
+-------------------------
+Inlining pass finished, running shake.
+Flow pass finished, running shake.
+Steps performed = 0
+TOTAL steps performed = 28
+Results ...
+--------------------------------------
+not recursive
+b0() =
+  print((42))
+Done ...
+Total failures found: 0

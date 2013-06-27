@@ -1,0 +1,69 @@
+void mini_main() {
+  int[] foo = new int[12];
+  bar(foo);
+}
+
+int bar(int[] a) {
+  return a[0] + a[1];
+}
+Program appears to be valid!
+Function bar implemented by b1
+Function mini_main implemented by b0
+Compilation to MIL complete
+Resulting program is:
+--------------------------------------
+not recursive
+b1(a) =
+  t0 <- return 0
+  t1 <- mul((4, t0))
+  t2 <- add((a, t1))
+  t3 <- load((t2))
+  t4 <- return 1
+  t5 <- mul((4, t4))
+  t6 <- add((a, t5))
+  t7 <- load((t6))
+  t8 <- add((t3, t7))
+  return t8
+--------------------------------------
+not recursive
+b0() =
+  t9 <- return 12
+  t10 <- mul((4, t9))
+  foo <- newarray((t10))
+  _ <- b1(foo)
+  return _
+Running optimizer ...
+-------------------------
+applied right monad law in b1
+applied right monad law in b0
+suffixInline succeeded for call to block b1 from block b0
+Inlining pass finished, running shake.
+applied left monad law for t9 <- return 12
+constant folding for mul
+applied left monad law for t10 <- return 48
+applied left monad law for t11 <- return 0
+constant folding for mul
+applied left monad law for t12 <- return 0
+rewrite: x + 0 ==> x
+applied left monad law for t13 <- return foo
+applied left monad law for t15 <- return 1
+constant folding for mul
+applied left monad law for t16 <- return 4
+Flow pass finished, running shake.
+Steps performed = 14
+-------------------------
+Inlining pass finished, running shake.
+Flow pass finished, running shake.
+Steps performed = 0
+TOTAL steps performed = 14
+Results ...
+--------------------------------------
+not recursive
+b0() =
+  foo <- newarray((48))
+  t14 <- load((foo))
+  t17 <- add((foo, 4))
+  t18 <- load((t17))
+  add((t14, t18))
+Done ...
+Total failures found: 0

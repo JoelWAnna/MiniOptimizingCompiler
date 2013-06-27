@@ -1,0 +1,152 @@
+First, here's a grammar for a candidate monadic intermediate language.
+
+Programs:
+---------
+A program is described by a collection of definitions:
+
+  p    ::=  def1; ...; defn
+
+Definitions come in three distinct forms:
+
+  def  ::=  b(v1, ..., vn)   = c    -- block entry point
+        |   k{v1, ...; vn} v = c    -- closure entry
+        |   v <- c                  -- initialize global
+
+Intuition: A block definition b(v1, ..., vn) = c corresponds to a
+function at label b that is entered with n arguments in
+registers, and a body (of monadic type) described by the code
+sequence c.  A closure definition k{v1, ..., vn} v = c
+corresponds to the entry point for a closure at label k, using
+variables {v1, ..., vn} from the closure that has just been
+entered (i.e., the closure register points to a closure that
+contains these variables), and an argument value v.  Again, c is
+a code sequence that makes up the body of the function.
+
+Atoms (unboxed expressions):
+----------------------------
+Atoms (or "unboxed expressions") correspond to variable names or
+constants that can be held in a machine register.
+
+  a    ::=  v                -- variable
+        |   n                -- unboxed constant (i.e., a number)
+
+Code sequences:
+---------------
+Intermediate language code sequences are constructed according to
+the following grammar:
+
+  c    ::=  v <- t; c        -- monadic bind (like do v <-e1; e2)
+        |   t                -- tail call (ends a block)
+        |   case v of alts   -- case construct (ends a block)
+        |   halt             -- halt the program (ends a block)
+
+The alts referenced in the case construct shown here are
+alternatives that describe different ways of matching against
+constructed data values:
+
+  alts ::=  {alt1;...;altn}                -- alternatives
+
+  alt  ::=  C(v1,...,vn) -> b(a1,...,an)   -- match against C
+        |   _            -> b(a1,...,an)   -- default branch
+
+The nonterminal t in the grammar for code sequences represents
+"tail" expressions, each of which fit one of the following
+forms:
+
+   t   ::=  return a         -- monadic return
+        |   p((a1, ..., an)) -- primitive call
+        |   b(a1, ..., an)   -- basic block entry point
+        |   C(a1, ..., an)   -- constructor (allocate boxed value)
+        |   k{a1, ..., an}   -- closure (allocate closure object)
+        |   f @ a            -- (first class) function application
+        |   m[a1, ..., an]   -- computation (allocate thunk object)
+        |   invoke a         -- invoke a thunk
+
+Incidentally, we have some laws for rewriting expressions based
+on the monad laws:
+
+ (v <- (w <- e1; e2); e3)   =   (w <- e1; v <- e2; e3)
+
+ (v <- e; return v)         =   e
+
+ (v <- return u; e)         =   [u/v]e
+
+Example:
+--------
+Suppose foo and bar are bound to closures for global constants, and
+consider the program main = comp foo bar where comp = \f g x -> f (g x).
+
+ comp     <- k{}
+ k{} f     = k1{f}
+ k1{f} g   = k2{f,g}
+ k2{f,g} x = y <- g x; f y
+ main     <- (u <- comp foo; u bar)
+
+Example optimization:
+---------------------
+Suppose that k{v1,...,vn} v = k'{v1,...,vn,v}  (i.e., the entry
+point for closure k simply constructs a new closure, adding an
+extra field for the new argument.  Now suppose that we have a
+sequence of lines:
+
+ f <- k{v1, ..., vn}
+ y <- f v
+
+Given the definitions above, we can rewrite this as:
+
+ f <- k{v1, ..., vn}
+ y <- k'{v1, ..., vn, v}
+
+Is this really an optimization?  It looks like we're constructing
+two closures where the original program only constructed one.  But
+realize that the original program is actually constructing two
+closures as well --- it's just that one of them is hidden in the
+call to f v.  And if there are no further references to f in the
+rest of the code, then the line f <- k{v1, ..., vn} is dead code
+and can be deleted.  End result: we eliminate the construction of
+an intermediate closure.
+
+For the code example above, with a little license, we can rewrite
+the use of comp in main to get:
+
+ comp     <- k{}
+ k{} f     = k1{f}
+ k1{f} g   = k2{f,g}
+ k2{f,g} x = y <- g x; f y
+ main     <- (u <- k1{foo}; u bar)
+
+Now comp is dead, so we can eliminate that definition:
+
+ k{} f     = k1{f}
+ k1{f} g   = k2{f,g}
+ k2{f,g} x = y <- g x; f y
+ main     <- (u <- k1{foo}; u bar)
+
+And that makes k dead too, so we can eliminate its definition:
+
+ k1{f} g   = k2{f,g}
+ k2{f,g} x = y <- g x; f y
+ main     <- (u <- k1{foo}; u bar)
+
+Now apply the closure optimization again to the call to u in the
+definition of main:
+
+ k1{f} g   = k2{f,g}
+ k2{f,g} x = y <- g x; f y
+ main     <- (u <- k1{foo}; k2{foo,bar})
+
+This leaves the definition of u unused, giving:
+
+ k1{f} g   = k2{f,g}
+ k2{f,g} x = y <- g x; f y
+ main     <- k2{foo,bar}
+
+And now k1 is dead, so its definition can be eliminated:
+
+ k2{f,g} x = y <- g x; f y
+ main     <- k2{foo,bar}
+
+And there we go: a smaller program that constructs a single
+closure, k2{foo,bar} representing the value (comp foo bar)
+and binds it to the variable main.  No unnecessary allocation!
+

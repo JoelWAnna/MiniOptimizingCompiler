@@ -1,0 +1,1950 @@
+/*@
+%------------------------------------------------------------------------------
+\chapter{A Monadic Intermediate Language, MIL}\label{chap-mil}
+MIL is a ``monadic intermediate language'' that is designed for use in the
+construction of optimizing compilers for both imperative and functional
+programming languages.  This chapter provides a quick summary of MIL,
+describes a set of Java classes that are used to represent the constructs
+of its abstract syntax; and introduces some helper functions for working
+with MIL programs.
+
+All of the code described in this chapter is part of the following Java package:
+
+@*/
+package mil;
+
+/*@
+%------------------------------------------------------------------------------
+\section{Abstract Syntax}\label{sec-mil-absyn}
+
+%------------------------------------------------------------------------------
+\subsection{Programs}\label{sec-mil-program}
+Every MIL program is described by a sequence of definitions:
+\begin{verbatim}
+  p  ::=  def1; ...; defn
+\end{verbatim}
+In the following, we will represent programs by objects of type
+@MILProgram@, each of which stores a list of entry points to the program.
+(By comparison, a standard C program typically has a unique entry point
+called @main@, whereas a library that is intended to be linked with and
+called from other code can be expected to have multiple entry points, one
+for each value that might be referenced from client code outside the
+library.)  Any other definitions that are reachable from one or more of
+the entry points will still be considered as part of the program, even
+though they are not directly recorded in @MILProgram@ objects.  On the
+other hand, definitions that are not used, and hence that are not reachable
+from any of the entry points, will be automatically dropped from the program
+as dead code.
+
+@*/
+public class MILProgram {
+    /** Stores a list of the entry points for this program.
+     */
+    private Defns entries = null;
+
+    /** Add an entry point for this program, if it is not already included.
+     */
+    public void addEntry(Defn defn) {
+        if (!Defns.isIn(defn, entries)) {
+            entries = new Defns(defn, entries);
+        }
+    }
+}
+
+/*@
+%------------------------------------------------------------------------------
+\subsection{Definitions}\label{sec-mil-defn}
+There are three different forms of definition that can be used in MIL
+programs, as shown by the following grammar:
+\begin{verbatim}
+  def  ::=  b(v1, ..., vn)   = c    -- block entry point
+        |   k{v1, ...; vn} v = c    -- closure entry
+        |   v <- t                  -- initialize global
+\end{verbatim}
+A definition of the form @b(v1, ..., vn) = c@ corresponds to a basic
+block that starts at label @b@; expects @n@ formal parameters to be passed
+in using the ``registers'' @v1@, \ldots, @vn@; and executes the sequence
+of instructions in the code sequence @c@.  For example, the following
+block computes the sum of the squares of its two arguments (details
+about the code sequence on the right of the @=@ sign will be described
+in a later section):
+\begin{verbatim}
+  b(x,y) = u <- mul((x,x))      -- compute x*x in u
+           v <- mul((y,y))      -- compute y*y in v
+           w <- add((u,v))      -- add the two squares
+           return w              -- return final result
+\end{verbatim}
+Definitions of the form @k{v1, ...; vn} v = c@ are used to specify the
+code sequence @c@ that will be executed when we enter a closure with
+code pointer @k@; stored free variables @v1@, \ldots, @vn@; and an
+argument @v@.  (We will shortly that this syntax mirrors the notation
+@k{v1, ...; vn}@ that is used to describe the allocation of a
+corresponding closure value.)  For example, given the following
+definition, we can use a closure with code pointer @k@ and a stored free
+variable @n@ to represent the function @(\x -> n + x)@ that will return
+the value @n+x@ whenever it is called with an argument @x@:
+\begin{verbatim}
+  k{n} x = u <- add((n,x))
+           return u
+\end{verbatim}
+Finally, a definition of the form @v <- t@ represents a binding
+for a top-level (i.e., global value) called @v@ that is
+initialized using the result that is produced by executing the
+tail expression @t@.  Note that values defined in this way are not
+the same as {\em global variables}\/ in an imperative programming
+language because there is no way to change or otherwise assign a
+new value for an identifier @v@ that has been introduced in this
+way.
+
+These three different forms of definition are represented by
+values of the @Block@, @ClosureDefn@, and @TopLevel@ classes, each
+of which is a subclass of an abstract base class called @Defn@.
+Note that names for individual blocks are generated automatically
+as strings of the form @bN@ where a different integer @N@ is used
+for each distinct block.  In a similar way, closure definitions
+are assigned names of the form @kN@.
+
+@*/
+public abstract class Defn {
+
+  // A block: b(formals) = code ----------------------------------
+  public case Block(private Code code) {
+      private static int   count   = 0;
+      private final String id      = "b" + count++;
+      private Var[]        formals; // filled in after construction by analysis
+      setter formals;
+  }
+
+  // Closure definition: k{stored} arg = tail --------------------
+  public case ClosureDefn(private Var arg, private Tail tail) {
+      private static int   count  = 0;
+      private final String id     = "k" + count++;
+      private Var[]        stored /* = Var.noVars*/; // filled in after construction by analysis
+      setter stored;
+  }
+
+  // Top-level defn: id <- code ----------------------------------
+  public case TopLevel(private String id) {
+      private Tail tail;
+
+      /** Set the value associated with a top-level definition.
+       */
+      void setTopLevel(Tail tail) {
+          if (this.tail!=null) {
+              debug.Internal.error("Attempt to set a second top-level value for a TopLevel variable");
+          }
+          this.tail = tail;
+      }
+
+      // A constructor function: c <- function ---------------------
+      // The code for a Cfun implements the actual constructor function.
+      public case Cfun(private int arity, private int num, private Cfun[] constrs) {
+          public getter arity, num, constrs;
+
+          Cfun(String id, int arity, int num, Cfun[] constrs) > {
+              constrs[num] = this; // Save this constructor in its array of constructors
+          }
+
+          public static final Cfun[] boolType  = new Cfun[2];
+          public static final Cfun True        = new Cfun("True",    0, 1, boolType);
+          public static final Cfun False       = new Cfun("False",   0, 0, boolType);
+
+          public static final Cfun[] unitType  = new Cfun[1];
+          public static final Cfun Unit        = new Cfun("Unit",    0, 0, unitType);
+
+          public static final Cfun[] listType  = new Cfun[2];
+          public static final Cfun Nil         = new Cfun("Nil",     0, 0, listType);
+          public static final Cfun Cons        = new Cfun("Cons",    2, 1, listType);
+
+          public static final Cfun[] pairType  = new Cfun[1];
+          public static final Cfun Pair        = new Cfun("Pair",    2, 0, pairType);
+
+          public static final Cfun[] maybeType = new Cfun[2];
+          public static final Cfun Nothing     = new Cfun("Nothing", 0, 0, maybeType);
+          public static final Cfun Just        = new Cfun("Just",    1, 1, maybeType);
+      }
+  }
+}
+
+/*@
+Note that we also include ``constructor functions'', represented by the
+class @Cfun@, as a special form of @TopLevel@ definitions.  We will see
+shortly, for example, that expressions of the form @True()@ and @False()@
+can be used to construct representations for the corresponding Boolean
+values, while expressions of the form @Pair(x,y)@ are used to build a
+heap-allocated data structure with two subcomponents, represented here by
+@x@ and @y@.  In each case, the @arity@ value describes the number of
+subcomponents/arguments that the constructor expects.  It is also common
+to have multiple ways of constructing values of a single type.  For example,
+there are two constructors for Booleans (@True@ and @False@), but also two
+constructructors for lists (@Nil@ and @Cons@, corresponding to empty and
+non-empty lists, respectively).  We capture some of these details about
+individual constructors using the @num@ and @constrs@ fields of each @Cfun@:
+we assign a distinct number, @num@, for each constructor of a given type,
+and we record the set of distinct constructors for the underlying type in
+the `constrs` field (with the expectation that all constructors for any
+given type will share the same @constrs@ array).
+
+We will use the following @getId()@ method to extract the name of
+the item (block, closure entry, or top-level value) that is
+introduced by a given @Defn@:
+
+@*/
+/** Return the identifier that is associated with this definition.
+ */
+public String getId()
+  case Defn abstract;
+  case Block, ClosureDefn, TopLevel { return id; }
+
+/*@
+We use a similar @defines(id)@ method to determine whether a given
+@Defn@ defines a particular identifier, @id@.  Note that this method
+ignores the (automatically generated) names of blocks and closure
+entries, so it will only report a match for top-level values.
+
+@*/
+/** Test to determine whether this Defn is for a top level value with
+ *  the specified name.
+ */
+public boolean defines(String id)
+  case Defn     { return false; }
+  case TopLevel { return id.equals(this.id); }
+
+/*@
+Finally, we use the following macro call to introduce a class @Defns@ whose
+values correspond to linked lists of @Defn@ values.  (Indeed, we have already
+seen one use of a @Defns@ value to record the list of entry points to a
+@MILProgram@ in the previous section.)
+
+@*/
+macro List(Defn) // introduces class Defns
+
+/*@
+%------------------------------------------------------------------------------
+\subsection{Monadic Code Sequences}\label{sec-mil-code}
+Code sequences, which strongly resemble basic blocks in a traditional three
+address code representation of imperative programs, are used to describe the
+instructions that should be executed when a block or closure is entered.  The
+following grammar shows a concrete syntax for code sequences:
+\begin{verbatim}
+  c    ::=  v <- t; c        -- monadic bind
+        |   t                -- tail call (ends a block)
+        |   case v of alts   -- case construct (ends a block)
+
+  alts ::=  {alt1;...;altn}                -- alternatives
+
+  alt  ::=  C(v1,...,vn) -> b(a1,...,an)   -- match against C
+        |   _            -> b(a1,...,an)   -- default branch
+\end{verbatim}
+A code sequence of the form @v <- t ; c@, sometimes referred to as a
+``monadic bind'', describes a computation that begins by executing/evaluating
+the expression @t@, binds the result to the variable @v@, and then
+continues to execute the rest of the code in @c@.  Note that
+the variable @v@, recording the value produced by @t@, will be in scope
+(and hence can be referenced) in @c@, but it is not in scope in @t@.
+We will sometimes encounter code sequences of the form @v <- t ; c@
+where the variable @v@ does not appear in @c@; in examples like this,
+we will often replace the variable name with an underscore/wildcard,
+writing @_ <- t ; c@ to signal that the value produced by @t@ will not
+be used in the subsequent computation.  In general, however, we cannot
+just remove the initial @v <- t;@ prefix of this code sequence
+altogether because that might change the overall semantics of the
+program if @t@ has some potential side effect.
+
+More generally, a complete code sequence has the form:
+\begin{verbatim}
+  v1 <- t1; v2 <- t2; ...; vn <- tn; e
+\end{verbatim}
+which is equivalent to the following notational variant, written with
+a more vertical layout (relying on indentation to make the use of semicolons
+optional after each of the separate bind expressions):
+\begin{verbatim}
+  v1 <- t1
+  v2 <- t2
+  ...
+  vn <- tn
+  e
+\end{verbatim}
+In either case, running this code sequence will evaluate each of the
+expressions @t1@, \ldots, @tn@ (saving the result at each step in the
+corresponding variable @v1@, \ldots, @vn@) until it reaches an end
+expression, @e@, which will have one of two possible forms: either an
+unconditional jump (i.e., a generalized ``tail call'', @t@0); or else a
+conditional jump (i.e., a @case@ construct, described below).  Note
+that, like a traditional basic block, there are no labels in the middle
+of code sequences.  As a result, we cannot enter a code sequence part
+way through, and once we do enter a code sequence, we will not leave it
+until we reach the end expression @e@.
+
+An end expression @case v of alts@ describes a conditional jump that uses
+the value of the variable @v@---sometimes referred to as the ``discriminant''
+of the case---to choose between the alternatives listed
+in @alts@.  More specifically, a @case@ construct is executed by scanning
+the list of alternatives from left to right and executing the block call
+@b(a1,...,an)@ for the first alternative that matches the value of the
+variable @v@.  For example, the following expression corresponds to a
+simple form of if-then-else construct that will execute @b1(x,y)@ if
+@v@ is @True()@, or @b2(z)@ if @v@ is @False()@.
+\begin{verbatim}
+  case v of { True() -> b1(x,y); False() -> b2(z) }
+\end{verbatim}
+We will assume that MIL programs are produced by compiling well-typed source
+code, so we will not worry about having to mix constructors of different
+types in a single list of alternatives.  To put this another way, we can
+also write the previous expression as follows, using a default branch
+(signalled by the use of an underscore) in place of the previous case for
+@False()@.
+\begin{verbatim}
+  case v of { True() -> b1(x,y); _ -> b2(z) }
+\end{verbatim}
+Under our assumption that MIL programs are well-typed, this alternative
+definition is equivalent to the first because, if the variable @v@ is a
+Boolean (as implied by the use of @True()@ in the first alternative),
+then the only possible value for @v@ that would not have been matched by
+the first alternative---and hence will be matched by the second---is @False()@.
+Once again, we will sometimes write expressions like this with a more vertical
+layout, eliding the semicolon and braces punctuation in the process.
+\begin{verbatim}
+  case v of
+    True() -> b1(x,y)
+     _     -> b2(z)
+\end{verbatim}
+
+In general, a @case@ construct can bind variables that can appear in the
+block call on the right hand side of each alternative.  The following
+group of definitions, for example, define a function for computing the
+length of an input list.  The @length@ block enters the @loop@ block with
+an initial (accumulating) parameter @0@.  The @loop@ block uses a @case@
+construct to examine the given @list@ value.  A @Nil()@ value represents
+an empty list, in which case we just return the value that has been
+computed in the first argument, @n@.  Otherwise, a @Cons(head,tail)@
+value represents a non-empty list with a first value @head@, and with the
+rest of the list in @tail@.  In this case, we ignore the @head@ value
+(which does not contribute to the calculation of the length) but pass
+the @tail@ on to the @step@ block, which increments the counter, and
+then loops back to examine the rest of the list.
+\begin{verbatim}
+  length(list)
+    = loop(0, list)
+
+  loop(n, list)
+    = case list of
+        Nil()           -> return n
+        Cons(head,tail) -> step(n, tail)
+
+  step(n, list)
+    = m <- add((n,1))
+      loop(m, list)
+\end{verbatim}
+We will use the classes @Bind@, @Done@, and @Match@, described
+below, all of which are subclasses of an abstract base class @Code@ to
+provide the representation for MIL code sequences.
+
+@*/
+/** Base class for representing MIL code sequences.
+ */
+public abstract class Code {
+  /** Represents a code sequence that binds the variable v to the result
+   *  produced by running t and then continues by executing the code in c.
+   */
+  public case Bind(/** The variable that will capture the result.
+                    */
+                   private Var v, 
+
+                   /** The tail whose result will be stored in v.
+                    */
+                   private Tail t, 
+
+                   /** The rest of the code sequence.
+                    */
+                   private Code c)
+
+  /** Represents a code sequence that just executes a single Tail.
+   */
+  public case Done(/** The tail to be executed.
+                    */
+                   private Tail t)
+
+  /** Represents a code sequence that implements a conditional jump, using the value
+   *  in a to determine which of the various alternatives in alts should be used, or
+   *  taking the default branch, def, is there is no matching alternative.
+   */
+  public case Match(/** The discriminant for this Match.
+                     */
+                    private Atom a,
+
+                    /** A list of alternatives for this Match.
+                     */
+                    private TAlt[] alts,
+
+                    /** A default branch, to be used if none of the
+                     *  alternatives apply.
+                     */
+                    private BlockCall def)
+}
+
+/*@
+Note that the MIL @case@ construct is represented by the class @Match@ in the
+definitions above.  (The name @Case@ was in use for something else at the
+time these names were chosen!)  Each @Match@ includes a (possibly empty)
+array of alternatives, each of which is an instance of the @TAlt@ class defined
+below.  Notice also that, the @TAlt@ type only represents branches of the form
+@C(v1,...,vn) -> b(a1,...,an)@.  Instead of providing a special form of @TAlt@
+to describe default branches (i.e., branches of the form @_ -> b(a1,...,an)@),
+we include a single @def@ field in each @Match@ to specify a default.
+(There is no need to allow for more than one default because a second
+default would never be used.  Similarly, if there are no defaults, then we can
+just use a value of @null@ for @def@.)
+
+@*/
+/** Represents an alternative in a monadic Match.
+ */
+public class TAlt(private Cfun c, private Var[] args, private BlockCall bc)
+
+/*@
+One operation that we will need in the following is a way to determine whether
+a given variable @w@ occurs free in a particular code sequence @c@.  If this
+test succeeds, for example, then we can rewrite a code sequence of the form
+@(w <- t; c)@ as @(_ <- t ; c)@, which could be a first step to removing the
+use of @t@ altogether as dead code if we can be sure that it has no externally
+visible side effect.  This operation can be implemented as follows, with
+appropriate cases for each of the different classes defined in this section
+(and the use of a corresponding @contains()@ method for the @Tail@ classes
+that are defined in the next section):
+
+@*/
+/** Test for a free occurrence of a particular variable.
+ */
+public boolean contains(Var w)
+  case Code abstract;
+  case Done { return t.contains(w); }
+  case Bind { return t.contains(w) || (v!=w && c.contains(w)); }
+  case Match {
+      if (a==w || (def!=null && def.contains(w))) {
+          return true;
+      }
+      for (int i=0; i<alts.length; i++) {
+          if (alts[i].contains(w)) {
+              return true;
+          }
+      }
+      return false;
+  }
+  case TAlt {
+      for (int i=0; i<args.length; i++) {
+          if (args[i]==w) return false;
+      }
+      return bc.contains(w);
+  }
+
+/*@
+%------------------------------------------------------------------------------
+\subsection{Generalized Tail Calls}\label{sec-mil-tail}
+The definition of MIL limits the expressions that can appear either on the
+right hand side of a monadic bind, or in a tail call at the end of a code
+sequence, to the different forms shown in the following grammar.  We
+refer to these collectively as ``tail expressions''.
+\begin{verbatim}
+  t  ::=  return a         -- monadic return
+      |   p((a1, ..., an)) -- primitive call
+      |   b(a1, ..., an)   -- basic block entry point
+      |   C(a1, ..., an)   -- constructor (allocate boxed value)
+      |   k{a1, ..., an}   -- closure (allocate closure object)
+      |   f @@ a            -- (first class) function application
+      |   m[a1, ..., an]   -- computation (allocate thunk object)
+      |   invoke a         -- invoke a thunk
+\end{verbatim}
+Each of the different forms of tail expression performs some computation
+and returns a result.
+\begin{itemize}
+\item An expression of the form @return a@ represents a computation that just
+      returns the value of @a@
+      immediately, with no further action.  Note that the symbol @a@ here
+      represents an atom, as defined in the next section, which must be
+      either a simple variable name or else an integer literal.  As such, a
+      @return a@ expression really cannot do any real work at all, other
+      than producing an already-computed result.
+
+\item An expression of the form @p((a1,...,an))@ represents a call to
+      a primitive function, @p@, with the specified list of arguments (all
+      of which must be atoms).  The set of primitives can be changed to suit
+      different base environments, but typically contains at least
+      standard arithmetic operations (such as the @add@ and @mul@ primitives
+      that we assumed
+      in the earlier examples), comparisons, builtin operations on base types,
+      and I/O mechanisms.  The representation of primitives is discussed
+      further in Section~\ref{sec-mil-prim}.  Note that we write primitive calls
+      with a double pair of parentheses around the argument list so that they
+      are more visibly distinguished from block calls.
+
+\item An expression of the form @b(a1, ..., an)@ represents a call to a block
+      @b@ with a particular list of atoms as arguments, as has already been
+      illustrated by the examples in previous sections.
+
+\item An expression of the form @C(a1, ..., an)@ represents a call to a
+      constructor function that allocates a data object on the heap with the
+      list of atoms specified as arguments as its components.  Again, we have
+      already seen several examples of this in previous sections.
+
+\item An expression of the form @k{a1, ..., an}@ represents a closure
+      constructor that allocates a closure data structure in the heap with
+      code pointer @k@ and stored free variables @a1@, \ldots, @an@.
+      An expression of this form should only appear in a program that also
+      includes a corresponding closure definition for @k@ of the form
+      described in Section~\ref{sec-mil-defn} to describe the computation
+      that should be performed when the closure is entered with a particular
+      argument value.
+
+\item An expression of the form @f @@ a@ represents the invocation of a
+      function (represented by a closure bound to the variable @f@) to
+      an argument (represented by the atom @a@).  In particular, if @f@
+      holds the value @k{a1, ..., an}@ and @k{x1, ..., xn} x = c@, then
+      @f @@ a@ will return whatever value is produced by executing the
+      code sequence @[a1/x1,...,an/xn]c@.  (The expression @[a1/x1,...,an/xn]c@
+      indicates the code sequence that is obtained from @c@ by substituting all
+      free occurrences of @x1@ with @a1@, all free occurrences of @x2@ with @a2@,
+      and so on.)
+
+\item An expression of the form @m[a1, ..., an]@ represents the allocation of
+      a (monadic) thunk, or suspended computation.  Like a closure, a thunk is
+      a heap-allocated data structure that stores both a code pointer (@m@)
+      and a list of values (described by the atoms @a1@, \ldots, @an@.
+      Unlike a closure, however, the execution of the code for a thunk is
+      triggered not by passing it an argument, but instead by using @invoke@
+      expressions, described below, to force its evaluation, possibly at
+      multiple times.  In particular, thunks like this are used in the
+      representation of monadic primitives that can have visible side effects.
+
+\item An expression of the form @invoke a@ represents an invocation of the
+      monadic thunk referenced by the atom @a@.  For example, if @a@ has been
+      bound to a thunk @m[a1, ..., an]@, then the expression @invoke a@
+      produces the same result as executing the block call @m(a1, ..., an)@.
+
+\end{itemize}
+These different forms of tail expression are represented by a collection of
+classes, all sharing the same abstract base class, @Tail@:
+
+@*/
+public abstract class Tail {   // Tail expression
+
+    public case Return(private Atom a)                // return a
+    public case Enter(private Atom f, private Atom a) // f @ a
+    public case Invoke(private Atom a)                // invoke a
+
+    public abstract case Call {
+        /** The list of arguments for this call. */
+        protected Atom[] args;
+
+        /** Set the arguments for this body.  A typical pattern for constructing a
+         *  Tail is:  new PrimCall(p).withArgs(args).  In this way, we can specify
+         *  the arguments at the time of construction, but we also have flexibility
+         *  to fix the arguments at some point after construction instead.
+         */
+        public Call withArgs(Atom[] args) {
+            this.args = args;
+            return this;
+        }
+
+        public int getArity() {
+            return args.length;
+        }
+
+        public case BlockCall(private Block b)            // call a basic block
+        public case PrimCall(private Prim p)              // call a primitive
+        public abstract case Allocator {                  // allocators:
+            public case DataAlloc(private Cfun c)         // - allocate a data value
+            public case ClosAlloc(private ClosureDefn k)  // - allocate a closure
+            public case CompAlloc(private Block m)        // - allocate a monadic thunk
+        }
+    }
+}
+
+/*@
+The definition above also introduces two additional abstract classes that
+reflect similarities between different forms of tail expression.  The @Call@
+class, for example, serves as the base for all of the tail expressions that
+include a list of arguments as part of their syntax.  The @Allocator@ class
+provides a base for the @DataAlloc@, @ClosAlloc@, and @CompAlloc@ classes,
+which represent the set of all tail expressions that allocate a data
+structure in the heap.  One reason to be interested in allocators like these
+as a general group is that an allocator call in a code sequence @(_ <- alloc; c)@
+can be deleted without changing the semantics of the program
+because the side effect of performing an allocation operation is not
+externally visible if the result is not used.  (To justify this fully, we must
+overlook the possibility that an allocator might cause a program to fail with
+an out of memory error if the heap is not large enough.)
+
+More generally, we will refer to an expression as ``pure'' if its execution
+does not have any externally visible side effects.  This includes not only
+allocators, but also @return a@ expressions and certain primitive calls.
+The @isPure()@ method defined below is used to test for pure tail expressions,
+delegating to the corresponding @isPure()@ method in the @Prim@ class in the
+special case of method calls (See Section~\ref{sec-mil-prim}).
+
+@*/
+/** Test to determine whether a given tail expression is pure, that is,
+ *  if it might have an externally visible side effect.
+ */
+public boolean isPure()
+  case Tail      { return false; }       // Tail expressions can have effects.
+  case Return    { return true; }        // But a return is always pure;
+  case PrimCall  { return p.isPure(); }  // Some primitives are pure; and
+  case Allocator { return true; }        // Allocators are treated as pure
+
+/*@
+Note that this definition for @isPure()@ is overly conservative.  For example,
+it may be possible to extend this in future to use the results of a preceding
+program analysis to identify pure @BlockCall@s.  Of course, for a block call
+@b(a1, ..., an)@ to be considered pure, we must ensure that the code sequence
+for @b@ does not use any impure operations, and we must also be able to
+determine that the code sequence is guaranteed to terminate.  (We want to be
+able to treat any pure components of a program whose final values are not used
+as dead code; but clearly, we cannot remove a call to block that might enter an
+infinite loop because that could change the meaning of the program.)
+
+To complete the definition of the @contains()@ methods for code sequences that
+we gave in the previous section, we add a corresponding set of definitions for
+each of the different forms of @Tail@ expression.  Fortunately, the
+implementations in each case are straightforward:
+
+@*/
+/** Test to see if this Tail expression includes a free occurrence of a
+ *  particular variable.
+ */
+public boolean contains(Var w)
+  case Tail abstract;
+  case Return { return a==w; }
+  case Enter  { return f==w || a==w; }
+  case Invoke { return a==w; }
+  case Call   {
+      for (int i=0; i<args.length; i++) {
+          if (w==args[i]) {
+              return true;
+          }
+      }
+      return false;
+  }
+
+/*@
+We will also define a set of methods for determining when two given @Tail@
+expressions are the same.  For example, this operation might be useful in
+an implementation of common subexpression elimination: if @t1@ is pure and
+@t1@ is equal to @t2@, then a code sequence of the form @(v <- t1; w <- t2; c)@
+can be simplified to @(v <- t1; w <- return v; c)@, and then further simplified
+(using the monad laws mentioned previously) to @(v <- t1; [v/w]c)@.
+
+The code for @sameTail()@ is reasonably straightforward, but requires a fair
+amount of boilerplate to implement the double dispatch that is necessary to
+compare two arguments.  The initial @sameTail()@ method call in an
+expression of the form @t1.sameTail(t2)@ distinguishes between the different
+cases for @t1@, but then a second method call is necessary in each case to
+determine whether @t2@ is an expression of the same type.  We handle the
+second dispatch in each case by creating a family of @isX()@ methods, each
+of which is designed to compare its receiver with a specific argument value
+of type @X@.  To speed the task of writing all of these @isX()@ methods,
+we define a macro, @SameTail@ that generates the necessary boilerplate, and
+just leaves us to fill in the code
+
+@*/
+/** Test to see if two Tail expressions are the same.
+ */
+public boolean sameTail(Tail that)
+  case Tail abstract;
+  case Return, Enter, Invoke, BlockCall, PrimCall,
+       DataAlloc, ClosAlloc, CompAlloc { return that.same@class(this); }
+
+macro SameTail(X) { boolean same\X(X that) case Tail { return false; } case X }
+
+macro SameTail(Return)    ! { return this.a.sameAtom(that.a); }
+macro SameTail(Enter)     ! { return this.f.sameAtom(that.f) && this.a.sameAtom(that.a); }
+macro SameTail(Invoke)    ! { return this.a.sameAtom(that.a); }
+macro SameTail(BlockCall) ! { return this.b==that.b && this.sameArgs(that); }
+macro SameTail(PrimCall)  ! { return this.p==that.p && this.sameArgs(that); }
+macro SameTail(DataAlloc) ! { return this.c==that.c && this.sameArgs(that); }
+macro SameTail(ClosAlloc) ! { return this.k==that.k && this.sameArgs(that); }
+macro SameTail(CompAlloc) ! { return this.m==that.m && this.sameArgs(that); }
+
+/*@
+To determine whether two @Call@ expressions of the same type are equal, we
+need to compare the lists of arguments that are supplied in each call.  We
+implement this using the @sameArgs()@ method in the @Call@ class.  We assume
+that this method will only be used to compare two calls to the same block,
+primitive, etc., and hence we can assume that each of the calls has the same
+number of arguments.  (There are no variable argument calls in MIL.)
+
+@*/
+/** Test to see if two Tail expressions s are the same.
+ */
+public boolean sameArgs(Call that)
+  case Call {
+      for (int i=0; i<args.length; i++) {
+          if (!this.args[i].sameAtom(that.args[i])) {
+              return false;
+          }
+      }
+      return true;
+  }
+
+/*@
+%------------------------------------------------------------------------------
+\subsection{Primitives}\label{sec-mil-prim}
+MIL programs use primitive calls (values of type @PrimCall@) to handle basic
+computations for manipulating values of builtin types such as arithmetic
+operations, comparisons, and so on.  Each primitive call specifies a
+particular primitive operation, represented by a value of the following
+@Prim@ class, that specifies the name of the primitive, its arity (i.e., the
+number of arguments that are required in any @PrimCall@ that uses this
+primitive), and a @purity@ field to specify what kind of externally visible
+effect (if any) might occur as a result of using the primitive.  The possible
+values of @purity@ are @PURE@, @IMPURE@, and @THUNK@, each of which is
+described further in the comments below.
+
+@*/
+public class Prim(/** The name that will be used for this primitive.
+                   */
+                  private String id,
+
+                  /** The arity/number of arguments for this primitive.
+                   */
+                  private int arity,
+
+                  /** Records the purity setting (PURE, IMPURE, or THUNK) for this
+                   *  primitive.
+                   */
+                  private int purity,
+ 
+                  /** Flag to indicate if this function will never return,
+                   *  meaning that anything following a call to this function
+                   *  will be ignored.
+                   */
+                  private boolean doesntReturn) {
+
+  /** Return the name of this primitive.
+   */
+  public getter id;
+
+  /** Return the arity for this primitive.
+   */
+  public getter arity;
+
+  /** Identifies a "pure" primitive, that is, a primitive that has no effect other than to
+   *  compute a value.  In particular, a call to a pure primitive in a context where the
+   *  result will not be used can always be deleted without a change in program semantics.
+   */
+  public static final int PURE   = 0;
+
+  /** Identifies an "impure" primitive, which is a primitive that, although not monadic,
+   *  can have an effect when executed.  In particular, this means that a call to an
+   *  impure primitive cannot be deleted, even if its result is not used.  This includes
+   *  operations like division that, without any typing tricks to eliminate division by
+   *  zero, can raise an exception.  Removing a use of division---except in cases where
+   *  the second argument is a known, nonzero constant---could potentially change the
+   *  meaning of a program.
+   */
+  public static final int IMPURE = 1;
+
+  /** Identifies a "monadic" primitive that requires a thunk.
+   */
+  public static final int THUNK  = 2;
+
+  /** Determine if this primitive is pure, i.e., if a call to this primitive can
+   *  be deleted if its result is not used.
+   */
+  public boolean isPure() { return purity==PURE; }
+}
+
+/*@
+For convenience, we define the following values of type @Prim@ to represent
+some of the most commonly used primitives for working with integer values in
+MIL.  All but one of these are treated as @PURE@ operations, the exception
+being integer division, which can potentially trigger an externally visible
+divide by zero exception if its second argument is zero.
+
+@*/
+class Prim {
+  // Bitwise operators (on integers):
+  public static final Prim not  = new Prim("not",  1, PURE, false);
+  public static final Prim and  = new Prim("and",  2, PURE, false);
+  public static final Prim or   = new Prim("or",   2, PURE, false);
+  public static final Prim xor  = new Prim("xor",  2, PURE, false);
+
+  // Boolean negation:
+  public static final Prim bnot = new Prim("bnot", 1, PURE, false);
+
+  // Shift operations:
+  public static final Prim shl  = new Prim("shl",  2, PURE, false);
+  public static final Prim shr  = new Prim("shr",  2, PURE, false);
+
+  // Integer arithmetic:
+  public static final Prim neg  = new Prim("neg",  1, PURE, false);
+  public static final Prim add  = new Prim("add",  2, PURE, false);
+  public static final Prim sub  = new Prim("sub",  2, PURE, false);
+  public static final Prim mul  = new Prim("mul",  2, PURE, false);
+  public static final Prim div  = new Prim("div",  2, IMPURE, false);
+
+  // Integer comparisons:
+  public static final Prim eq   = new Prim("eq",   2, PURE, false);
+  public static final Prim neq  = new Prim("neq",  2, PURE, false);
+  public static final Prim lt   = new Prim("lt",   2, PURE, false);
+  public static final Prim lte  = new Prim("lte",  2, PURE, false);
+  public static final Prim gt   = new Prim("gt",   2, PURE, false);
+  public static final Prim gte  = new Prim("gte",  2, PURE, false);
+}
+
+/*@
+As a special case, we define a primitive, together with corresponding @PrimCall@
+and @Code@ values, called @halt@, to represent an operation that will terminate
+or abort the current program if it is executed.  Note that this primitive requires
+the @IMPURE@ setting (because deleting a call to @halt@ could certainly change
+the behavior of the program), but can also set @doesntReturn@ to @true@ because
+code that follows a @halt@ will never be executed.
+
+@*/
+class Prim {
+  /** Represents a primitive that halts/terminates the current program.
+   */
+  public static final Prim halt = new Prim("halt", 0, IMPURE, true); // halt/abort
+}
+class PrimCall {
+  /** Represents a tail expression that halts/terminates the current program.
+   */
+  public static final Call halt = new PrimCall(Prim.halt).withArgs(new Atom[0]);
+}
+class Code {
+  /** Represents a code sequence that halts/terminates the current program.
+   */
+  public static final Code halt = new Done(PrimCall.halt);
+}
+
+/*@
+None of the examples listed here are @THUNK@ operations; that feature is only
+needed when we are using MIL code to implement a purely functional programming
+language where the side-effecting implementations of monadic primitives must
+be wrapped up inside thunks.
+
+It is easy to introduce additional primitives by declaring new values of
+type @Prim@.  Of course, none of these definitions really says very much about
+what each primitive actually does.  We have assumed that the intended meaning
+for each of the primitives declared above is fairly obvious from the name and
+arity values that we have chosen in each case, but of course some additional
+code will be needed to provide the appropriate implementations.
+
+%------------------------------------------------------------------------------
+\subsection{Atoms}\label{sec-mil-atom}
+Atoms are either variable names or integer literals, as described by
+the following grammar:
+\begin{verbatim}
+  a  ::=  v     -- variable
+      |   n     -- an unboxed constant (i.e., an integer literal)
+\end{verbatim}
+These are the simplest forms of expression in MIL programs, and they
+correspond to register or immediate addressing modes in a typical assembly
+programming language.  Atoms are the only form of expression that can be
+used as arguments in @Call@ expressions (as described in the previous
+section), which forces us to break down the code for computing the value
+of a large, compound expression in to a sequence of individual bindings,
+each of which performs a single operation.
+
+We represent different forms of atoms as values of the following @Atom@
+class, with distinct subclasses @Var@ for variables and @Const@ for integer
+constants.  Notice, however, that @Var@ is also defined as an abstract
+class, and we define some further subclasses to distinguish between
+references to top-level definitions (class @Top@), compiler-generated
+temporaries (class @Temp@), and wildcard variables (class @Wildcard@) that
+are used in situations where the value produced by a computation will not
+actually be used in the rest of the program.  Note that we can construct two
+different forms of temporary variable: a call of the form @new Temp(id)@
+creates a variable with the specified name, @id@, which might, for example,
+correspond to the name of a function parameter or local variable in a source
+program; however, a call of the form @new Temp()@ creates a variable with a
+compiler-generated name, each of which begins with the letter @t@ followed
+by a numeric suffix.
+
+@*/
+/** Represents basic atoms in a MIL program, each of which is either a
+ *  variable or an integer literal.
+ */
+public abstract class Atom {
+
+  public abstract case Var {
+    public static final Var[] noVars = new Var[0];
+
+    public case Top(private TopLevel tl)     // reference to top-level variable
+    public case Temp(private String id) {    // temporary variable
+        private static int count = 0;
+        public Temp() {
+            this("t"+count++);
+        }
+    }
+    public case Wildcard                     // unreferenced variable
+  }
+
+  public case Const(private int val) {
+      public getter val;
+  }
+}
+macro Singleton(Wildcard)
+
+/*@
+It is important to understand that the strings that we store in different
+types of @Var@ object are only used for displaying textual descriptions of
+MIL programs, as in the following implementation of @toString()@, which
+can be used to generate an appropriate @String@ value for each different
+@Atom@ value:
+
+@*/
+/** Generate a printable description of this atom.
+ */
+public String toString()
+  case Atom     abstract;
+  case Wildcard { return "_"; }
+  case Top      { return tl.getId(); }
+  case Temp     { return id; }
+  case Const    { return "" + val; }
+
+/*@
+If, instead, we want to compare two values of type @Var@ for equality, then
+we will ignore the @String@ values and instead just use pointer equality to
+see if the two @Var@ objects are the same.  In particular, if a program
+contains distinct uses of a single variable name, then each of those uses
+should be represented by a different @Var@ object.  (In addition, this also
+means that we will not confuse compiler-generated temporaries with top-level
+or user-specified temporaries, even if they are displayed in the same way.)
+
+The following code uses these ideas to define a @sameAtom()@ method for
+determining whether two atoms refer to the same item:
+@*/
+/** Test to see if two atoms are the same.  For a pair of Const objects,
+ *  this means that the two objects have the same val.  For any other
+ *  pair of Atoms, we expect the objects themselves to be the same.
+ */
+public boolean sameAtom(Atom that)
+  case Atom  { return this==that; }
+  case Const {
+      Const c = that.isConst();
+      return c!=null && c.getVal()==this.val;
+  }
+
+/** Test to determine whether this Atom is a constant (or not).
+ */
+public Const isConst()
+  case Atom  { return null; }
+  case Const { return this; }
+
+/*@
+The final pair of method implementations in this section are utilities for
+constructing a new array of temporary variables, either for an array containing
+the individual identifier names that should be used, or else just by specifying
+the number of new arguments that are required.
+
+@*/
+class Temp {
+  /** Create a list of new variables corresponding to a given list of identifiers.
+   */
+  public static Var[] makeTemps(String[] ids) {
+      int   n  = ids.length;
+      Var[] vs = new Var[n];
+      for (int i=0; i<n; i++) {
+          vs[i] = new Temp(ids[i]);
+      }
+      return vs;
+  }
+
+  /** Create a list of new variables of a given length.
+   */
+  public static Var[] makeTemps(int n) {
+      Var[] vs = new Var[n];
+      for (int i=0; i<n; i++) {
+          vs[i] = new Temp();
+      }
+      return vs;
+  }
+}
+
+/*@
+%------------------------------------------------------------------------------
+\section{Dependency Analysis}\label{sec-mil-depend-analysis}
+In this section, we describe an implementation of dependency analysis for
+MIL programs.  This process starts by building a graph structure that
+captures the dependencies between the definitions that make up a given
+program, and then performs a strongly-connected components analysis of the
+resulting graph.  Each of the strongly-connected components (SCCs) that
+are produced by this analysis contains either a single, non-recursive
+definition, or else a small group of one or more mutually recursive
+definitions, all of which must typically be considered together in the
+process of further analyzing or optimizing a given MIL program.  As an
+important added benefit, because the analysis only examines definitions
+that are reachable from one or more of the program's entry points, we know
+that the resulting set of SCCs will only contain definitions that are
+referenced, either directly or indirectly from those same entry points.
+In effect, this performs a form of tree shaking or dead code elimination
+that automatically removes parts of the program that are not required to
+run it.
+
+Our implementation of dependency analysis leverages some reusable
+infrastructure, detailed in Appendix~\ref{sec-appendix-library}, for
+computing SCCs.
+
+
+@*/
+// We will want to do SCC analysis on lists of definitions:
+macro SCC(Defn)     // adds callees and callers fields to each Defn
+macro AddIsIn(Defn)
+// TODO: We don't need the forward search pieces of SCC for Defns
+
+class Defn {
+    private static int dfsNum = 0;   // Number of current depth-first search
+    private int visitNum = 0;        // Number of most recent search
+
+    public static void newDFS() {    // Begin a new depth-first search
+        dfsNum++;
+    }
+
+    protected int occurs;            // Count total occurrences
+    public getter occurs;
+  
+    /** Visit this Defn as part of a depth first search, and building up a list
+     *  of Defn nodes that could be used to compute strongly-connected components.
+     */
+    Defns visitDepends(Defns defns) {
+        if (visitNum==dfsNum) {        // Repeat visit to this Defn?
+            occurs++;
+//!System.out.println(getId() + " has now occurred " + occurs + " times");
+        } else {                       // First time at this Defn
+            // Mark this Defn as visited, and initialize fields
+            visitNum = dfsNum;
+            occurs   = 1;
+//!System.out.println("First occurrence of " + getId());
+            scc      = null;
+            callers  = null;
+            callees  = null;
+
+            // Find immediate dependencies
+            Defns deps = dependencies();
+//!System.out.println("------------");
+//!displayDefn();
+//!System.out.print("DEPENDS ON: ");
+//!String msg = "";
+//!for (Defns ds = deps; ds!=null; ds=ds.next) {
+//!  System.out.print(msg); msg = ", ";
+//!  System.out.print(ds.head.getId());
+//!}
+//!System.out.println();
+
+            // Visit all the immediate dependencies
+            for (; deps!=null; deps=deps.next) {
+//!System.out.println("Adjacency: " + getId() + " -> " + deps.head.getId());
+                defns = deps.head.visitDepends(defns);
+                if (!Defns.isIn(deps.head, callees)) {
+                    callees = new Defns(deps.head, callees);
+                }
+            }
+
+            // Add the information about this node's callers/callees
+            this.calls(callees);
+            // And add it to the list of all definitions.
+            defns = new Defns(this, defns);
+        }
+        return defns;
+    }
+}
+
+/** Find the list of Defns that this Defn depends on.
+ */
+public Defns dependencies()
+  case Defn abstract;
+  case Block       {  // b(args) = code
+      return code.dependencies(null);
+  }
+  case ClosureDefn {  // k{stored} arg = tail
+      return tail.dependencies(null);
+  }
+  case TopLevel    {  // id <- tail
+      return tail.dependencies(null);
+  }
+
+/** Find the list of Defns that this Code sequence depends on.
+ */
+public Defns dependencies(Defns ds)
+  case Code abstract;
+  case Bind {  // v <- t; c
+      return t.dependencies(c.dependencies(ds));
+  }
+  case Done {  // t
+      return t.dependencies(ds);
+  }
+  case Match { // case a of alts; d
+      if (def!=null) {
+          ds = def.dependencies(ds);
+      }
+      for (int i=0; i<alts.length; i++) {
+          ds = alts[i].dependencies(ds);
+      }
+      return a.dependencies(ds);
+  }
+  case TAlt {  // c args -> bc
+      return bc.dependencies(ds);
+  }
+
+/** Find the list of Defns that this Tail depends on.
+ */
+public Defns dependencies(Defns ds)
+  case Tail abstract;
+  case Return    { // a
+      return a.dependencies(ds);
+  }
+  case Enter     { // f @ a
+      return f.dependencies(a.dependencies(ds));
+  }
+  case Invoke    { // invoke a
+      return a.dependencies(ds);
+  }
+  case BlockCall { // b(args)
+      return b.dependencies(Atom.dependencies(args, ds));
+  }
+  case PrimCall  { // p(args)
+      return Atom.dependencies(args, ds); // TODO: do we need to register prims?
+  }
+  case DataAlloc { // c(args)
+      return Atom.dependencies(args, ds); // TODO: do we need to register cfuns?
+  }
+  case ClosAlloc { // k{args}
+      return k.dependencies(Atom.dependencies(args, ds));
+  }
+  case CompAlloc { // m[args]
+      return m.dependencies(Atom.dependencies(args, ds));
+  }
+  case Atom {
+      return ds;     // Only Top atoms can register
+  }
+  case Top {
+      return tl.dependencies(ds);
+  }
+  case Defn {
+      return /* Defns.isIn(this, ds) ? ds : */ new Defns(this, ds); // count multiplicities
+  }
+
+class Atom {
+  /** Find out the list of Defns that this array of Atoms depends on.
+   */
+  public static Defns dependencies(Atom[] args, Defns ds) {
+      if (args!=null) {
+          for (int i=0; i<args.length; i++) {
+              ds = args[i].dependencies(ds);
+          }
+      }
+      return ds;
+  }
+}
+
+class MILProgram {
+  /** Record the list of strongly connected components in this program.
+   */
+  private DefnSCCs sccs;
+
+  /** Compute the list of definitions for the reachable portion of the input graph.
+   */
+  public Defns reachable() {
+      Defn.newDFS();                     // Begin a new depth-first search
+      Defns defns = null;                // Compute a list of reachable Defns
+      for (Defns ds=entries; ds!=null; ds=ds.next) {
+          defns = ds.head.visitDepends(defns);
+      }
+      if (defns==null) {
+          System.out.println("No definitions remain");
+      }
+
+//!for (Defns ds=defns; ds!=null; ds=ds.next) {
+//!  ds.head.describe();
+//!}
+      return defns;
+  }
+
+  /** Perform tree shaking on this program, computing strongly-connected components
+   *  for the reachable portion of the input graph.
+   */
+  public void shake() {
+      sccs = Defns.searchReverse(reachable()); // Compute the strongly-connected components
+  }
+}
+
+/*
+void describe() case Defn {
+    System.out.print(getId() + "::  calls ");
+    String msg = "";
+    for (Defns cs=callers; cs!=null; cs=cs.next) {
+        System.out.print(msg); msg = ", ";
+        System.out.print(cs.head.getId());
+    }
+    System.out.print("; callees "); msg = "";
+    for (Defns cs=callees; cs!=null; cs=cs.next) {
+        System.out.print(msg); msg = ", ";
+        System.out.print(cs.head.getId());
+    }
+    System.out.println(".");
+}
+*/
+
+/*@
+%------------------------------------------------------------------------------
+\subsection{Display Results in Graphviz Format}
+
+@*/
+class MILProgram {
+  import java.io.PrintWriter;
+  import java.io.BufferedWriter;
+  import java.io.FileWriter;
+  import java.io.IOException;
+
+  public void toDot(String name) {
+      try {
+          PrintWriter out = new PrintWriter(new BufferedWriter(new FileWriter(name)));
+          out.println("digraph MIL {");
+          for (Defns es=entries; es!=null; es=es.next) {
+              out.println("  " + es.head.getId() + ";");
+          }
+          for (Defns ds=reachable(); ds!=null; ds=ds.next) {
+              for (Defns cs=ds.head.getCallers(); cs!=null; cs=cs.next) {
+                  out.println("  " + cs.head.getId() + " -> " + ds.head.getId() + ";");
+              }
+          }
+          out.println("}");
+          out.close();
+      } catch (IOException e) {
+          System.out.println("Attempt to create dot output file " + name + " failed");
+      }
+  }
+}
+
+class Defn { public getter callers; }
+
+/*@
+%------------------------------------------------------------------------------
+\section{Display MIL Programs}
+As a first exercise in using the abstract syntax classes, this section provides
+code for displaying MIL programs, and the associated @Code@ and @Tail@ structures
+from which they are built, in a readable concrete syntax.  These functions are
+particularly useful for debugging, or for otherwise inspecting the output of the
+compiler and optimizer that will be described in later chapters.  The syntax that
+we use, as well as the code for producing it, is mostly straightforward, with a
+distinct case for each of the main constructs in MIL:
+
+@*/
+macro AddLength(Defns)  // add implementation of length on Defns
+
+/** Display a printable representation of this MIL construct
+ *  on the standard output.
+ */
+public void display()
+  case MILProgram {
+      for (DefnSCCs dsccs = sccs; dsccs!=null; dsccs=dsccs.next) {
+          dsccs.head.display();
+      }
+  }
+  case DefnSCC {
+      System.out.println("--------------------------------------");
+      System.out.println(isRecursive() ? "recursive" : "not recursive");
+      for (Defns ds=bindings; ds!=null; ds=ds.next) {
+        ds.head.display();
+      }
+  }
+  case Defn {
+//!    System.out.println("[occurs=" + occurs
+//!                     + ", indegree=" + Defns.length(callers)
+//!                     + ", outdegree=" + Defns.length(callees) + "]");
+//!  System.out.print(this.getId() + " -> ");
+//!  for (Defns ds=callees; ds!=null; ds=ds.next) {
+//!    System.out.print(" " + ds.head.getId());
+//!  }
+//!  System.out.println(";");
+      displayDefn();
+  }
+
+  case Code abstract;
+  case Bind {
+      indent();
+// TODO: hiding the _ <- part of a bind seems mostly like a good thing to do,
+//       but it does look a bit confusing when the right hand side expression
+//       is a return ... revisit this, but for now I'm keeping the _ <- part.
+//    if (v!=Wildcard.obj) {
+      System.out.print(v.toString());
+      System.out.print(" <- ");
+//    }
+      t.displayln();
+      c.display();
+  }
+  case Done {
+      indent();
+      t.displayln();
+  }
+  case Match {
+      indentln("case " + a + " of");
+      for (int i=0; i<alts.length; i++) {
+          indent();  // double indent
+          indent();
+          alts[i].display();
+      }
+      if (def!=null) {
+          indent();  // double indent
+          indent();
+          System.out.print("_ -> ");
+          def.displayln();
+      }
+  }
+  case TAlt {
+      Call.display(c.getId(), "(", args, ")");
+      System.out.print(" -> ");
+      bc.displayln();
+  }
+
+  case Tail abstract;
+  case Return    { System.out.print("return " + a); }
+  case Enter     { System.out.print(f + " @ " + a); }
+  case Invoke    { System.out.print("invoke " + a); }
+  case BlockCall { display(b.getId(), "(",  args, ")");  }
+  case PrimCall  { display(p.getId(), "((", args, "))"); }
+  case DataAlloc { display(c.getId(), "(",  args, ")");  }
+  case ClosAlloc { display(k.getId(), "{",  args, "}");  }
+  case CompAlloc { display(m.getId(), "[",  args, "]");  }
+
+void displayDefn()
+  case Defn abstract;
+  case Block {
+//System.out.println("doesntReturn = " + doesntReturn);
+      Call.display(id, "(", formals, ")");
+      System.out.println(" =");
+      if (code==null) {
+          Code.indent();
+          System.out.println("null");
+      } else {
+          code.display();
+      }
+  }
+  case ClosureDefn {
+      Call.display(id, "{", stored, "} ");
+      System.out.print(arg + " = ");
+      tail.displayln();
+  }
+  case TopLevel {
+      System.out.print(id + " <- ");
+      if (tail==null) {
+          System.out.println("null");
+      } else {
+          System.out.println();
+          Code.indent();
+          tail.displayln();
+      }
+  }
+
+/*@
+The remaining code provides simple auxiliary functions that
+are used in the code above:
+
+@*/
+/** Display a Tail value and then move to the next line.
+ */
+public void displayln()
+  case Tail { display(); System.out.println(); }
+
+class Code {
+  /** Print an indent at the beginning of a line.
+   */
+  public final static void indent() {
+      System.out.print("  ");
+  }
+
+  /** Print a suitably indented string at the start of a line.
+   */
+  public final static void indentln(String s) {
+      indent();
+      System.out.println(s);
+  }
+}
+
+class Call {
+  /** Print a call with a notation that includes the name of the item that is being
+   *  called and a list of arguments, appropriately wrapped between a given open and
+   *  close symbol (parentheses for block, primitive, and data constructor calls;
+   *  braces for closure constructors; and brackets for monadic thunk constructors).
+   */
+  public static void display(String name, String open, Atom[] args, String close) {
+      System.out.print(name);
+      System.out.print(open);
+      if (args!=null && args.length>0) {
+          System.out.print(args[0].toString());
+          for (int i=1; i<args.length; i++) {
+              System.out.print(", ");
+              System.out.print(args[i].toString());
+          }
+      }
+      System.out.print(close);
+  }
+}
+
+/*@
+%------------------------------------------------------------------------------
+\section{Lists of Variables}
+This section defines some functions for working with lists of @Var@
+values, represented by the @Vars@ class, including standard
+functions for computing list length and testing for membership:
+
+@*/
+macro List(Var)       // introduces class Vars
+macro AddIsIn(Var)    // adds support for isIn() on Vars lists
+macro AddLength(Vars) // adds support for length() on Vars lists
+
+/*@
+To help in debugging, we include a function for producing a string
+that displays the variables in a given @Vars@ list using standard
+set notation:
+
+@*/
+class Vars {
+  public static String toString(Vars vs) {
+      StringBuffer b = new StringBuffer("{");
+      if (vs!=null) {
+          b.append(vs.head.toString());
+          while ((vs=vs.next)!=null) {
+              b.append(",");
+              b.append(vs.head.toString());
+          }
+      }
+      b.append("}");
+      return b.toString();
+  }
+}
+
+/*@
+We also provide a function for capturing a list of variables as an array:
+
+@*/
+class Vars {
+  public static Var[] toArray(Vars vs) {
+      Var[] va = new Var[Vars.length(vs)];
+      for (int i=0; vs!=null; vs=vs.next) {
+          va[i++] = vs.head;
+      }
+      return va;
+  }
+}
+
+/*@
+We also provide functions for adding items to a list of variables.
+These operations are designed to be used with calls of the form
+@vs = Vars.add(newVs, vs)@, where @vs@ is the list of variables that
+is being added to and @newVs@ specifies the variables that we want to
+add.  There are variations of @add@ for the cases where @newVs@ is
+a single variable, an array, or a list of variables, as well as a
+convenience operator that allows us to add a single variable @v@
+using an expression of the form @v.addTo(vs)@.
+
+@*/
+class Vars {
+  // Adding variables to a list: -----------------------------------
+  // (destructively modifies the second argument)
+
+  public static Vars add(Var v, Vars vs) {
+      return Vars.isIn(v,vs) ? vs : new Vars(v, vs);
+  }
+
+  public static Vars add(Var[] vararray, Vars vs) {
+      for (int i=0; i<vararray.length; i++) {
+          vs = add(vararray[i], vs);
+      }
+      return vs;
+  }
+
+  public static Vars add(Vars us, Vars vs) {
+      for (; us!=null; us=us.next) {
+          vs = add(us.head, vs);
+      }
+      return vs;
+  }
+}
+
+class Var {
+    public Vars addTo(Vars vs) { return Vars.add(this, vs); }
+}
+
+/*@
+A natural extension allows us to compute the set of variables that appear
+free (and not defined at the top-level) in a given @Tail@ value.
+@*/
+/** Add the variables mentioned in this tail to the given list of variables.
+ */
+public Vars add(Vars vs)
+  case Tail   abstract;
+  case Return { return a.add(vs); }          // a
+  case Enter  { return f.add(a.add(vs)); }   // f @ a
+  case Invoke { return a.add(vs); }          // invoke a
+  case Call   { return Vars.add(args, vs); } // body
+
+/** Add this atom as an argument variable to the given list; only local
+ *  variables and temporaries are treated as argument variables because
+ *  wildcards are ignored and all other atoms can be accessed as constants.
+ */
+Vars add(Vars vs)
+  case Atom { return vs; }
+  case Temp { return Vars.add(this, vs); }
+
+class Vars {
+  /** Add the arguments in an array of atoms to a given list of variables.
+   */
+  public static Vars add(Atom[] args, Vars vs) {
+      for (int i=0; i<args.length; i++) {
+          vs = args[i].add(vs);
+      }
+      return vs;
+  }
+}
+
+
+/*@
+We also provide a corresponding set of functions for removing items
+from a list of variables.  These operations are designed to be used
+with calls of the form @vs = Vars.remove(remVs, vs)@, where @vs@ is
+the list of variables that is being modified and @remVs@ specifies
+the variables that we want to remove.  There are variations of
+@remove@ for the cases where @remVs@ is a single variable, an array,
+or a list of variables, as well as a convenience operator that
+allows us to remove a single variable @v@ using an expression of the
+form @v.removeFrom(vs)@.
+
+@*/
+class Vars {
+  // Removing variables from a list: (Destructive) -----------------
+  // (destructively modifies the second argument)
+
+  public static Vars remove(Var v, Vars vs) {
+      Vars prev = null;
+      for (Vars us=vs; us!=null; us=us.next) {
+          if (us.head==v) {
+              if (prev==null) {
+                  return us.next;       // remove first element
+              } else {
+                  prev.next = us.next;  // remove later element
+                  return vs;            // and return modified list
+              }
+          }
+          prev = us;
+      }
+      return vs;  // variable not listed
+  }
+
+  public static Vars remove(Var[] vararray, Vars vs) {
+      for (int i=0; i<vararray.length; i++) {
+          vs = remove(vararray[i], vs);
+      }
+      return vs;
+  }
+
+  public static Vars remove(Vars us, Vars vs) {
+      for (; us!=null; us=us.next) {
+          vs = remove(us.head, vs);
+      }
+      return vs;
+  }
+}
+
+class Var {
+    public Vars removeFrom(Vars vs) { return Vars.remove(this, vs); }
+}
+
+/*@
+%------------------------------------------------------------------------------
+\section{Variable to Atom Substitutions}
+
+%------------------------------------------------------------------------------
+\subsection{Representing and Constructing Substitutions}
+
+@*/
+/** AtomSubst value represent substitutions of Atoms for Vars as simple
+ *  linked list structures.
+ */
+public class AtomSubst(private Var v, private Atom a, private AtomSubst rest) {
+
+  /** Extend a substitution with bindings given by a pair of arrays.
+   */
+  public static AtomSubst extend(Var[] vs, Atom[] as, AtomSubst s) {
+      if (vs.length != as.length) {
+          debug.Internal.error("AtomSubst.extend: variable/atom counts do not match.");
+      }
+      for (int i=0; i<as.length; i++) {
+          s = new AtomSubst(vs[i], as[i], s);
+      }
+      return s;
+  }
+}
+
+class AtomSubst {
+  /** Remove any previous binding for the variable from the
+   *  given substitution, using destructive updates.
+   *
+   *  TODO: is this sufficient if one of the remaining bindings still mentions w?
+   */
+  public static AtomSubst remove(Var w, AtomSubst s) {
+      if (s==null) {
+          return null;
+      } else if (s.v==w) {
+          return s.rest;
+      } else {
+          s.rest = remove(w, s.rest);
+          return s;
+      }
+  }
+}
+
+/*@
+%------------------------------------------------------------------------------
+\subsection{Applying Substitutions to Atoms}
+
+@*/
+/** Apply an AtomSubst to this atom.
+ */
+public Atom apply(AtomSubst s)
+  case Atom   { return this; }
+  case Var    { return AtomSubst.apply(this, s); }
+
+class AtomSubst {
+  /** Apply the given substitution to the specified variable.
+   */
+  public static Atom apply(Var w, AtomSubst s) {
+      for (; s!=null; s=s.rest) {
+          if (s.v==w) {
+              return s.a;
+          }
+      }
+      return w;
+  }
+
+  /** Apply the given substitution to a vector of atoms.
+   */
+  public static Atom[] apply(Atom[] args, AtomSubst s) {
+      int    n     = args.length;
+      Atom[] nargs = new Atom[n];
+      for (int i=0; i<n; i++) {
+          nargs[i] = args[i].apply(s);
+      }
+      return nargs;
+  }
+}
+
+/*@
+%------------------------------------------------------------------------------
+\subsection{Applying Substitutions to Tail Values}
+
+@*/
+/** Apply an AtomSubst to this Tail, skipping the operation if
+ *  the substition is empty as an attempt at an optimization.
+ */
+public Tail apply(AtomSubst s)
+  case Tail   { return (s==null) ? this : forceApply(s); }
+
+/** Apply an AtomSubst to this Tail.
+ */
+public Tail forceApply(AtomSubst s)
+  case Tail   abstract;
+  case Return { return new Return(a.apply(s)); }
+  case Enter  { return new Enter(f.apply(s), a.apply(s)); }
+  case Invoke { return new Invoke(a.apply(s)); }
+  case Call   { return callDup().withArgs(AtomSubst.apply(args, s)); }
+
+/** Construct a new Call value that is based on the receiver,
+ *  without copying the arguments.
+ */
+Call callDup()
+  case Call      abstract;
+  case BlockCall { return new BlockCall(b); }
+  case PrimCall  { return new PrimCall(p);  }
+  case DataAlloc { return new DataAlloc(c); }
+  case ClosAlloc { return new ClosAlloc(k); }
+  case CompAlloc { return new CompAlloc(m); }
+
+/** A special version of apply that works only on Call values; used
+ *  in places where type preservation of a Call value is required.
+ *  TODO: is this still used?
+ */
+public Call forceApplyCall(AtomSubst s)
+  case Call { return callDup().withArgs(AtomSubst.apply(args, s)); }
+
+/** A special version of apply that works only on BlockCalls;
+ *  used in places where type preservation of a BlockCall argument
+ *  is required.  In particular, we don't use withArgs here because
+ *  that loses type information, producing a Body from a BlockCall
+ *  input.
+ */
+public BlockCall applyBlockCall(AtomSubst s)
+  case BlockCall { return (s==null) ? this : forceApplyBlockCall(s); }
+
+/** A special version of forceApply that works only on BlockCalls.
+ */
+BlockCall forceApplyBlockCall(AtomSubst s)
+  case BlockCall {
+      BlockCall bc = new BlockCall(b);
+      bc.args      = AtomSubst.apply(args, s);
+      return bc;
+  }
+
+/*@
+%------------------------------------------------------------------------------
+\subsection{Applying Substitutions to Code Values}\label{sec-mil-subst-code}
+
+@*/
+/** Apply an AtomSubst to this Code, skipping the operation if
+ *  the substitution is empty as an attempt at an optimization.
+ *  This operation essentially builds a fresh copy of the original
+ *  code sequence, introducing new temporaries in place of any
+ *  variables introduced by Binds.
+ */
+public Code apply(AtomSubst s)
+  case Code { return (s==null) ? this : forceApply(s); }
+
+/** Apply an AtomSubst to this Code.
+ */
+public Code forceApply(AtomSubst s)
+  case Code abstract;
+  case Bind {    // v <- t; c
+      Temp w = new Temp();
+      return new Bind(w, t.forceApply(s), c.forceApply(new AtomSubst(v, w, s)));
+  }
+  case Done {    // t
+      return new Done(t.forceApply(s));
+  }
+  case Match {   // case a of alts; d
+      TAlt[] talts = new TAlt[alts.length];
+      for (int i=0; i<alts.length; i++) {
+          talts[i] = alts[i].forceApply(s);
+      }
+      BlockCall d = (def==null) ? null : def.forceApplyBlockCall(s);
+      return new Match(a.apply(s), talts, d);
+  }
+
+/** Apply an AtomSubst to this TAlt, skipping if the substitution is empty.
+ */
+public TAlt apply(AtomSubst s)
+  case TAlt { return (s==null) ? this : forceApply(s); }
+
+/** Apply an AtomSubst to this TAlt.
+ */
+public TAlt forceApply(AtomSubst s)
+  case TAlt {  // c args -> bc
+/*
+      // Extends substitution with fresh bindings for the variables in
+      // args.  Simple, but often unnecessary allocation.
+      Var[] vs = Temp.makeTemps(args.length);
+      s        = AtomSubst.extend(args, vs, s);
+      return new TAlt(c, vs, bc.forceApplyBlockCall(s));
+*/
+      // Extends substitution with identity bindings for the variables in
+      // args.  Simple, but often unnecessary allocation.
+      s = AtomSubst.extend(args, args, s);
+      return new TAlt(c, args, bc.forceApplyBlockCall(s));
+  }
+
+/*@
+%------------------------------------------------------------------------------
+\section{An interpreter for MIL programs}
+In this section, we describe a very simple interpreter for MIL programs.
+This might be used for running simple tests, or perhaps as a starting point
+for constructing a more formal semantics of the MIL language, but it is not
+intended as a practical tool.  Among other shortcomings, it currently does
+not provide implementations for most of the primitives that were described
+in Section~\ref{sec-mil-prim} (although adding the code for that would not
+be difficult).  Perhaps more seriously, the implementation relies heavily on
+recursion and, because Java does not support tail recursion optimization,
+it will likely cause stack overflows for nontrivial programs.
+
+We begin by defining a @Fail@ class that will be used for representing and
+reporting errors that are detected while the interpreter is running:
+
+@*/
+public class Fail(private String msg) extends Exception {
+  public String toString() {
+      return "Interpreter error: " + msg;
+  }
+}
+
+/*@
+%------------------------------------------------------------------------------
+\subsection{Representing MIL values}
+Our next task is to provide a representation for the different types of
+value that are manipulated by MIL programs.  We begin with an abstract
+base class, @Val@, with subclasses for integer values (@IntVal@) and
+heap-allocated objects (@AllocVal@).  A further set of subclasses are
+used to distinguish between heap-allocated data values (@DataVal@,
+corresponding to values produced by MIL expressions of the form
+@C(a1,...,an)@); closure values (@ClosVal@, corresponding to values
+produced by MIL expressions of the form @k{a1,...,an}@); and computation
+or thunk values (@CompVal@, corresponding to values produced by MIL
+expressions of the form @m[a1,...,an]@).  In each of these three cases,
+we include an array, @vals@, to hold the actual values that were used for
+the formal parameters @a1@, \ldots, @an@, together with a tag to specify
+the appropriate constructor function, closure entry, or block entry.
+
+@*/
+public abstract class Val {
+  case IntVal(private int num)
+  abstract case AllocVal(protected Val[] vals) {
+      case DataVal(private Cfun c)
+      case ClosVal(private ClosureDefn k)
+      case CompVal(private Block m)
+  }
+}
+
+/*@
+We define 
+To allow us to inspect the results of the 
+For use in debugging, 
+
+@*/
+
+public String toString()
+  case Val {
+      StringBuffer buf = new StringBuffer();
+      this.append(buf);
+      return buf.toString();
+  }
+
+void append(StringBuffer buf)
+  case Val      abstract;
+  case IntVal  { buf.append(num); }
+  case DataVal { c.append(buf); append(buf, '(', ')'); }
+  case ClosVal { k.append(buf); append(buf, '{', '}'); }
+  case CompVal { m.append(buf); append(buf, '[', ']'); }
+  case Defn    { buf.append(getId()); }
+
+protected void append(StringBuffer buf, char open, char close)
+  case AllocVal {
+      buf.append(open);
+      String sep = "";
+      for (int i=0; i<vals.length; i++) {
+          buf.append(sep);
+          sep = ", ";
+          vals[i].append(buf);
+      }
+      buf.append(close);
+  }
+
+/*@
+%------------------------------------------------------------------------------
+\subsection{Value Environments}
+
+@*/
+public class ValEnv(private Var v, private Val val, private ValEnv rest) {
+  public static ValEnv extend(Var[] vars, Val[] vals, ValEnv env) {
+      for (int i=0; i<vars.length; i++) {
+          env = new ValEnv(vars[i], vals[i], env);
+      }
+      return env;
+  }
+
+  public static Val lookup(Var v, ValEnv env) throws Fail {
+      while (env!=null) {
+          if (v==env.v) {
+              return env.val;
+          }
+      }
+      throw new Fail("Could not find value for variable " + v);
+  }
+
+  public static Val[] lookup(Atom[] atoms, ValEnv env) throws Fail {
+      Val[] vals = new Val[atoms.length];
+      for (int i=0; i<atoms.length; i++) {
+          vals[i] = atoms[i].lookup(env);
+      }
+      return vals;
+  }
+}
+
+public Val lookup(ValEnv env) throws Fail
+  case Atom  abstract;
+  case Const { return new IntVal(val); }
+  case Top   { throw new Fail("lookup Top not implemented yet"); } // TODO: Fix this!
+  case Var   { return ValEnv.lookup(this, env); }
+
+/*@
+%------------------------------------------------------------------------------
+\subsection{Evaluator Methods}
+
+@*/
+//- Main Evaluator: -------------------------------------------
+// Every execution step pushes us to another level of recursion;
+// we really need a tail recursive implementation of Java to make
+// this work in practice.
+
+public Val eval(ValEnv env) throws Fail
+  case Code      abstract;
+  case Done      { return t.eval(env); }
+  case Bind      { return c.eval(new ValEnv(v, t.eval(env), env)); }
+  case Match     { return a.lookup(env).match(alts, def, env); }
+
+  case Tail      abstract;
+  case Return    { return a.lookup(env); }
+  case Enter     { return f.lookup(env).enter(a.lookup(env)); }
+  case Invoke    { return a.lookup(env).invoke(); }
+  case BlockCall { return b.call(ValEnv.lookup(args, env)); }
+  case PrimCall  { return p.call(ValEnv.lookup(args, env)); }
+  case DataAlloc { return new DataVal(ValEnv.lookup(args, env), c); }
+  case ClosAlloc { return new ClosVal(ValEnv.lookup(args, env), k); }
+  case CompAlloc { return new CompVal(ValEnv.lookup(args, env), m); }
+
+public Val match(TAlt[] alts, BlockCall def, ValEnv env) throws Fail
+  case Val      { throw new Fail("Runtime type error in pattern match"); }
+  case DataVal  {
+      for (int i=0; i<alts.length; i++) {
+          Val val = alts[i].match(c, vals, env);
+          if (val!=null) {
+              return val;
+          }
+      }
+      return def.eval(env);
+  }
+
+public Val match(Cfun c, Val[] vals, ValEnv env) throws Fail
+  case TAlt {
+      return (c==this.c) ? bc.eval(ValEnv.extend(args, vals, env)) : null;
+  }
+
+public Val enter(Val val) throws Fail
+  case Val      { throw new Fail("Runtime type error in enter"); }
+  case ClosVal  { return k.enter(vals, val); }
+
+public Val enter(Val[] vals, Val val) throws Fail
+  case ClosureDefn {
+      return tail.eval(new ValEnv(arg, val, ValEnv.extend(stored, vals, null)));
+  }
+
+public Val invoke() throws Fail
+  case Val      { throw new Fail("Runtime type error in invoke"); }
+  case CompVal  { return m.call(vals); }
+
+public Val call(Val[] vals) throws Fail
+  case Block { return code.eval(ValEnv.extend(formals, vals, null)); }
+  case Prim  {
+      if (arity!=vals.length) {
+          throw new Fail("primitive " + id + " does not have " + arity + " arguments");
+      }
+      if (id.equals("add")) {
+          return new IntVal(vals[0].asInt() + vals[1].asInt());
+      } else if (id.equals("sub")) {
+          return new IntVal(vals[0].asInt() - vals[1].asInt());
+      } else if (id.equals("eq")) {
+          return Val.asBool(vals[0].asInt() == vals[1].asInt());
+      } else {
+        throw new Fail("No implementation for primitive " + id);
+      }
+  }
+
+public int asInt() throws Fail
+  case Val    { throw new Fail("Runtime type error, integer value expected"); }
+  case IntVal { return num; }
+
+class Val {
+  public static final Val[] noVals = new Val[0];
+  public static final Val trueVal  = new DataVal(noVals, Cfun.True);
+  public static final Val falseVal = new DataVal(noVals, Cfun.False);
+  public static Val asBool(boolean b) {
+      return b ? trueVal : falseVal;
+  }
+}
+

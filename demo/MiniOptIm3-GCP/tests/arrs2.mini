@@ -1,0 +1,27 @@
+void mini_main() {
+	arrs();
+}
+int size()
+{
+	return 10;
+}
+void arrs() {
+  int N = size();
+  int[] a = new int[N];
+
+  // Compute some fibonnacci numbers:
+  a[0] = 0;
+  a[1] = 1;
+  int   i = 2;
+  while (i<N) {
+    a[i] = a[i-1] + a[i-2];
+    i = i + 1;
+  }
+
+  // Print them out:
+  i = 0;
+  while (i<N) {
+    print a[i];
+    i = i + 1;
+  }
+}
